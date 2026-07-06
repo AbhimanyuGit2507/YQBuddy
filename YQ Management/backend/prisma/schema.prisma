@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPER_ADMIN
+  TENANT_ADMIN
+  OPERATOR
+}
+
+enum QueueStatus {
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+enum TokenStatus {
+  WAITING
+  SERVING
+  COMPLETED
+  MISSED
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  subdomain String   @unique // e.g., 'hospitalname'
+  branding  Json?    // Stores colors, logo URLs
+  users     User[]
+  queues    Queue[]
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id       String @id @default(uuid())
+  tenantId String
+  email    String @unique
+  password String
+  role     Role   
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model Queue {
+  id       String      @id @default(uuid())
+  tenantId String
+  name     String
+  status   QueueStatus 
+  tenant   Tenant      @relation(fields: [tenantId], references: [id])
+  tokens   Token[]
+}
+
+model Token {
+  id           String      @id @default(uuid())
+  queueId      String
+  customerName String
+  phone        String
+  status       TokenStatus 
+  joinedAt     DateTime    @default(now())
+  queue        Queue       @relation(fields: [queueId], references: [id])
+}
