@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue, Job } from 'bullmq';
+import type { WhatsAppProvider } from '../communication/interfaces/whatsapp.provider';
+import { CommunicationLogService, CommunicationChannel, CommunicationStatus } from '../communication/logging/communication-log.service';
 
 @Injectable()
 export class NotificationsService {
@@ -7,34 +11,44 @@ export class NotificationsService {
   private readonly evolutionApiKey = process.env.EVOLUTION_API_KEY;
   private readonly instanceName = process.env.EVOLUTION_INSTANCE_NAME;
 
-  async sendWhatsAppMessage(to: string, body: string) {
+  constructor(
+    @InjectQueue('whatsapp') private readonly whatsappQueue: Queue,
+    @Inject('WhatsAppProvider') private readonly whatsappProvider: WhatsAppProvider,
+    private readonly communicationLogService: CommunicationLogService,
+  ) {}
+
+  async sendWhatsAppMessage(to: string, body: string, workspaceId?: string) {
+    await this.whatsappQueue.add(
+      'sendMessage',
+      { to, body, workspaceId },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+      },
+    );
+  }
+
+  async executeWhatsAppMessage(job: Job<any, any, string>) {
+    const { to, body, workspaceId } = job.data;
     try {
-      if (this.evolutionApiUrl && this.evolutionApiKey && this.instanceName) {
-        // Evolution API requires the number without 'whatsapp:' or '+'
-        const cleanNumber = to.replace(/\D/g, '');
-        
-        const res = await fetch(`${this.evolutionApiUrl}/message/sendText/${this.instanceName}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': this.evolutionApiKey
-          },
-          body: JSON.stringify({
-            number: cleanNumber,
-            text: body
-          })
-        });
-        
-        if (!res.ok) {
-           throw new Error(`Evolution API error: ${res.status} ${res.statusText}`);
-        }
-        this.logger.log(`Sent real WhatsApp message to ${cleanNumber} via Evolution API`);
-      } else {
-        // Mock implementation for development
-        this.logger.warn(`[MOCK WHATSAPP] To: ${to} | Body: ${body}`);
-      }
+      const result = await this.whatsappProvider.sendText(to, body);
+
+      await this.communicationLogService.log({
+        channel: CommunicationChannel.WHATSAPP,
+        type: 'message',
+        recipient: to,
+        body,
+        status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+        provider: 'evolution',
+        providerId: result.providerId,
+        errorMessage: result.error,
+        workspaceId,
+      });
+
+      return result;
     } catch (error) {
       this.logger.error(`Failed to send WhatsApp message to ${to}`, error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -42,15 +56,23 @@ export class NotificationsService {
     this.logger.log(`Received reply from ${from}: ${body}`);
     const command = body.trim().toUpperCase();
 
-    // Logic to lookup Token by phone number goes here
     if (command === 'LATE') {
       this.logger.log(`[Action] Moving customer ${from} back 2 spots in the queue`);
-      await this.sendWhatsAppMessage(from, 'Your turn has been delayed. We will notify you again soon.');
+      await this.sendWhatsAppMessage(
+        from,
+        'Your turn has been delayed. We will notify you again soon.',
+      );
     } else if (command === 'CANCEL') {
       this.logger.log(`[Action] Cancelling queue position for ${from}`);
-      await this.sendWhatsAppMessage(from, 'You have been removed from the queue.');
+      await this.sendWhatsAppMessage(
+        from,
+        'You have been removed from the queue.',
+      );
     } else {
-      await this.sendWhatsAppMessage(from, 'Unrecognized command. Reply LATE to delay your turn or CANCEL to leave the queue.');
+      await this.sendWhatsAppMessage(
+        from,
+        'Unrecognized command. Reply LATE to delay your turn or CANCEL to leave the queue.',
+      );
     }
   }
 }

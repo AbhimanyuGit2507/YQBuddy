@@ -1,16 +1,22 @@
-import { 
-  WebSocketGateway, 
-  WebSocketServer, 
-  OnGatewayConnection, 
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  OnGatewayConnection,
   OnGatewayDisconnect,
   SubscribeMessage,
   MessageBody,
-  ConnectedSocket
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
-@WebSocketGateway({ cors: { origin: '*' } })
+@WebSocketGateway({
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    credentials: true,
+  },
+})
 export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   private logger: Logger = new Logger(QueueGateway.name);
@@ -24,26 +30,31 @@ export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('joinQueueRoom')
-  handleJoinQueueRoom(@MessageBody() queueId: string, @ConnectedSocket() client: Socket) {
+  handleJoinQueueRoom(
+    @MessageBody() queueId: string,
+    @ConnectedSocket() client: Socket,
+  ) {
     client.join(`queue_${queueId}`);
     this.logger.log(`Client ${client.id} joined room queue_${queueId}`);
     return { event: 'joinedRoom', data: `queue_${queueId}` };
   }
 
   @SubscribeMessage('joinTenantRoom')
-  handleJoinTenantRoom(@MessageBody() tenantId: string, @ConnectedSocket() client: Socket) {
-    client.join(`tenant_${tenantId}`);
-    this.logger.log(`Client ${client.id} joined room tenant_${tenantId}`);
-    return { event: 'joinedRoom', data: `tenant_${tenantId}` };
+  handleJoinTenantRoom(
+    @MessageBody() workspaceId: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.join(`workspace_${workspaceId}`);
+    this.logger.log(`Client ${client.id} joined room workspace_${workspaceId}`);
+    return { event: 'joinedRoom', data: `workspace_${workspaceId}` };
   }
 
-  broadcastQueueUpdate(queueId: string, event: string, payload: any) {
+  broadcastQueueUpdate(queueId: string, workspaceId: string, event: string, payload: any) {
     this.server.to(`queue_${queueId}`).emit(event, payload);
-    // Also broadcast to the tenant admin room
-    // For MVP, we might not have tenantId here, but assume it's sent in payload or separate call
+    this.server.to(`workspace_${workspaceId}`).emit(event, payload);
   }
 
-  broadcastTenantUpdate(tenantId: string, event: string, payload: any) {
-    this.server.to(`tenant_${tenantId}`).emit(event, payload);
+  broadcastTenantUpdate(workspaceId: string, event: string, payload: any) {
+    this.server.to(`workspace_${workspaceId}`).emit(event, payload);
   }
 }

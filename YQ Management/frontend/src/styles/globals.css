@@ -155,6 +155,23 @@ body {
   }
 }
 
+/* Scan line animation for QR scanner */
+@keyframes scan-line {
+  0% {
+    transform: translateY(-100%);
+  }
+  50% {
+    transform: translateY(100%);
+  }
+  100% {
+    transform: translateY(-100%);
+  }
+}
+
+.animate-scan-line {
+  animation: scan-line 2s infinite ease-in-out;
+}
+
 @keyframes blob {
   0% {
     transform: translate(0px, 0px) scale(1);

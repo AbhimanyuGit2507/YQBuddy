@@ -37,7 +37,7 @@ echo "⚙️ Setting up backend..."
 cd backend
 npm install
 # Ensure Prisma is synced and generated
-npx prisma db push
+npx prisma db push --accept-data-loss
 npx prisma generate
 
 echo "🟢 Starting NestJS Backend Server..."

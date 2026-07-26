@@ -6,13 +6,26 @@ import { Injectable } from '@nestjs/common';
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request: any) => {
+          let token = null;
+          if (request && request.cookies) {
+            token = request.cookies['access_token'];
+          }
+          return token || ExtractJwt.fromAuthHeaderAsBearerToken()(request);
+        },
+      ]),
       ignoreExpiration: false,
-      secretOrKey: 'yq-queue-super-secret-key', // Use env variable in production
+      secretOrKey: process.env.JWT_SECRET || 'yq-queue-super-secret-key',
     });
   }
 
   async validate(payload: any) {
-    return { userId: payload.sub, email: payload.email, role: payload.role, tenantId: payload.tenantId };
+    return {
+      userId: payload.sub,
+      email: payload.email,
+      role: payload.role,
+      workspaceId: payload.workspaceId,
+    };
   }
 }

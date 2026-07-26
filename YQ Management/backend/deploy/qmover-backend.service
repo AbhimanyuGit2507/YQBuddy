@@ -1,0 +1,37 @@
+[Unit]
+Description=QMover Backend API
+Documentation=https://github.com/yourusername/qmover
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/qmover/backend
+ExecStart=/usr/bin/node dist/main
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=65536
+
+# Environment file
+EnvironmentFile=/opt/qmover/backend/.env
+
+# Resource limits (adjust based on Oracle free tier specs)
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/opt/qmover/backend/logs
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=qmover-backend
+
+[Install]
+WantedBy=multi-user.target

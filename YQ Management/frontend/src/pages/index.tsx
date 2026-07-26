@@ -10,9 +10,11 @@ import {
   QrCode, 
   TrendingUp, 
   CheckCircle2, 
-  Users 
+  Users,
+  User
 } from 'lucide-react';
 import { Geist, Geist_Mono } from "next/font/google";
+import { useAuth } from '../components/AuthContext';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,6 +27,8 @@ const geistMono = Geist_Mono({
 });
 
 export default function LandingPage() {
+  const { user, loading } = useAuth();
+
   return (
     <div className={`min-h-screen bg-black text-zinc-50 ${geistSans.className} overflow-hidden`}>
       <Head>
@@ -47,15 +51,33 @@ export default function LandingPage() {
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/login" className="text-sm font-medium text-zinc-300 hover:text-white transition-colors">
-              Log in
-            </Link>
-            <Link 
-              href="/register" 
-              className="px-5 py-2.5 rounded-full bg-white text-black text-sm font-medium hover:bg-zinc-200 transition-colors"
-            >
-              Start Free Trial
-            </Link>
+            {!loading && user ? (
+              <div className="flex items-center gap-4">
+                <Link 
+                  href="/dashboard" 
+                  className="px-5 py-2.5 rounded-full bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-colors"
+                >
+                  Dashboard
+                </Link>
+                <div className="w-10 h-10 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center">
+                  <User className="w-5 h-5 text-zinc-400" />
+                </div>
+              </div>
+            ) : (
+              !loading && (
+                <>
+                  <Link href="/login" className="text-sm font-medium text-zinc-300 hover:text-white transition-colors">
+                    Log in
+                  </Link>
+                  <Link 
+                    href="/register" 
+                    className="px-5 py-2.5 rounded-full bg-white text-black text-sm font-medium hover:bg-zinc-200 transition-colors"
+                  >
+                    Start Free Trial
+                  </Link>
+                </>
+              )
+            )}
           </div>
         </div>
       </nav>
@@ -92,7 +114,7 @@ export default function LandingPage() {
               <ArrowRight className="w-5 h-5" />
             </Link>
             <Link 
-              href="/admin" 
+              href="/dashboard" 
               className="flex items-center gap-2 px-8 py-4 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-white text-lg font-medium transition-colors backdrop-blur-sm"
             >
               View Admin Demo

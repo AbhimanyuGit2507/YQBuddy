@@ -9,7 +9,7 @@ export class RedisIoAdapter extends IoAdapter {
   async connectToRedis(): Promise<void> {
     const pubClient = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
-      port: Number(process.env.REDIS_PORT) || 6380,
+      port: Number(process.env.REDIS_PORT) || 6379,
     });
     const subClient = pubClient.duplicate();
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=DuckDNS IP Updater Timer
+Requires=duckdns-updater.service
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,203 @@
+import { TokenService } from './token.service';
+import { RequestOtpDto, JoinQueueDto, ValidateTokenDto, TransferTokenDto } from './dto/token.dto';
+export declare class TokenController {
+    private readonly tokenService;
+    constructor(tokenService: TokenService);
+    requestOtp(body: RequestOtpDto): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    joinQueue(body: JoinQueueDto): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.TokenStatus;
+        language: string;
+        queueId: string;
+        customerName: string;
+        phone: string | null;
+        joinedAt: Date;
+        isAppointment: boolean;
+        scheduledFor: Date | null;
+        checkedIn: boolean;
+        rating: number | null;
+        feedbackText: string | null;
+        formResponses: import("@prisma/client/runtime/client").JsonValue | null;
+        purpose: string | null;
+        servedAt: Date | null;
+        completedAt: Date | null;
+    }>;
+    getTokenStatus(id: string): Promise<{
+        token: {
+            queue: {
+                name: string;
+                id: string;
+                workspaceId: string;
+                status: import("@prisma/client").$Enums.QueueStatus;
+                nextQueueId: string | null;
+                formConfig: import("@prisma/client/runtime/client").JsonValue | null;
+                allowAppointments: boolean;
+                requireManualCheckIn: boolean;
+                appointmentGranularityMins: number;
+            };
+        } & {
+            id: string;
+            status: import("@prisma/client").$Enums.TokenStatus;
+            language: string;
+            queueId: string;
+            customerName: string;
+            phone: string | null;
+            joinedAt: Date;
+            isAppointment: boolean;
+            scheduledFor: Date | null;
+            checkedIn: boolean;
+            rating: number | null;
+            feedbackText: string | null;
+            formResponses: import("@prisma/client/runtime/client").JsonValue | null;
+            purpose: string | null;
+            servedAt: Date | null;
+            completedAt: Date | null;
+        };
+        position: number;
+        estimatedWaitTime: number;
+        isScheduled?: undefined;
+    } | {
+        token: {
+            queue: {
+                name: string;
+                id: string;
+                workspaceId: string;
+                status: import("@prisma/client").$Enums.QueueStatus;
+                nextQueueId: string | null;
+                formConfig: import("@prisma/client/runtime/client").JsonValue | null;
+                allowAppointments: boolean;
+                requireManualCheckIn: boolean;
+                appointmentGranularityMins: number;
+            };
+        } & {
+            id: string;
+            status: import("@prisma/client").$Enums.TokenStatus;
+            language: string;
+            queueId: string;
+            customerName: string;
+            phone: string | null;
+            joinedAt: Date;
+            isAppointment: boolean;
+            scheduledFor: Date | null;
+            checkedIn: boolean;
+            rating: number | null;
+            feedbackText: string | null;
+            formResponses: import("@prisma/client/runtime/client").JsonValue | null;
+            purpose: string | null;
+            servedAt: Date | null;
+            completedAt: Date | null;
+        };
+        position: number;
+        estimatedWaitTime: number;
+        isScheduled: boolean;
+    }>;
+    cancelToken(id: string): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.TokenStatus;
+        language: string;
+        queueId: string;
+        customerName: string;
+        phone: string | null;
+        joinedAt: Date;
+        isAppointment: boolean;
+        scheduledFor: Date | null;
+        checkedIn: boolean;
+        rating: number | null;
+        feedbackText: string | null;
+        formResponses: import("@prisma/client/runtime/client").JsonValue | null;
+        purpose: string | null;
+        servedAt: Date | null;
+        completedAt: Date | null;
+    }>;
+    checkInToken(id: string): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.TokenStatus;
+        language: string;
+        queueId: string;
+        customerName: string;
+        phone: string | null;
+        joinedAt: Date;
+        isAppointment: boolean;
+        scheduledFor: Date | null;
+        checkedIn: boolean;
+        rating: number | null;
+        feedbackText: string | null;
+        formResponses: import("@prisma/client/runtime/client").JsonValue | null;
+        purpose: string | null;
+        servedAt: Date | null;
+        completedAt: Date | null;
+    }>;
+    advanceQueue(req: any, queueId: string): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.TokenStatus;
+        language: string;
+        queueId: string;
+        customerName: string;
+        phone: string | null;
+        joinedAt: Date;
+        isAppointment: boolean;
+        scheduledFor: Date | null;
+        checkedIn: boolean;
+        rating: number | null;
+        feedbackText: string | null;
+        formResponses: import("@prisma/client/runtime/client").JsonValue | null;
+        purpose: string | null;
+        servedAt: Date | null;
+        completedAt: Date | null;
+    } | null>;
+    validateToken(req: any, body: ValidateTokenDto): Promise<{
+        valid: boolean;
+        reason: string;
+        status?: undefined;
+        tokenId?: undefined;
+        customerName?: undefined;
+        queueName?: undefined;
+        purpose?: undefined;
+        phone?: undefined;
+        joinedAt?: undefined;
+        queueId?: undefined;
+    } | {
+        valid: boolean;
+        status: string;
+        tokenId: string;
+        customerName: string;
+        queueName: string;
+        purpose: string | null;
+        phone: string | null;
+        joinedAt: Date;
+        queueId: string;
+        reason?: undefined;
+    } | {
+        valid: boolean;
+        status: string;
+        reason: string;
+        tokenId?: undefined;
+        customerName?: undefined;
+        queueName?: undefined;
+        purpose?: undefined;
+        phone?: undefined;
+        joinedAt?: undefined;
+        queueId?: undefined;
+    }>;
+    transferToken(req: any, id: string, body: TransferTokenDto): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.TokenStatus;
+        language: string;
+        queueId: string;
+        customerName: string;
+        phone: string | null;
+        joinedAt: Date;
+        isAppointment: boolean;
+        scheduledFor: Date | null;
+        checkedIn: boolean;
+        rating: number | null;
+        feedbackText: string | null;
+        formResponses: import("@prisma/client/runtime/client").JsonValue | null;
+        purpose: string | null;
+        servedAt: Date | null;
+        completedAt: Date | null;
+    }>;
+}

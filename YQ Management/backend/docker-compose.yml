@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=3000
+      - FRONTEND_URL=${FRONTEND_URL}
+      - APP_URL=${APP_URL}
+      - BACKEND_URL=${BACKEND_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - BREVO_API_KEY=${BREVO_API_KEY}
+      - BREVO_LIST_ID=${BREVO_LIST_ID}
+      - EVOLUTION_API_URL=${EVOLUTION_API_URL}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY}
+      - EVOLUTION_INSTANCE_NAME=${EVOLUTION_INSTANCE_NAME}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - OZOW_SITE_CODE=${OZOW_SITE_CODE}
+      - OZOW_PRIVATE_KEY=${OZOW_PRIVATE_KEY}
+      - OZOW_API_KEY=${OZOW_API_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/ssl/certs:ro
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.1'
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

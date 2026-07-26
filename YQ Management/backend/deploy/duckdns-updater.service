@@ -1,0 +1,18 @@
+[Unit]
+Description=DuckDNS IP Updater for QMover
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/qmover/backend
+ExecStart=/opt/qmover/backend/scripts/duckdns-update.sh
+EnvironmentFile=/opt/qmover/backend/.env
+
+# Run on boot and every 5 minutes
+ExecStartPre=/bin/sleep 30
+
+[Install]
+WantedBy=multi-user.target
