@@ -92,7 +92,7 @@ export default function SettingsPage() {
       if (data?.state === 'open' || data?.state === 'close' || data?.state === 'unconfigured') {
         return false;
       }
-      return 500;
+      return 300;
     },
   });
 

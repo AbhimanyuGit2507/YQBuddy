@@ -67,8 +67,7 @@ export class WhatsappService {
       connectRes = await this.fetchEvo(`/instance/connect/${instanceName}`, 'GET');
     }
     
-    // Set Webhook
-    await this.setWebhook(instanceName);
+    this.setWebhook(instanceName).catch(() => {});
     
     const stateRes = await this.fetchEvo(`/instance/connectionState/${instanceName}`, 'GET');
     const state = stateRes.data?.instance?.state || 'close';
@@ -78,12 +77,26 @@ export class WhatsappService {
       qr = connectRes.data.qrcode.base64;
     } else if (connectRes.data?.base64) {
       qr = connectRes.data.base64;
+    } else if (stateRes.data?.instance?.qrcode?.base64) {
+      qr = stateRes.data.instance.qrcode.base64;
+    } else if (stateRes.data?.qrcode?.base64) {
+      qr = stateRes.data.qrcode.base64;
+    }
+
+    this.logger.log(
+      `WhatsApp connect result for ${instanceName}: state=${state}, qr=${qr ? 'present' : 'missing'}`,
+    );
+
+    if (!qr && state === 'connecting') {
+      this.logger.warn(
+        `QR code not returned for ${instanceName} in state=${state}, check Evolution API logs`,
+      );
     }
 
     return {
       instanceName,
       state,
-      qr
+      qr,
     };
   }
 
@@ -111,7 +124,8 @@ export class WhatsappService {
     return {
       instanceName: tenant.whatsappInstanceId,
       state,
-      whatsappConnected: state === 'open'
+      whatsappConnected: state === 'open',
+      qr: stateRes.data?.instance?.qrcode?.base64 || stateRes.data?.qrcode?.base64 || null,
     };
   }
 
