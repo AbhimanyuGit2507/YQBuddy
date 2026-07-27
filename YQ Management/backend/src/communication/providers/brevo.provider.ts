@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { EmailProvider, EmailMessage, EmailResult } from '../interfaces/email.provider';
+import {
+  EmailProvider,
+  EmailMessage,
+  EmailResult,
+} from '../interfaces/email.provider';
 
 @Injectable()
 export class BrevoProvider implements EmailProvider {
@@ -13,7 +17,9 @@ export class BrevoProvider implements EmailProvider {
   async send(message: EmailMessage): Promise<EmailResult> {
     try {
       if (!this.apiKey) {
-        this.logger.warn(`BREVO_API_KEY missing. Mock sent email to ${message.to}: ${message.subject}`);
+        this.logger.warn(
+          `BREVO_API_KEY missing. Mock sent email to ${message.to}: ${message.subject}`,
+        );
         return { success: true, providerId: 'mock' };
       }
 
@@ -25,13 +31,21 @@ export class BrevoProvider implements EmailProvider {
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          sender: message.from || { name: 'QMover', email: 'no-reply@qmover.com' },
+          sender: message.from || {
+            name: 'QMover',
+            email: 'no-reply@qmover.com',
+          },
           to: [{ email: message.to }],
           subject: message.subject,
           htmlContent: message.htmlContent,
           textContent: message.textContent,
           replyTo: message.replyTo ? { email: message.replyTo } : undefined,
-          tags: message.tags ? Object.entries(message.tags).map(([key, value]) => ({ name: key, value })) : undefined,
+          tags: message.tags
+            ? Object.entries(message.tags).map(([key, value]) => ({
+                name: key,
+                value,
+              }))
+            : undefined,
         }),
       });
 
@@ -46,7 +60,10 @@ export class BrevoProvider implements EmailProvider {
       return { success: true, providerId: data.messageId?.toString() };
     } catch (error) {
       this.logger.error(`Failed to send email to ${message.to}`, error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
   }
 

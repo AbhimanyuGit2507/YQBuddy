@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import AdminLayout from '../../../components/AdminLayout';
@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
 import { useAuth } from '../../../components/AuthContext';
 import { useTheme } from '../../../components/ThemeProvider';
+import { toast } from 'sonner';
 
 type SettingsTab = 'General' | 'WhatsApp' | 'Email' | 'Billing' | 'Webhooks' | 'Invitations';
 
@@ -33,7 +34,6 @@ export default function SettingsPage() {
     }
   }, [user?.personalSettings?.theme]);
 
-  const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [instanceName, setInstanceName] = useState<string | null>(null);
@@ -57,6 +57,7 @@ export default function SettingsPage() {
   const [testMessage, setTestMessage] = useState('Test message from QMover');
   const [whatsappTemplates, setWhatsappTemplates] = useState<any[]>([]);
   const [templateDrafts, setTemplateDrafts] = useState<Record<string, string>>({});
+  const hasShownWhatsAppToast = useRef(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('templateDrafts');
@@ -64,8 +65,8 @@ export default function SettingsPage() {
       try {
         const parsed = JSON.parse(saved);
         setTemplateDrafts(parsed);
-      } catch (e) {
-        console.error('Failed to parse saved template drafts:', e);
+      } catch {
+        setTemplateDrafts({});
       }
     }
   }, []);
@@ -80,16 +81,19 @@ export default function SettingsPage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(user?.personalSettings?.notificationsEnabled ?? true);
   const [savingPersonal, setSavingPersonal] = useState(false);
 
-  const { data: whatsappStatus } = useQuery({
+  const { data: whatsappStatus, refetch: refetchWhatsAppStatus } = useQuery({
     queryKey: ['whatsapp-status'],
     queryFn: () => fetchApi('/whatsapp/status'),
     refetchInterval: (data: any) => {
       if (data?.state === 'open' || data?.state === 'close' || data?.state === 'unconfigured') {
         return false;
       }
-      return 3000;
+      return 500;
     },
   });
+
+  const isWhatsAppConnected = whatsappStatus?.state === 'open';
+  const whatsappConnectionState = whatsappStatus?.state || 'unconfigured';
 
   const { data: emailConnection } = useQuery({
     queryKey: ['email-connection'],
@@ -122,13 +126,32 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (whatsappStatus?.state === 'open') {
-      setIsWhatsAppConnected(true);
       setQrCode(null);
       setInstanceName(whatsappStatus.instanceName);
+    } else if (whatsappStatus?.state === 'connecting') {
+      setInstanceName(prev => prev || whatsappStatus.instanceName || null);
     } else if (whatsappStatus?.state === 'close' || whatsappStatus?.state === 'unconfigured') {
-      setIsWhatsAppConnected(false);
+      setQrCode(null);
+      setInstanceName(null);
     }
   }, [whatsappStatus]);
+
+  useEffect(() => {
+    const isDisconnected = whatsappStatus?.state === 'close' || whatsappStatus?.state === 'unconfigured';
+    if (isDisconnected && activeTab !== 'WhatsApp' && !hasShownWhatsAppToast.current) {
+      hasShownWhatsAppToast.current = true;
+      toast.warning('WhatsApp is not connected. Connect it to send queue notifications to customers.', {
+        duration: 5000,
+        action: {
+          label: 'Connect',
+          onClick: () => setActiveTab('WhatsApp'),
+        },
+      });
+    }
+    if (whatsappStatus?.state === 'open') {
+      hasShownWhatsAppToast.current = false;
+    }
+  }, [whatsappStatus, activeTab]);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -180,10 +203,11 @@ export default function SettingsPage() {
 
   const handleConnectWhatsApp = async () => {
     setConnecting(true);
+    setQrCode(null);
     try {
       const res = await fetchApi('/whatsapp/connect', { method: 'POST' });
       if (res.qr) setQrCode(res.qr);
-      if (res.state === 'open') setIsWhatsAppConnected(true);
+      refetchWhatsAppStatus();
     } catch (e) { setStatusMessage({ type: 'error', text: 'Error connecting to WhatsApp.' }); }
     setConnecting(false);
   };
@@ -294,6 +318,17 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {(whatsappStatus?.state === 'close' || whatsappStatus?.state === 'unconfigured') && (
+          <div className="p-4 rounded-xl border border-yellow-200 dark:border-yellow-500/30 bg-yellow-50 dark:bg-yellow-500/10 text-yellow-800 dark:text-yellow-300 flex items-start gap-3">
+            <MessageSquare className="w-5 h-5 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-bold text-sm">WhatsApp Not Connected</h3>
+              <p className="text-xs opacity-90 mt-0.5">Connect WhatsApp to send OTPs and queue notifications to customers. Without it, customers cannot join via phone verification.</p>
+              <button onClick={() => setActiveTab('WhatsApp')} className="mt-2 text-xs font-bold underline hover:no-underline">Go to WhatsApp settings</button>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-8 border-b border-gray-200 dark:border-white/10">
           {validTabs.map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === tab ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 hover:text-gray-900 dark:text-zinc-500 dark:hover:text-zinc-300'}`}>
@@ -360,24 +395,32 @@ export default function SettingsPage() {
         {activeTab === 'WhatsApp' && (
           <div className="space-y-8 animate-in fade-in duration-300">
             <div><h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">WhatsApp Integration</h2><p className="text-zinc-400">Connect your WhatsApp to send automated queue updates.</p></div>
-            {!isWhatsAppConnected ? (
+            {whatsappStatus?.state === 'connecting' ? (
               <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-3xl p-12 text-center">
-                {qrCode ? (
-                  <div className="animate-in zoom-in duration-500">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Scan QR Code</h3>
+                <div className="animate-in zoom-in duration-500">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Scan QR Code</h3>
+                  {qrCode ? (
                     <div className="bg-white p-4 rounded-2xl inline-block shadow-lg mx-auto mb-6"><img src={qrCode} alt="QR" className="w-64 h-64" /></div>
-                    <div className="flex items-center justify-center gap-3 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin text-emerald-500" />Waiting for connection...</div>
+                  ) : (
+                    <div className="w-64 h-64 bg-gray-100 dark:bg-black/50 rounded-2xl inline-flex items-center justify-center mb-6">
+                      <Loader2 className="w-12 h-12 animate-spin text-emerald-500" />
+                    </div>
+                  )}
+                  <div className="flex items-center justify-center gap-3">
+                    <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
+                    <span className="text-zinc-500">Waiting for QR scan...</span>
                   </div>
-                ) : (
-                  <>
-                    <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6"><QrCode className="w-10 h-10 text-emerald-500" /></div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Link Your WhatsApp Account</h3>
-                    <p className="text-zinc-500 max-w-md mx-auto mb-8">Connect WhatsApp to automatically notify customers about queue updates.</p>
-                    <button onClick={handleConnectWhatsApp} disabled={connecting} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center gap-2 mx-auto">
-                      {connecting ? <Loader2 className="w-5 h-5 animate-spin" /> : null}{connecting ? 'Generating...' : 'Connect WhatsApp'}
-                    </button>
-                  </>
-                )}
+                  <p className="text-xs text-zinc-400 mt-4">Open WhatsApp on your phone → Linked Devices → Link a Device</p>
+                </div>
+              </div>
+            ) : !isWhatsAppConnected ? (
+              <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-3xl p-12 text-center">
+                <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6"><QrCode className="w-10 h-10 text-emerald-500" /></div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Link Your WhatsApp Account</h3>
+                <p className="text-zinc-500 max-w-md mx-auto mb-8">Connect WhatsApp to automatically notify customers about queue updates.</p>
+                <button onClick={handleConnectWhatsApp} disabled={connecting} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center gap-2 mx-auto">
+                  {connecting ? <Loader2 className="w-5 h-5 animate-spin" /> : null}{connecting ? 'Generating...' : 'Connect WhatsApp'}
+                </button>
               </div>
             ) : (
               <>

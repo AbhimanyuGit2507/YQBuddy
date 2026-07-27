@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { 
@@ -7,10 +7,13 @@ import {
   CreditCard,
   Users,
   LogOut,
-  Activity
+  Activity,
+  Menu,
+  X
 } from 'lucide-react';
 
 import { useTheme } from './ThemeProvider';
+import { useAuth } from './AuthContext';
 
 interface SuperAdminLayoutProps {
   children: React.ReactNode;
@@ -19,6 +22,22 @@ interface SuperAdminLayoutProps {
 export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
+  const { user, logout, loading } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/login');
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0a0005]">
+        <div className="w-8 h-8 border-4 border-rose-500/30 border-t-rose-500 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   const navItems = [
     { label: 'Command Center', href: '/super-admin', icon: Activity },
@@ -37,13 +56,31 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0a0005] text-gray-900 dark:text-white flex overflow-hidden transition-colors font-sans">
       
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      
       {/* Sidebar */}
-      <aside className="w-64 border-r border-rose-200 dark:border-rose-900/30 bg-white dark:bg-[#120005] flex flex-col z-20 shrink-0 transition-colors">
-        <div className="h-16 flex items-center px-6 border-b border-rose-200 dark:border-rose-900/30 transition-colors bg-rose-50 dark:bg-rose-950/20">
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 border-r border-rose-200 dark:border-rose-900/30 bg-white dark:bg-[#120005] flex flex-col transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-rose-200 dark:border-rose-900/30 transition-colors bg-rose-50 dark:bg-rose-950/20">
           <div className="flex items-center gap-3 text-rose-600 dark:text-rose-500">
             <ShieldAlert className="w-6 h-6" />
             <span className="font-bold text-lg tracking-wide uppercase">God Mode</span>
           </div>
+          <button 
+            className="lg:hidden p-1 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-950/50"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close sidebar"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
@@ -74,11 +111,21 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
         <div className="absolute top-0 -right-64 w-[600px] h-[600px] bg-rose-600/10 rounded-full mix-blend-screen filter blur-[150px] pointer-events-none z-0"></div>
 
         {/* Topbar */}
-        <header className="h-16 flex items-center justify-end px-8 border-b border-rose-200 dark:border-rose-900/30 bg-white/80 dark:bg-[#120005]/80 backdrop-blur-md z-10 shrink-0 transition-colors">
+        <header className="h-16 flex items-center justify-between px-4 lg:px-8 border-b border-rose-200 dark:border-rose-900/30 bg-white/80 dark:bg-[#120005]/80 backdrop-blur-md z-10 shrink-0 transition-colors">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-xl bg-gray-100 dark:bg-black/50 border border-gray-200 dark:border-rose-900/30 hover:bg-gray-200 dark:hover:bg-black/80 transition-colors"
+              aria-label="Open sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
           <div className="flex items-center gap-4">
             <button 
               onClick={toggleTheme}
               className="w-8 h-8 rounded-full bg-gray-100 dark:bg-black/50 flex items-center justify-center border border-gray-200 dark:border-rose-900/30 hover:bg-gray-200 dark:hover:bg-black/80 transition-colors"
+              aria-label="Toggle theme"
             >
               {theme === 'dark' ? (
                 <span className="text-zinc-400">☀️</span>
@@ -92,7 +139,14 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
               </div>
               <span className="text-sm font-medium text-gray-900 dark:text-rose-100">Super Admin</span>
             </div>
-            <button className="w-8 h-8 rounded-full bg-gray-100 dark:bg-black/50 flex items-center justify-center border border-gray-200 dark:border-rose-900/30 hover:bg-gray-200 dark:hover:bg-black/80 transition-colors">
+            <button 
+              onClick={() => {
+                logout();
+                router.push('/login');
+              }}
+              className="w-8 h-8 rounded-full bg-gray-100 dark:bg-black/50 flex items-center justify-center border border-gray-200 dark:border-rose-900/30 hover:bg-gray-200 dark:hover:bg-black/80 transition-colors"
+              aria-label="Logout"
+            >
               <LogOut className="w-4 h-4 text-gray-500 dark:text-rose-400" />
             </button>
           </div>

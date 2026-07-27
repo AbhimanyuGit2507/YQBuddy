@@ -8,17 +8,12 @@ import { SubscriptionService } from '../subscription/subscription.service';
 import { PaymentsService } from '../payments/payments.service';
 import { InvoiceService } from '../invoice/invoice.service';
 import { UsageService } from '../usage/usage.service';
-import { BillingEmailService } from './email/billing-email.service';
 import { ProviderRegistry } from './providers/provider-registry.service';
 import { BillingConfigService } from './config/billing-config.service';
 import { WebhookProcessService } from '../webhooks/webhook-process.service';
 
 @Module({
-  imports: [
-    PrismaModule,
-    AuthModule,
-    PermissionsModule,
-  ],
+  imports: [PrismaModule, AuthModule, PermissionsModule],
   controllers: [BillingController],
   providers: [
     PlansService,
@@ -26,7 +21,6 @@ import { WebhookProcessService } from '../webhooks/webhook-process.service';
     PaymentsService,
     InvoiceService,
     UsageService,
-    BillingEmailService,
     ProviderRegistry,
     BillingConfigService,
     WebhookProcessService,

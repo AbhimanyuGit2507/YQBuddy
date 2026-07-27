@@ -54,14 +54,19 @@ describe('PlansService', () => {
 
   describe('getPlan', () => {
     it('should return a plan by id', async () => {
-      prisma.plan.findUnique.mockResolvedValue({ id: '1', name: 'Basic' } as any);
+      prisma.plan.findUnique.mockResolvedValue({
+        id: '1',
+        name: 'Basic',
+      } as any);
       const result = await service.getPlan('1');
       expect(result.name).toBe('Basic');
     });
 
     it('should throw NotFoundException for non-existent plan', async () => {
       prisma.plan.findUnique.mockResolvedValue(null);
-      await expect(service.getPlan('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.getPlan('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -88,18 +93,33 @@ describe('PlansService', () => {
 
   describe('updatePlan', () => {
     it('should update a plan', async () => {
-      prisma.plan.findUnique.mockResolvedValue({ id: '1', name: 'Basic' } as any);
-      prisma.plan.update.mockResolvedValue({ id: '1', name: 'Updated Basic' } as any);
+      prisma.plan.findUnique.mockResolvedValue({
+        id: '1',
+        name: 'Basic',
+      } as any);
+      prisma.plan.update.mockResolvedValue({
+        id: '1',
+        name: 'Updated Basic',
+      } as any);
 
-      const result = await service.updatePlan('1', { name: 'Updated Basic' } as any);
+      const result = await service.updatePlan('1', {
+        name: 'Updated Basic',
+      });
       expect(result.name).toBe('Updated Basic');
     });
   });
 
   describe('changePlanStatus', () => {
     it('should change plan status', async () => {
-      prisma.plan.findUnique.mockResolvedValue({ id: '1', name: 'Basic' } as any);
-      prisma.plan.update.mockResolvedValue({ id: '1', name: 'Basic', status: 'INACTIVE' } as any);
+      prisma.plan.findUnique.mockResolvedValue({
+        id: '1',
+        name: 'Basic',
+      } as any);
+      prisma.plan.update.mockResolvedValue({
+        id: '1',
+        name: 'Basic',
+        status: 'INACTIVE',
+      } as any);
 
       const result = await service.changePlanStatus('1', 'INACTIVE');
       expect(result.status).toBe('INACTIVE');
@@ -120,7 +140,10 @@ describe('PlansService', () => {
         status: 'ACTIVE',
         sortOrder: 0,
       } as any);
-      prisma.plan.create.mockResolvedValue({ id: '2', name: 'Copy of Basic' } as any);
+      prisma.plan.create.mockResolvedValue({
+        id: '2',
+        name: 'Copy of Basic',
+      } as any);
 
       const result = await service.duplicatePlan('1', 'Copy of Basic');
       expect(result.name).toBe('Copy of Basic');
@@ -129,8 +152,15 @@ describe('PlansService', () => {
 
   describe('archivePlan', () => {
     it('should archive a plan', async () => {
-      prisma.plan.findUnique.mockResolvedValue({ id: '1', name: 'Basic' } as any);
-      prisma.plan.update.mockResolvedValue({ id: '1', name: 'Basic', status: 'ARCHIVED' } as any);
+      prisma.plan.findUnique.mockResolvedValue({
+        id: '1',
+        name: 'Basic',
+      } as any);
+      prisma.plan.update.mockResolvedValue({
+        id: '1',
+        name: 'Basic',
+        status: 'ARCHIVED',
+      } as any);
 
       const result = await service.archivePlan('1');
       expect(result.status).toBe('ARCHIVED');

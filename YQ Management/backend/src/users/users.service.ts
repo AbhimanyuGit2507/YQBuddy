@@ -56,10 +56,12 @@ export class UsersService {
     if (data.password) {
       hashedPassword = await bcrypt.hash(data.password, 10);
     } else {
-      const randomPassword = Array.from({ length: 16 }, () =>
-        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'[
-          Math.floor(Math.random() * 68)
-        ],
+      const randomPassword = Array.from(
+        { length: 16 },
+        () =>
+          'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'[
+            Math.floor(Math.random() * 68)
+          ],
       ).join('');
       hashedPassword = await bcrypt.hash(randomPassword, 10);
     }
@@ -90,7 +92,9 @@ export class UsersService {
 
     const user = await this.prisma.user.findFirst({
       where: { id, workspaceId },
-      include: { workspace: { include: { users: { where: { role: 'ADMIN' } } } } },
+      include: {
+        workspace: { include: { users: { where: { role: 'ADMIN' } } } },
+      },
     });
 
     if (!user) {

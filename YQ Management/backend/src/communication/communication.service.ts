@@ -5,7 +5,11 @@ import { CommunicationEvent } from './events/communication-events.enum';
 import type { EmailProvider } from './interfaces/email.provider';
 import type { WhatsAppProvider } from './interfaces/whatsapp.provider';
 import { TemplateService } from './templates/template.service';
-import { CommunicationLogService, CommunicationChannel, CommunicationStatus } from './logging/communication-log.service';
+import {
+  CommunicationLogService,
+  CommunicationChannel,
+  CommunicationStatus,
+} from './logging/communication-log.service';
 
 interface CommunicationPayload {
   [key: string]: any;
@@ -18,7 +22,8 @@ export class CommunicationService {
   constructor(
     @InjectQueue('communication') private readonly communicationQueue: Queue,
     @Inject('EmailProvider') private readonly emailProvider: EmailProvider,
-    @Inject('WhatsAppProvider') private readonly whatsappProvider: WhatsAppProvider,
+    @Inject('WhatsAppProvider')
+    private readonly whatsappProvider: WhatsAppProvider,
     private readonly templateService: TemplateService,
     private readonly communicationLogService: CommunicationLogService,
   ) {}
@@ -132,7 +137,9 @@ export class CommunicationService {
       recipient: email,
       subject: template.subject || 'QMover Notification',
       body: template.text || '',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -159,7 +166,9 @@ export class CommunicationService {
       recipient: email,
       subject: template.subject || 'QMover Notification',
       body: template.text || '',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -186,7 +195,9 @@ export class CommunicationService {
       recipient: email,
       subject: template.subject || 'QMover Notification',
       body: template.text || '',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -216,7 +227,9 @@ export class CommunicationService {
       recipient: email,
       subject: template.subject || 'QMover Notification',
       body: template.text || '',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -247,7 +260,9 @@ export class CommunicationService {
       recipient: email,
       subject: template.subject || 'QMover Notification',
       body: template.text || '',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -267,7 +282,9 @@ export class CommunicationService {
       type: 'otp',
       recipient: phone,
       body,
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'evolution',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -276,7 +293,8 @@ export class CommunicationService {
   }
 
   private async handleQueueJoined(payload: any) {
-    const { phone, name, queueName, position, tokenId, queueId, workspaceId } = payload;
+    const { phone, name, queueName, position, tokenId, queueId, workspaceId } =
+      payload;
     if (!phone) return;
 
     const link = `${process.env.APP_URL || 'http://localhost:3001'}/customer/status/${tokenId}`;
@@ -293,7 +311,9 @@ export class CommunicationService {
       type: 'queue_joined',
       recipient: phone,
       body,
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'evolution',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -318,7 +338,9 @@ export class CommunicationService {
       type: 'position_update',
       recipient: phone,
       body,
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'evolution',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -341,7 +363,9 @@ export class CommunicationService {
       type: 'now_serving',
       recipient: phone,
       body,
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'evolution',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -365,7 +389,9 @@ export class CommunicationService {
       type: 'delay',
       recipient: phone,
       body,
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'evolution',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -388,7 +414,9 @@ export class CommunicationService {
       type: 'queue_completed',
       recipient: phone,
       body,
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'evolution',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -411,7 +439,9 @@ export class CommunicationService {
       type: 'queue_cancelled',
       recipient: phone,
       body,
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'evolution',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -434,7 +464,9 @@ export class CommunicationService {
       type: 'feedback',
       recipient: phone,
       body,
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'evolution',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -459,7 +491,9 @@ export class CommunicationService {
       type: 'check_in',
       recipient: phone,
       body,
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'evolution',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -482,7 +516,9 @@ export class CommunicationService {
       type: 'token_transferred',
       recipient: phone,
       body,
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'evolution',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -513,7 +549,9 @@ export class CommunicationService {
       recipient: email,
       subject: template.subject || 'QMover Notification',
       body: template.text || '',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -542,7 +580,9 @@ export class CommunicationService {
       recipient: email,
       subject: template.subject || 'QMover Notification',
       body: template.text || '',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -572,7 +612,9 @@ export class CommunicationService {
       recipient: email,
       subject: template.subject || 'QMover Notification',
       body: template.text || '',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -586,7 +628,9 @@ export class CommunicationService {
 
     const template = this.templateService.renderEmail('subscription_renewed', {
       workspace: workspaceName,
-      next_billing_date: nextBillingDate ? new Date(nextBillingDate).toLocaleDateString() : 'soon',
+      next_billing_date: nextBillingDate
+        ? new Date(nextBillingDate).toLocaleDateString()
+        : 'soon',
     });
     const result = await this.emailProvider.send({
       to: email,
@@ -602,7 +646,9 @@ export class CommunicationService {
       recipient: email,
       subject: template.subject || 'QMover Notification',
       body: template.text || '',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -614,9 +660,12 @@ export class CommunicationService {
     const { email, workspaceName } = payload;
     if (!email) return;
 
-    const template = this.templateService.renderEmail('subscription_cancelled', {
-      workspace: workspaceName,
-    });
+    const template = this.templateService.renderEmail(
+      'subscription_cancelled',
+      {
+        workspace: workspaceName,
+      },
+    );
     const result = await this.emailProvider.send({
       to: email,
       subject: template.subject || 'QMover Notification',
@@ -631,7 +680,9 @@ export class CommunicationService {
       recipient: email,
       subject: template.subject || 'QMover Notification',
       body: template.text || '',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -660,7 +711,9 @@ export class CommunicationService {
       recipient: email,
       subject: template.subject || 'QMover Notification',
       body: template.text || '',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -691,7 +744,9 @@ export class CommunicationService {
       recipient: email,
       subject: template.subject || 'QMover Notification',
       body: template.text || '',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -721,7 +776,9 @@ export class CommunicationService {
       recipient: email,
       subject: template.subject || 'QMover Notification',
       body: template.text || '',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,

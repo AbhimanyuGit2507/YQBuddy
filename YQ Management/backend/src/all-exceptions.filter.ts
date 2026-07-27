@@ -4,12 +4,13 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AllExceptionsFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse();
@@ -19,36 +20,53 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const errorLog = {
-      timestamp: new Date().toISOString(),
-      path: request.url,
+    const requestId = request.requestId || 'unknown';
+    const errorMessage =
+      exception instanceof Error ? exception.message : 'Internal server error';
+
+    const logData: any = {
+      requestId,
       method: request.method,
+      path: request.url,
       status,
-      error:
-        exception instanceof Error
-          ? {
-              message: exception.message,
-              stack: exception.stack,
-              name: exception.name,
-            }
-          : exception,
+      message: errorMessage,
     };
 
-    console.error('CRITICAL UNHANDLED EXCEPTION:', errorLog);
+    if (exception instanceof Error) {
+      logData.stack = exception.stack;
+      logData.errorName = exception.name;
+    }
 
-    fs.appendFileSync(
-      path.join(process.cwd(), 'error.log'),
-      JSON.stringify(errorLog, null, 2) + '\n\n',
-    );
+    if (status >= 500) {
+      this.logger.error(logData, `Unhandled exception`);
+    } else {
+      this.logger.warn(logData, `Client error`);
+    }
 
-    response.status(status).json({
+    const isInputError = status === 400 || status === 422;
+    const responseBody: any = {
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
-      message:
-        exception instanceof Error
-          ? exception.message
-          : 'Internal server error',
-    });
+      requestId,
+    };
+
+    if (isInputError && exception instanceof HttpException) {
+      const responsePayload = exception.getResponse();
+      if (typeof responsePayload === 'object' && responsePayload !== null) {
+        responseBody.message = responsePayload;
+        if ((responsePayload as any).details) {
+          responseBody.details = (responsePayload as any).details;
+        }
+      } else {
+        responseBody.message = errorMessage;
+      }
+    } else if (status >= 500) {
+      responseBody.message = 'Internal server error';
+    } else {
+      responseBody.message = errorMessage;
+    }
+
+    response.status(status).json(responseBody);
   }
 }

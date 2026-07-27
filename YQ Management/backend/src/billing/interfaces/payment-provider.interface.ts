@@ -92,9 +92,15 @@ export interface PaymentProvider {
   readonly providerName: PaymentProviderName;
   createCheckout(input: CreateCheckoutInput): Promise<CheckoutResult>;
   verifyWebhook(input: VerifyWebhookInput): Promise<VerifyWebhookResult>;
-  validateSignature(payload: object, signature: string, secret: string): Promise<boolean>;
+  validateSignature(
+    payload: object,
+    signature: string,
+    secret: string,
+  ): Promise<boolean>;
   refund(input: RefundInput): Promise<RefundResult>;
-  cancelSubscription(input: CancelSubscriptionInput): Promise<CancelSubscriptionResult>;
+  cancelSubscription(
+    input: CancelSubscriptionInput,
+  ): Promise<CancelSubscriptionResult>;
   getTransaction(input: GetTransactionInput): Promise<GetTransactionResult>;
   verifyPayment(input: VerifyPaymentInput): Promise<VerifyPaymentResult>;
 }

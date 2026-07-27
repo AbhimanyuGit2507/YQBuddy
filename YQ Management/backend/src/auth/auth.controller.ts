@@ -16,7 +16,15 @@ import { EmailService } from '../email/email.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { WorkspaceGuard } from '../auth/workspace.guard';
 import { RateLimitGuard } from './rate-limit.guard';
-import { LoginDto, VerifyOtpDto, RegisterDto, CreateWorkspaceDto, JoinWorkspaceDto } from './dto/auth.dto';
+import {
+  LoginDto,
+  VerifyOtpDto,
+  RegisterDto,
+  CreateWorkspaceDto,
+  JoinWorkspaceDto,
+  UpdatePersonalSettingsDto,
+} from './dto/auth.dto';
+import type { AuthenticatedRequest } from './types/auth.types';
 
 @Controller('auth')
 export class AuthController {
@@ -73,10 +81,14 @@ export class AuthController {
   }
 
   @Post('refresh')
-  async refresh(@Req() req: any, @Res({ passthrough: true }) res: any) {
+  async refresh(
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) res: any,
+  ) {
     const refreshToken = req.cookies?.refresh_token;
     if (!refreshToken) throw new UnauthorizedException('No refresh token');
-    const { access_token, refresh_token } = await this.authService.refreshTokens(refreshToken);
+    const { access_token, refresh_token } =
+      await this.authService.refreshTokens(refreshToken);
     res.cookie('access_token', access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -147,14 +159,16 @@ export class AuthController {
 
   @UseGuards(AuthGuard('google'))
   @Get('google')
-  async googleAuth(@Req() req: any) {
+  async googleAuth(@Req() req: AuthenticatedRequest) {
     // Initiates the Google OAuth2 login flow
   }
 
   @UseGuards(AuthGuard('google'))
   @Get('google/callback')
-  async googleAuthRedirect(@Req() req: any, @Res() res: any) {
-    const { access_token, refresh_token } = await this.authService.login(req.user);
+  async googleAuthRedirect(@Req() req: AuthenticatedRequest, @Res() res: any) {
+    const { access_token, refresh_token } = await this.authService.login(
+      req.user,
+    );
 
     res.cookie('access_token', access_token, {
       httpOnly: true,
@@ -183,7 +197,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('workspace')
   async createWorkspace(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body() body: CreateWorkspaceDto,
   ) {
     const workspace = await this.authService.createWorkspaceForUser(
@@ -199,7 +213,10 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('join')
-  async joinWorkspace(@Req() req: any, @Body() body: JoinWorkspaceDto) {
+  async joinWorkspace(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: JoinWorkspaceDto,
+  ) {
     const workspace = await this.authService.joinWorkspace(
       req.user.userId,
       body.code,
@@ -213,16 +230,15 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
-  getProfile(@Req() req: any) {
+  getProfile(@Req() req: AuthenticatedRequest) {
     return req.user;
   }
 
   @UseGuards(AuthGuard('jwt'), WorkspaceGuard)
   @Patch('personal-settings')
   async updatePersonalSettings(
-    @Req() req: any,
-    @Body()
-    body: { theme?: string; language?: string; notificationsEnabled?: boolean },
+    @Req() req: AuthenticatedRequest,
+    @Body() body: UpdatePersonalSettingsDto,
   ) {
     const user = await this.usersService['prisma'].user.findUnique({
       where: { id: req.user.userId },

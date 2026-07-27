@@ -8,7 +8,8 @@ export class UsageService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getUsage(workspaceId: string, periodStart?: Date, periodEnd?: Date) {
-    const start = periodStart || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const start =
+      periodStart || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const end = periodEnd || new Date();
 
     const usage = await this.prisma.workspaceUsage.findMany({
@@ -74,16 +75,19 @@ export class UsageService {
     };
   }
 
-  async recordUsage(workspaceId: string, data: {
-    activeQueues?: number;
-    queueJoins?: number;
-    operators?: number;
-    branches?: number;
-    whatsappMessages?: number;
-    aiRequests?: number;
-    storageBytes?: number;
-    apiCalls?: number;
-  }) {
+  async recordUsage(
+    workspaceId: string,
+    data: {
+      activeQueues?: number;
+      queueJoins?: number;
+      operators?: number;
+      branches?: number;
+      whatsappMessages?: number;
+      aiRequests?: number;
+      storageBytes?: number;
+      apiCalls?: number;
+    },
+  ) {
     const now = new Date();
     const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -103,9 +107,12 @@ export class UsageService {
           queueJoins: (usage.queueJoins || 0) + (data.queueJoins ?? 0),
           operators: (usage.operators || 0) + (data.operators ?? 0),
           branches: (usage.branches || 0) + (data.branches ?? 0),
-          whatsappMessages: (usage.whatsappMessages || 0) + (data.whatsappMessages ?? 0),
+          whatsappMessages:
+            (usage.whatsappMessages || 0) + (data.whatsappMessages ?? 0),
           aiRequests: (usage.aiRequests || 0) + (data.aiRequests ?? 0),
-          storageBytes: BigInt(Number(usage.storageBytes) + (data.storageBytes ?? 0)),
+          storageBytes: BigInt(
+            Number(usage.storageBytes) + (data.storageBytes ?? 0),
+          ),
           apiCalls: (usage.apiCalls || 0) + (data.apiCalls ?? 0),
           updatedAt: now,
         },

@@ -86,7 +86,11 @@ export class TokenService {
     });
 
     if (!isAppointment) {
-      await this.redisService.client.rpush(`queue:${queueId}:tokens`, token.id);
+      await this.redisService.client.zadd(
+        `queue:${queueId}:waiting`,
+        Date.now(),
+        token.id,
+      );
       this.redisService.client.publish(
         'queue_events',
         JSON.stringify({ type: 'TOKEN_JOINED', queueId, token }),
@@ -140,13 +144,15 @@ export class TokenService {
       }
     }
 
-    const nextTokenId = await this.redisService.client.lpop(
-      `queue:${queueId}:tokens`,
+    const nextTokenResult = await this.redisService.client.zpopmin(
+      `queue:${queueId}:waiting`,
     );
-    if (!nextTokenId) {
+    if (!nextTokenResult || nextTokenResult.length === 0) {
       await this.redisService.client.del(`queue:${queueId}:serving`);
       return null;
     }
+
+    const nextTokenId = nextTokenResult[0];
 
     const nextToken = await this.prisma.token.update({
       where: { id: nextTokenId },
@@ -173,10 +179,12 @@ export class TokenService {
       );
     }
 
-    const upcomingTokenId = await this.redisService.client.lindex(
-      `queue:${queueId}:tokens`,
+    const upcomingTokenIds = await this.redisService.client.zrange(
+      `queue:${queueId}:waiting`,
+      0,
       0,
     );
+    const upcomingTokenId = upcomingTokenIds[0];
     if (upcomingTokenId) {
       const upcomingToken = await this.prisma.token.findUnique({
         where: { id: upcomingTokenId },
@@ -208,12 +216,11 @@ export class TokenService {
       return { token, position: 0, estimatedWaitTime: 0, isScheduled: true };
     }
 
-    const tokens = await this.redisService.client.lrange(
-      `queue:${token.queueId}:tokens`,
-      0,
-      -1,
+    const rank = await this.redisService.client.zrank(
+      `queue:${token.queueId}:waiting`,
+      tokenId,
     );
-    const position = tokens.indexOf(tokenId) + 1;
+    const position = rank !== null ? rank + 1 : 0;
 
     let avgServiceTime = 5;
 
@@ -297,9 +304,8 @@ export class TokenService {
     if (!token) throw new NotFoundException('Token not found');
 
     if (token.status === TokenStatus.WAITING) {
-      await this.redisService.client.lrem(
-        `queue:${token.queueId}:tokens`,
-        0,
+      await this.redisService.client.zrem(
+        `queue:${token.queueId}:waiting`,
         tokenId,
       );
     }
@@ -359,9 +365,8 @@ export class TokenService {
     if (servingTokenId === tokenId) {
       await this.redisService.client.del(`queue:${token.queueId}:serving`);
     } else if (token.status === TokenStatus.WAITING) {
-      await this.redisService.client.lrem(
-        `queue:${token.queueId}:tokens`,
-        0,
+      await this.redisService.client.zrem(
+        `queue:${token.queueId}:waiting`,
         tokenId,
       );
     }
@@ -376,8 +381,9 @@ export class TokenService {
       },
     });
 
-    await this.redisService.client.rpush(
-      `queue:${nextQueueId}:tokens`,
+    await this.redisService.client.zadd(
+      `queue:${nextQueueId}:waiting`,
+      Date.now(),
       updatedToken.id,
     );
 
@@ -428,8 +434,9 @@ export class TokenService {
       data: { checkedIn: true, joinedAt: new Date() },
     });
 
-    await this.redisService.client.rpush(
-      `queue:${token.queueId}:tokens`,
+    await this.redisService.client.zadd(
+      `queue:${token.queueId}:waiting`,
+      Date.now(),
       updatedToken.id,
     );
     this.redisService.client.publish(

@@ -17,7 +17,11 @@ import { CommunicationEvent } from './events/communication-events.enum';
 import type { EmailProvider } from './interfaces/email.provider';
 import type { WhatsAppProvider } from './interfaces/whatsapp.provider';
 import { TemplateService } from './templates/template.service';
-import { CommunicationLogService, CommunicationChannel, CommunicationStatus } from './logging/communication-log.service';
+import {
+  CommunicationLogService,
+  CommunicationChannel,
+  CommunicationStatus,
+} from './logging/communication-log.service';
 import { WhatsAppTemplateService } from './templates/whatsapp-template.service';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/roles.guard';
@@ -27,13 +31,15 @@ import { RequirePermissions } from '../permissions/permissions.guard';
 import { PermissionsGuard } from '../permissions/permissions.guard';
 import { Permission } from '../permissions/permissions.enum';
 import { WorkspaceGuard } from '../auth/workspace.guard';
+import { CreateTemplateDto, UpdateTemplateDto, TestEmailDto } from './dto/communication.dto';
 
 @Controller('communication')
 export class CommunicationController {
   constructor(
     private readonly communicationService: CommunicationService,
     @Inject('EmailProvider') private readonly emailProvider: EmailProvider,
-    @Inject('WhatsAppProvider') private readonly whatsappProvider: WhatsAppProvider,
+    @Inject('WhatsAppProvider')
+    private readonly whatsappProvider: WhatsAppProvider,
     private readonly templateService: TemplateService,
     private readonly communicationLogService: CommunicationLogService,
     private readonly whatsappTemplateService: WhatsAppTemplateService,
@@ -43,11 +49,15 @@ export class CommunicationController {
   @Roles(Role.ADMIN)
   @RequirePermissions(Permission.SETTINGS_WRITE)
   @Post('test-email')
-  async testEmail(@Request() req: any, @Body() body: { to: string; subject?: string }) {
+  async testEmail(
+    @Request() req: any,
+    @Body() body: TestEmailDto,
+  ) {
     const result = await this.emailProvider.send({
       to: body.to,
       subject: body.subject || 'QMover Test Email',
-      htmlContent: '<h1>Test Email</h1><p>This is a test email from QMover.</p>',
+      htmlContent:
+        '<h1>Test Email</h1><p>This is a test email from QMover.</p>',
       textContent: 'Test Email - This is a test email from QMover.',
     });
 
@@ -57,7 +67,9 @@ export class CommunicationController {
       recipient: body.to,
       subject: body.subject || 'QMover Test Email',
       body: 'Test Email - This is a test email from QMover.',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -80,15 +92,23 @@ export class CommunicationController {
   @Roles(Role.ADMIN)
   @RequirePermissions(Permission.SETTINGS_WRITE)
   @Post('test-whatsapp')
-  async testWhatsApp(@Request() req: any, @Body() body: { phone: string; message?: string }) {
-    const result = await this.whatsappProvider.sendText(body.phone, body.message || 'Test message from QMover');
+  async testWhatsApp(
+    @Request() req: any,
+    @Body() body: { phone: string; message?: string },
+  ) {
+    const result = await this.whatsappProvider.sendText(
+      body.phone,
+      body.message || 'Test message from QMover',
+    );
 
     await this.communicationLogService.log({
       channel: CommunicationChannel.WHATSAPP,
       type: 'test',
       recipient: body.phone,
       body: body.message || 'Test message from QMover',
-      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      status: result.success
+        ? CommunicationStatus.SENT
+        : CommunicationStatus.FAILED,
       provider: 'evolution',
       providerId: result.providerId,
       errorMessage: result.error,
@@ -105,7 +125,9 @@ export class CommunicationController {
   getEmailTemplates() {
     return this.templateService.getEmailTemplateKeys().map((key: string) => ({
       key,
-      name: key.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+      name: key
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (l: string) => l.toUpperCase()),
     }));
   }
 
@@ -129,7 +151,11 @@ export class CommunicationController {
       inviter_name: 'Admin User',
       code: 'ABC123',
     });
-    return { subject: template.subject, html: template.html, text: template.text };
+    return {
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+    };
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)
@@ -137,22 +163,28 @@ export class CommunicationController {
   @RequirePermissions(Permission.SETTINGS_READ)
   @Get('templates/whatsapp')
   async getWhatsAppTemplates(@Request() req: any) {
-    const dbTemplates = await this.whatsappTemplateService.getTemplates(req.user.workspaceId);
+    const dbTemplates = await this.whatsappTemplateService.getTemplates(
+      req.user.workspaceId,
+    );
     const defaultKeys = this.templateService.getWhatsAppTemplateKeys();
 
     const templates = defaultKeys.map((key: string) => {
       const dbTemplate = dbTemplates.find((t: any) => t.key === key);
       return {
         key,
-        name: key.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
-        content: dbTemplate?.content || this.templateService.renderWhatsApp(key, {
-          otp: '123456',
-          name: 'Customer',
-          queue_name: 'Queue',
-          position: '1',
-          wait_time: '5',
-          link: `${process.env.APP_URL || 'http://localhost:3001'}/customer/status/abc123`,
-        }),
+        name: key
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (l: string) => l.toUpperCase()),
+        content:
+          dbTemplate?.content ||
+          this.templateService.renderWhatsApp(key, {
+            otp: '123456',
+            name: 'Customer',
+            queue_name: 'Queue',
+            position: '1',
+            wait_time: '5',
+            link: `${process.env.APP_URL || 'http://localhost:3001'}/customer/status/abc123`,
+          }),
         isActive: dbTemplate?.isActive ?? true,
         variables: dbTemplate?.variables || [],
       };
@@ -168,14 +200,17 @@ export class CommunicationController {
   async saveWhatsAppTemplate(
     @Request() req: any,
     @Param('key') key: string,
-    @Body() body: { name: string; content: string; isActive?: boolean },
+    @Body() body: UpdateTemplateDto,
   ) {
-    const template = await this.whatsappTemplateService.upsertTemplate(req.user.workspaceId, {
-      key,
-      name: body.name,
-      content: body.content,
-      isActive: body.isActive ?? true,
-    });
+    const template = await this.whatsappTemplateService.upsertTemplate(
+      req.user.workspaceId,
+      {
+        key,
+        name: body.name || '',
+        content: body.content || '',
+        isActive: body.isActive ?? true,
+      },
+    );
     return template;
   }
 
@@ -200,7 +235,10 @@ export class CommunicationController {
   @RequirePermissions(Permission.SETTINGS_WRITE)
   @Delete('templates/whatsapp/:key')
   async resetWhatsAppTemplate(@Request() req: any, @Param('key') key: string) {
-    await this.whatsappTemplateService.deleteTemplate(req.user.workspaceId, key);
+    await this.whatsappTemplateService.deleteTemplate(
+      req.user.workspaceId,
+      key,
+    );
     return { success: true };
   }
 
@@ -211,7 +249,11 @@ export class CommunicationController {
   getLogs(@Request() req: any, @Param() params: any) {
     const page = Number(params.page) || 1;
     const limit = Number(params.limit) || 50;
-    return this.communicationLogService.getLogs(req.user.workspaceId, page, limit);
+    return this.communicationLogService.getLogs(
+      req.user.workspaceId,
+      page,
+      limit,
+    );
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)

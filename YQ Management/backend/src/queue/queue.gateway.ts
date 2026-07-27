@@ -13,7 +13,20 @@ import { ConfigService } from '@nestjs/config';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    origin: (origin, callback) => {
+      const allowed = [
+        process.env.FRONTEND_URL,
+        'http://localhost:3001',
+        'http://localhost:3000',
+        'https://qmover.vercel.app',
+      ].filter(Boolean);
+
+      if (!origin || allowed.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
+      }
+    },
     credentials: true,
   },
 })
@@ -49,7 +62,12 @@ export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { event: 'joinedRoom', data: `workspace_${workspaceId}` };
   }
 
-  broadcastQueueUpdate(queueId: string, workspaceId: string, event: string, payload: any) {
+  broadcastQueueUpdate(
+    queueId: string,
+    workspaceId: string,
+    event: string,
+    payload: any,
+  ) {
     this.server.to(`queue_${queueId}`).emit(event, payload);
     this.server.to(`workspace_${workspaceId}`).emit(event, payload);
   }

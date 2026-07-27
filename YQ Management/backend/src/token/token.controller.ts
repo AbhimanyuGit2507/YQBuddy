@@ -18,7 +18,14 @@ import { RequirePermissions } from '../permissions/permissions.guard';
 import { PermissionsGuard } from '../permissions/permissions.guard';
 import { RateLimitGuard } from '../auth/rate-limit.guard';
 import { UuidPipe, PhonePipe } from '../common/pipes/validation.pipes';
-import { RequestOtpDto, JoinQueueDto, CancelTokenDto, CheckInTokenDto, ValidateTokenDto, TransferTokenDto } from './dto/token.dto';
+import {
+  RequestOtpDto,
+  JoinQueueDto,
+  CancelTokenDto,
+  CheckInTokenDto,
+  ValidateTokenDto,
+  TransferTokenDto,
+} from './dto/token.dto';
 
 @Controller('token')
 export class TokenController {
@@ -33,9 +40,7 @@ export class TokenController {
   // Customer facing - no auth required
   @UseGuards(RateLimitGuard)
   @Post('join')
-  async joinQueue(
-    @Body() body: JoinQueueDto,
-  ) {
+  async joinQueue(@Body() body: JoinQueueDto) {
     return this.tokenService.joinQueue(
       body.queueId,
       body.customerName,
@@ -69,7 +74,10 @@ export class TokenController {
   @Roles(Role.ADMIN)
   @RequirePermissions(Permission.QUEUE_OPERATE)
   @Post('advance/:queueId')
-  async advanceQueue(@Req() req: any, @Param('queueId', UuidPipe) queueId: string) {
+  async advanceQueue(
+    @Req() req: any,
+    @Param('queueId', UuidPipe) queueId: string,
+  ) {
     return this.tokenService.advanceQueue(queueId);
   }
 

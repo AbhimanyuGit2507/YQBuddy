@@ -33,11 +33,7 @@ export class PlansController {
     @Query('offset') offset?: number,
     @Query('limit') limit?: number,
   ) {
-    return this.plansService.listPlans(
-      statusFilter,
-      offset ?? 0,
-      limit ?? 50,
-    );
+    return this.plansService.listPlans(statusFilter, offset ?? 0, limit ?? 50);
   }
 
   @Get(':id')
@@ -53,7 +49,10 @@ export class PlansController {
 
   @Put(':id')
   @Roles(Role.ADMIN)
-  async updatePlan(@Param('id', UuidPipe) id: string, @Body() dto: UpdatePlanDto) {
+  async updatePlan(
+    @Param('id', UuidPipe) id: string,
+    @Body() dto: UpdatePlanDto,
+  ) {
     return this.plansService.updatePlan(id, dto);
   }
 
@@ -68,7 +67,10 @@ export class PlansController {
 
   @Post(':id/duplicate')
   @Roles(Role.ADMIN)
-  async duplicatePlan(@Param('id', UuidPipe) id: string, @Body() dto: DuplicatePlanDto) {
+  async duplicatePlan(
+    @Param('id', UuidPipe) id: string,
+    @Body() dto: DuplicatePlanDto,
+  ) {
     return this.plansService.duplicatePlan(id, dto.name);
   }
 

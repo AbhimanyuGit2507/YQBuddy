@@ -1,4 +1,9 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BillingConfigService } from '../billing/config/billing-config.service';
 import { ProviderRegistry } from '../billing/providers/provider-registry.service';
@@ -32,21 +37,30 @@ export class PaymentsService {
 
     const amount = dto.amount ?? plan.price;
     const currency = dto.currency || plan.currency || 'ZAR';
-    const billingInterval = dto.billingInterval || plan.billingInterval || 'MONTHLY';
+    const billingInterval =
+      dto.billingInterval || plan.billingInterval || 'MONTHLY';
 
     if (dto.amount !== undefined && dto.amount !== plan.price) {
-      throw new BadRequestException(`Amount ${dto.amount} does not match plan price ${plan.price}`);
+      throw new BadRequestException(
+        `Amount ${dto.amount} does not match plan price ${plan.price}`,
+      );
     }
 
     if (dto.currency && dto.currency !== plan.currency) {
-      throw new BadRequestException(`Currency ${dto.currency} does not match plan currency ${plan.currency}`);
+      throw new BadRequestException(
+        `Currency ${dto.currency} does not match plan currency ${plan.currency}`,
+      );
     }
 
     if (dto.billingInterval && dto.billingInterval !== plan.billingInterval) {
-      throw new BadRequestException(`Billing interval ${dto.billingInterval} does not match plan interval ${plan.billingInterval}`);
+      throw new BadRequestException(
+        `Billing interval ${dto.billingInterval} does not match plan interval ${plan.billingInterval}`,
+      );
     }
 
-    const provider = this.providerRegistry.getProvider(PaymentProviderName.OZOW);
+    const provider = this.providerRegistry.getProvider(
+      PaymentProviderName.OZOW,
+    );
 
     const checkoutInput: CreateCheckoutInput = {
       workspaceId,

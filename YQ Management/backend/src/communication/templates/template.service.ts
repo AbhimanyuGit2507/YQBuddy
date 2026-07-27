@@ -221,21 +221,31 @@ export class TemplateService {
 
   private readonly whatsappTemplates: Record<string, string> = {
     otp: 'Your Qmover verification code is {{otp}}. It expires in 5 minutes.',
-    queue_joined: 'Hello {{name}}! You have successfully joined the queue. You are #{{position}} in line. Track your status here: {{link}}',
-    position_update: 'Hello {{name}}, you are now #{{position}} in the queue for {{queue_name}}. Estimated wait: {{wait_time}} mins.',
+    queue_joined:
+      'Hello {{name}}! You have successfully joined the queue. You are #{{position}} in line. Track your status here: {{link}}',
+    position_update:
+      'Hello {{name}}, you are now #{{position}} in the queue for {{queue_name}}. Estimated wait: {{wait_time}} mins.',
     near_turn: 'Hi {{name}}, you are next in line! Get ready. {{queue_name}}',
-    now_serving: 'Hi {{name}}, it is your turn now! Please proceed to the counter. {{queue_name}}',
-    delay: 'Hi {{name}}, there is a slight delay in {{queue_name}}. We will notify you when it is your turn. Estimated wait: {{wait_time}} mins.',
-    queue_closed: 'Hello {{name}}, the queue {{queue_name}} is now closed. Thank you for your patience.',
-    queue_cancelled: 'Hello {{name}}, your position in {{queue_name}} has been cancelled. You can rejoin the queue if needed.',
-    feedback: 'Thanks for visiting {{queue_name}}! Please reply with a number from 1 to 5 to rate your experience (5 being excellent).',
-    thank_you: 'Thank you for visiting {{queue_name}}, {{name}}! We hope to see you again soon.',
+    now_serving:
+      'Hi {{name}}, it is your turn now! Please proceed to the counter. {{queue_name}}',
+    delay:
+      'Hi {{name}}, there is a slight delay in {{queue_name}}. We will notify you when it is your turn. Estimated wait: {{wait_time}} mins.',
+    queue_closed:
+      'Hello {{name}}, the queue {{queue_name}} is now closed. Thank you for your patience.',
+    queue_cancelled:
+      'Hello {{name}}, your position in {{queue_name}} has been cancelled. You can rejoin the queue if needed.',
+    feedback:
+      'Thanks for visiting {{queue_name}}! Please reply with a number from 1 to 5 to rate your experience (5 being excellent).',
+    thank_you:
+      'Thank you for visiting {{queue_name}}, {{name}}! We hope to see you again soon.',
   };
 
   renderEmail(templateKey: string, variables: TemplateVariables): Template {
     const template = this.emailTemplates[templateKey];
     if (!template) {
-      this.logger.warn(`Email template "${templateKey}" not found, falling back to generic`);
+      this.logger.warn(
+        `Email template "${templateKey}" not found, falling back to generic`,
+      );
       return {
         subject: 'QMover Notification',
         html: `<p>{{message}}</p>`,

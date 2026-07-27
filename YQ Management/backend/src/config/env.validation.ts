@@ -28,9 +28,7 @@ export class EnvValidation {
     }
 
     if ((process.env.EVOLUTION_API_KEY || '').length < 16) {
-      throw new Error(
-        'EVOLUTION_API_KEY must be at least 16 characters long',
-      );
+      throw new Error('EVOLUTION_API_KEY must be at least 16 characters long');
     }
   }
 }

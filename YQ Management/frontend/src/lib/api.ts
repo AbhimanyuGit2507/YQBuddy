@@ -1,3 +1,6 @@
+import { toast } from 'sonner';
+import { ApiError } from './api-error';
+
 let isRefreshing = false;
 let refreshPromise: Promise<void> | Promise<any> | null = null;
 
@@ -38,6 +41,7 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}): Pro
       isRefreshing = false;
       refreshPromise = null;
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/register')) {
+        toast.error('Session expired. Please log in again.');
         window.location.href = '/login';
       }
       throw err;
@@ -48,13 +52,28 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}): Pro
 
   if (!response.ok) {
     let errorMessage = 'An error occurred';
+    let details: any;
     try {
       const errorData = await response.json();
       errorMessage = errorData.message || errorMessage;
-    } catch (e) {
-      errorMessage = response.statusText;
+      details = errorData.details || errorData;
+    } catch {
+      errorMessage = response.statusText || errorMessage;
     }
-    throw new Error(errorMessage);
+
+    const apiError = new ApiError(response.status, errorMessage, endpoint, details);
+
+    if (response.status >= 500) {
+      toast.error('Server error. Please try again later.');
+    } else if (response.status === 404) {
+      toast.error('Resource not found.');
+    } else if (response.status === 409) {
+      toast.error(errorMessage);
+    } else if (response.status !== 401) {
+      toast.error(errorMessage);
+    }
+
+    throw apiError;
   }
 
   if (response.status === 204 || response.headers.get('content-length') === '0') {

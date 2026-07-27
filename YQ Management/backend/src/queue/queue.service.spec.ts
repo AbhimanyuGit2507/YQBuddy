@@ -10,7 +10,13 @@ describe('QueueService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [QueueService, QueueGateway, PrismaService, RedisService, WebhooksService],
+      providers: [
+        QueueService,
+        QueueGateway,
+        PrismaService,
+        RedisService,
+        WebhooksService,
+      ],
     }).compile();
 
     service = module.get<QueueService>(QueueService);

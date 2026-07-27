@@ -64,10 +64,16 @@ describe('WebhookProcessService', () => {
 
   describe('processPaymentWebhook', () => {
     it('should return success for duplicate webhook', async () => {
-      prisma.webhookEvent.findFirst.mockResolvedValue({ id: 'existing' } as any);
+      prisma.webhookEvent.findFirst.mockResolvedValue({
+        id: 'existing',
+      } as any);
 
       const result = await service.processPaymentWebhook(
-        { TransactionReference: 'TXN-123', Status: 'Complete', workspaceId: 'ws-123' },
+        {
+          TransactionReference: 'TXN-123',
+          Status: 'Complete',
+          workspaceId: 'ws-123',
+        },
         { 'x-ozow-event-id': 'evt-1' },
       );
       expect(result.success).toBe(true);
@@ -75,7 +81,10 @@ describe('WebhookProcessService', () => {
 
     it('should process a valid payment webhook', async () => {
       prisma.webhookEvent.findFirst.mockResolvedValue(null);
-      prisma.webhookEvent.create.mockResolvedValue({ id: 'wh-1', processingStatus: 'PROCESSING' } as any);
+      prisma.webhookEvent.create.mockResolvedValue({
+        id: 'wh-1',
+        processingStatus: 'PROCESSING',
+      } as any);
       prisma.transaction.findFirst.mockResolvedValue({
         id: 'txn-1',
         workspaceId: 'ws-123',
@@ -91,7 +100,11 @@ describe('WebhookProcessService', () => {
       prisma.webhookEvent.update.mockResolvedValue({} as any);
 
       const result = await service.processPaymentWebhook(
-        { TransactionReference: 'TXN-123', Status: 'Complete', workspaceId: 'ws-123' },
+        {
+          TransactionReference: 'TXN-123',
+          Status: 'Complete',
+          workspaceId: 'ws-123',
+        },
         { 'x-ozow-event-id': 'evt-1', 'x-ozow-signature': 'valid-sig' },
       );
 
@@ -112,9 +125,9 @@ describe('WebhookProcessService', () => {
         service.processPaymentWebhook({ Status: 'Complete' }, {}),
       ).rejects.toThrow(BillingException);
 
-      await expect(
-        service.processPaymentWebhook({}, {}),
-      ).rejects.toThrow('Missing TransactionReference');
+      await expect(service.processPaymentWebhook({}, {})).rejects.toThrow(
+        'Missing TransactionReference',
+      );
     });
 
     it('should mark transaction as FAILED for Cancelled status', async () => {
@@ -129,7 +142,11 @@ describe('WebhookProcessService', () => {
       prisma.webhookEvent.update.mockResolvedValue({} as any);
 
       await service.processPaymentWebhook(
-        { TransactionReference: 'TXN-123', Status: 'Cancelled', workspaceId: 'ws-123' },
+        {
+          TransactionReference: 'TXN-123',
+          Status: 'Cancelled',
+          workspaceId: 'ws-123',
+        },
         { 'x-ozow-event-id': 'evt-1', 'x-ozow-signature': 'valid-sig' },
       );
 

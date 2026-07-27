@@ -16,6 +16,9 @@ import { Role } from '@prisma/client';
 import { WorkspaceGuard } from '../auth/workspace.guard';
 import { ConfigService } from '@nestjs/config';
 import { EvolutionApiKeyGuard } from '../auth/evolution-api-key.guard';
+import { UuidPipe } from '../common/pipes/validation.pipes';
+import { UpdateWhatsappSettingsDto, TestMessageDto } from './dto/whatsapp.dto';
+import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('whatsapp')
 export class WhatsappController {
@@ -24,13 +27,13 @@ export class WhatsappController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
   @Roles(Role.ADMIN)
   @Post('connect')
-  connect(@Request() req: any) {
+  connect(@Request() req: AuthenticatedRequest) {
     return this.whatsappService.connect(req.user.workspaceId);
   }
 
   @UseGuards(AuthGuard('jwt'), WorkspaceGuard)
   @Get('status')
-  status(@Request() req: any) {
+  status(@Request() req: AuthenticatedRequest) {
     return this.whatsappService.status(req.user.workspaceId);
   }
 
@@ -46,17 +49,25 @@ export class WhatsappController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
   @Roles(Role.ADMIN)
   @Post('settings')
-  saveChatbotSettings(@Request() req: any, @Body() body: any) {
+  saveChatbotSettings(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: UpdateWhatsappSettingsDto,
+  ) {
     return this.whatsappService.saveChatbotSettings(req.user.workspaceId, body);
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
   @Roles(Role.ADMIN)
   @Post('test-message')
-  async testMessage(@Request() req: any, @Body() body: { phone: string; message?: string }) {
-    const workspace = await this.whatsappService['prisma'].workspace.findUnique({
-      where: { id: req.user.workspaceId },
-    });
+  async testMessage(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: TestMessageDto,
+  ) {
+    const workspace = await this.whatsappService['prisma'].workspace.findUnique(
+      {
+        where: { id: req.user.workspaceId },
+      },
+    );
 
     if (!workspace?.whatsappInstanceId) {
       return { success: false, error: 'WhatsApp not connected' };

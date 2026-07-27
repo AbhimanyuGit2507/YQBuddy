@@ -78,7 +78,10 @@ describe('PaymentsService', () => {
       });
       prisma.transaction.create.mockResolvedValue({} as any);
 
-      const result = await service.createCheckout({ planId: 'plan-1', amount: 29.99 }, 'ws-123');
+      const result = await service.createCheckout(
+        { planId: 'plan-1', amount: 29.99 },
+        'ws-123',
+      );
       expect(result.paymentReference).toBe('INR-123');
     });
 
@@ -90,7 +93,12 @@ describe('PaymentsService', () => {
     });
 
     it('should throw BadRequestException for inactive plan', async () => {
-      const mockPlan = { id: 'plan-1', name: 'Inactive', status: 'INACTIVE', price: 0 };
+      const mockPlan = {
+        id: 'plan-1',
+        name: 'Inactive',
+        status: 'INACTIVE',
+        price: 0,
+      };
       prisma.plan.findUnique.mockResolvedValue(mockPlan as any);
       await expect(
         service.createCheckout({ planId: 'plan-1' }, 'ws-123'),
@@ -113,7 +121,9 @@ describe('PaymentsService', () => {
         updatedAt: new Date(),
       } as any);
 
-      prisma.workspace.findUnique = jest.fn().mockResolvedValue({ name: 'Test Workspace' } as any);
+      prisma.workspace.findUnique = jest
+        .fn()
+        .mockResolvedValue({ name: 'Test Workspace' } as any);
 
       const result = await service.getPaymentStatus('TXN-123');
       expect(result.status).toBe('SUCCESS');
@@ -122,7 +132,9 @@ describe('PaymentsService', () => {
 
     it('should throw NotFoundException for missing transaction', async () => {
       prisma.transaction.findUnique.mockResolvedValue(null);
-      await expect(service.getPaymentStatus('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.getPaymentStatus('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

@@ -5,6 +5,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
 import { WorkspaceGuard } from '../auth/workspace.guard';
+import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('analytics')
 export class AnalyticsController {
@@ -14,7 +15,7 @@ export class AnalyticsController {
   @Roles(Role.ADMIN, Role.OPERATOR)
   @Get()
   async getDashboardAnalytics(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Query('timeframe') timeframe: string,
   ) {
     return this.analyticsService.getDashboardAnalytics(

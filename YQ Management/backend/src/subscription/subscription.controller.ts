@@ -22,6 +22,7 @@ import { DowngradeSubscriptionDto } from './dto/subscription.dto';
 import { CancelSubscriptionDto } from './dto/subscription.dto';
 import { ResumeSubscriptionDto } from './dto/subscription.dto';
 import { WorkspaceGuard } from '../auth/workspace.guard';
+import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('billing/subscriptions')
 @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
@@ -30,14 +31,14 @@ export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
 
   @Get('current')
-  async getCurrent(@Req() req: any) {
+  async getCurrent(@Req() req: AuthenticatedRequest) {
     return this.subscriptionService.getSubscription(req.user.workspaceId);
   }
 
   @Post('')
   @Roles(Role.ADMIN)
   async createSubscription(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body() dto: CreateSubscriptionDto,
   ) {
     return this.subscriptionService.createSubscription(
@@ -49,20 +50,20 @@ export class SubscriptionController {
   @Post('trial')
   @Roles(Role.ADMIN)
   async startTrial(
-    @Req() req: any,
-    @Body() body: { planId: string; trialDays: number },
+    @Req() req: AuthenticatedRequest,
+    @Body() body: CreateSubscriptionDto,
   ) {
     return this.subscriptionService.startFreeTrial(
       req.user.workspaceId,
       body.planId,
-      body.trialDays,
+      body.trialDays ?? 7,
     );
   }
 
   @Put('upgrade')
   @Roles(Role.ADMIN)
   async upgradeSubscription(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body() dto: UpgradeSubscriptionDto,
   ) {
     return this.subscriptionService.upgradeSubscription(
@@ -74,7 +75,7 @@ export class SubscriptionController {
   @Put('downgrade')
   @Roles(Role.ADMIN)
   async downgradeSubscription(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body() dto: DowngradeSubscriptionDto,
   ) {
     return this.subscriptionService.downgradeSubscription(
@@ -86,7 +87,7 @@ export class SubscriptionController {
   @Post('cancel')
   @Roles(Role.ADMIN)
   async cancelSubscription(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body() dto: CancelSubscriptionDto,
   ) {
     return this.subscriptionService.cancelSubscription(
@@ -98,7 +99,7 @@ export class SubscriptionController {
   @Post('resume')
   @Roles(Role.ADMIN)
   async resumeSubscription(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body() dto: ResumeSubscriptionDto,
   ) {
     return this.subscriptionService.resumeSubscription(
@@ -109,7 +110,7 @@ export class SubscriptionController {
 
   @Get('history')
   async getHistory(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Query('offset') offset?: number,
     @Query('limit') limit?: number,
   ) {
@@ -122,13 +123,13 @@ export class SubscriptionController {
 
   @Post('expire-trial')
   @Roles(Role.ADMIN)
-  async expireTrial(@Req() req: any) {
+  async expireTrial(@Req() req: AuthenticatedRequest) {
     return this.subscriptionService.expireTrial(req.user.workspaceId);
   }
 
   @Post('renew')
   @Roles(Role.ADMIN)
-  async renewSubscription(@Req() req: any) {
+  async renewSubscription(@Req() req: AuthenticatedRequest) {
     return this.subscriptionService.renewSubscription(req.user.workspaceId);
   }
 }

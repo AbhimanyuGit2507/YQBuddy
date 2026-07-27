@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import AdminLayout from '../../../../components/AdminLayout';
-import { ArrowLeft, ExternalLink, Scan, Settings, QrCode, Play, SkipForward, PauseCircle, Plus, Trash2, GripVertical, Save, Loader2, MessageSquare, X, Send, CheckCircle } from 'lucide-react';
+import { ExternalLink, Scan, Settings, QrCode, Play, SkipForward, PauseCircle, Plus, Trash2, GripVertical, Save, Loader2, MessageSquare, X, Send, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { io } from 'socket.io-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchApi } from '../../../../lib/api';
 import { useAuth } from '../../../../components/AuthContext';
 import Modal from '../../../../components/Modal';
+import { toast } from 'sonner';
 
 export default function QueueWorkspace() {
   const router = useRouter();
@@ -92,8 +93,8 @@ export default function QueueWorkspace() {
     try {
       await fetchApi(`/token/advance/${id}`, { method: 'POST' });
       refetch();
-    } catch (e) {
-      alert('Error advancing queue');
+    } catch {
+      toast.error('Error advancing queue');
     }
   };
 
@@ -101,8 +102,8 @@ export default function QueueWorkspace() {
     try {
       await fetchApi('/token/validate', { method: 'POST', body: JSON.stringify({ tokenId }) });
       refetch();
-    } catch (e) {
-      alert('Error completing token');
+    } catch {
+      toast.error('Error completing token');
     }
   };
 
@@ -113,8 +114,8 @@ export default function QueueWorkspace() {
         body: JSON.stringify({ nextQueueId: targetQueueId }) 
       });
       refetch();
-    } catch (e) {
-      alert('Error transferring token');
+    } catch {
+      toast.error('Error transferring token');
     }
   };
 
@@ -130,9 +131,36 @@ export default function QueueWorkspace() {
         body: JSON.stringify({ text: msg })
       });
       queryClient.invalidateQueries({ queryKey: ['messages', chatToken.id] });
-    } catch (e) {
-      alert('Error sending message');
+    } catch {
+      toast.error('Error sending message');
     }
+  };
+
+  const [editingOptions, setEditingOptions] = useState<Record<string, string>>({});
+
+  const handleOptionsFocus = (fieldId: string, options: string[]) => {
+    if (!(fieldId in editingOptions)) {
+      setEditingOptions(prev => ({ ...prev, [fieldId]: (options || []).join(', ') }));
+    }
+  };
+
+  const handleOptionsChange = (fieldId: string, raw: string) => {
+    setEditingOptions(prev => ({ ...prev, [fieldId]: raw }));
+  };
+
+  const handleOptionsBlur = (index: number, fieldId: string) => {
+    const raw = editingOptions[fieldId] ?? (formConfig[index]?.options || []).join(', ');
+    setEditingOptions(prev => {
+      const next = { ...prev };
+      delete next[fieldId];
+      return next;
+    });
+    const options = raw.split(',').map(s => s.trim()).filter(Boolean);
+    handleUpdateField(index, { options });
+  };
+
+  const getOptionsValue = (field: any, fieldId: string) => {
+    return fieldId in editingOptions ? editingOptions[fieldId] : (field.options || []).join(', ');
   };
 
   const handleAddField = () => {
@@ -169,9 +197,9 @@ export default function QueueWorkspace() {
         })
       });
       refetchQueue();
-      alert('Settings saved successfully!');
-    } catch (e) {
-      alert('Error saving settings');
+      toast.success('Settings saved successfully!');
+    } catch {
+      toast.error('Error saving settings');
     }
     setSavingSettings(false);
   };
@@ -457,8 +485,10 @@ export default function QueueWorkspace() {
                           <label className="block text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Options (comma separated)</label>
                           <input 
                             type="text" 
-                            value={(field.options || []).join(', ')}
-                            onChange={(e) => handleUpdateField(index, { options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                            value={getOptionsValue(field, field.id)}
+                            onChange={(e) => handleOptionsChange(field.id, e.target.value)}
+                            onFocus={() => handleOptionsFocus(field.id, field.options)}
+                            onBlur={() => handleOptionsBlur(index, field.id)}
                             placeholder="Option 1, Option 2, Option 3"
                             className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 shadow-sm dark:shadow-none"
                           />
@@ -540,8 +570,10 @@ export default function QueueWorkspace() {
                       <label className="block text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Options (comma separated)</label>
                       <input 
                         type="text" 
-                        value={(field.options || []).join(', ')}
-                        onChange={(e) => handleUpdateField(index, { options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                        value={getOptionsValue(field, field.id)}
+                        onChange={(e) => handleOptionsChange(field.id, e.target.value)}
+                        onFocus={() => handleOptionsFocus(field.id, field.options)}
+                        onBlur={() => handleOptionsBlur(index, field.id)}
                         placeholder="Option 1, Option 2, Option 3"
                         className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 text-sm"
                       />
@@ -586,7 +618,7 @@ export default function QueueWorkspace() {
       {/* Chat Drawer */}
       {chatToken && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/20 dark:bg-black/40 backdrop-blur-sm animate-in fade-in">
-          <div className="w-[400px] h-full bg-white dark:bg-zinc-900 border-l border-gray-200 dark:border-white/10 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+          <div className="w-full sm:w-[400px] h-full bg-white dark:bg-zinc-900 border-l border-gray-200 dark:border-white/10 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 max-w-full">
             {/* Chat Header */}
             <div className="p-4 border-b border-gray-200 dark:border-white/10 flex items-center justify-between bg-gray-50 dark:bg-zinc-900">
               <div>

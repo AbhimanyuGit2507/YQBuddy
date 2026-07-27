@@ -28,7 +28,10 @@ describe('SubscriptionService', () => {
     } as unknown as PrismaService;
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SubscriptionService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        SubscriptionService,
+        { provide: PrismaService, useValue: prisma },
+      ],
     }).compile();
 
     service = module.get<SubscriptionService>(SubscriptionService);
@@ -100,7 +103,9 @@ describe('SubscriptionService', () => {
         name: 'Basic',
         status: 'ACTIVE',
       } as any);
-      prisma.subscription.findUnique.mockResolvedValue({ id: 'existing' } as any);
+      prisma.subscription.findUnique.mockResolvedValue({
+        id: 'existing',
+      } as any);
       await expect(
         service.createSubscription(mockWorkspaceId, { planId: mockPlanId }),
       ).rejects.toThrow('Workspace already has an active subscription');
@@ -130,7 +135,11 @@ describe('SubscriptionService', () => {
       } as any);
       prisma.workspace.update.mockResolvedValue({} as any);
 
-      const result = await service.startFreeTrial(mockWorkspaceId, mockPlanId, 14);
+      const result = await service.startFreeTrial(
+        mockWorkspaceId,
+        mockPlanId,
+        14,
+      );
       expect(result.status).toBe(SubscriptionStatus.TRIAL);
       expect(result.trialDays).toBe(14);
     });
@@ -154,7 +163,9 @@ describe('SubscriptionService', () => {
       } as any);
       prisma.workspace.update.mockResolvedValue({} as any);
 
-      const result = await service.cancelSubscription(mockWorkspaceId, { immediate: true });
+      const result = await service.cancelSubscription(mockWorkspaceId, {
+        immediate: true,
+      });
       expect(result.status).toBe(SubscriptionStatus.CANCELLED);
     });
   });

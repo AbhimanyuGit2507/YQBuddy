@@ -10,7 +10,8 @@ const nextConfig: NextConfig = {
   ...(isProduction && {
     output: 'standalone',
     images: {
-      unoptimized: true,
+      // unoptimized disabled; use next/image with proper width/height for optimization
+      // unoptimized: true,
     },
   }),
   

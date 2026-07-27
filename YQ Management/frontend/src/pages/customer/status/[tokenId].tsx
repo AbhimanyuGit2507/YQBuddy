@@ -1,15 +1,17 @@
-  import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
 import { t } from '../../../lib/i18n';
-import { Bell, MapPin, Clock, Info, XCircle, CalendarCheck, CheckCircle2 } from 'lucide-react';
+import { Bell, MapPin, Clock, Info, XCircle, CalendarCheck, CheckCircle2, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CustomerStatus() {
   const router = useRouter();
   const { tokenId } = router.query;
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const previousStatusRef = useRef<string | null>(null);
 
   const { data: statusData, isLoading, error } = useQuery<any, any>({
     queryKey: ['token-status', tokenId],
@@ -21,7 +23,36 @@ export default function CustomerStatus() {
     }, 
   });
 
+  const { data: whatsappStatus } = useQuery({
+    queryKey: ['whatsapp-status'],
+    queryFn: () => fetchApi('/whatsapp/status'),
+    refetchInterval: 30000,
+  });
+
+  const isWhatsAppConnected = whatsappStatus?.state === 'open';
+
   const queryClient = useQueryClient();
+
+  const speak = (text: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  useEffect(() => {
+    if (!statusData?.token) return;
+    const currentStatus = statusData.token.status;
+    
+    if (currentStatus === 'SERVING' && previousStatusRef.current !== 'SERVING') {
+      if (audioEnabled) {
+        speak(`Ticket number ${statusData.token.id.split('-')[0]}. ${statusData.token.customerName}, kindly proceed to the counter.`);
+      }
+    }
+    previousStatusRef.current = currentStatus;
+  }, [statusData, audioEnabled]);
 
   const cancelMutation = useMutation({
     mutationFn: () => fetchApi(`/token/${tokenId}/cancel`, { method: 'POST' }),
@@ -46,7 +77,17 @@ export default function CustomerStatus() {
   }
 
   if (error || !statusData) {
-    return <div className="min-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white flex items-center justify-center">Token not found</div>;
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white flex flex-col items-center justify-center gap-4">
+        <p>Token not found</p>
+        <button 
+          onClick={() => queryClient.invalidateQueries({ queryKey: ['token-status', tokenId] })}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   const { token, position, estimatedWaitTime, isScheduled } = statusData;
@@ -61,7 +102,6 @@ export default function CustomerStatus() {
         <title>Live Status | QMover</title>
       </Head>
 
-      {/* Decorative Glow depending on status */}
       <div className={`absolute top-0 right-0 w-[500px] h-[500px] rounded-full mix-blend-screen filter blur-[150px] pointer-events-none z-0 transition-colors duration-1000 ${
         isServing ? 'bg-emerald-600/20' : isCompleted ? 'bg-gray-600/10' : 'bg-indigo-600/10'
       }`}></div>
@@ -71,7 +111,6 @@ export default function CustomerStatus() {
 
       <div className="w-full max-w-md mx-auto z-10 flex-1 flex flex-col">
         
-        {/* Header */}
         <motion.header 
           initial={{ y: -20, opacity: 0 }} 
           animate={{ y: 0, opacity: 1 }} 
@@ -83,12 +122,20 @@ export default function CustomerStatus() {
             </div>
             <span className="font-bold tracking-wide">Qmover Live</span>
           </div>
-          <button className="w-10 h-10 rounded-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center shadow-sm">
-            <Bell className="w-4 h-4 text-gray-500 dark:text-zinc-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setAudioEnabled(!audioEnabled)}
+              className={`w-10 h-10 rounded-full flex items-center justify-center border transition-colors ${audioEnabled ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-500 dark:text-zinc-400'}`}
+              title={audioEnabled ? 'Disable audio announcements' : 'Enable audio announcements'}
+            >
+              {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+            <button className="w-10 h-10 rounded-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center shadow-sm">
+              <Bell className="w-4 h-4 text-gray-500 dark:text-zinc-400" />
+            </button>
+          </div>
         </motion.header>
 
-        {/* Main Status Card */}
         <motion.div 
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -209,7 +256,6 @@ export default function CustomerStatus() {
           </AnimatePresence>
         </motion.div>
 
-        {/* Info Box */}
         <AnimatePresence>
           {!isServing && !isCompleted && !isScheduled && (
             <motion.div 
@@ -222,7 +268,9 @@ export default function CustomerStatus() {
               <div>
                 <p className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-1">Keep this page open</p>
                 <p className="text-xs text-blue-700/80 dark:text-blue-400/70 leading-relaxed">
-                  We will update your position in real-time. You'll also receive a WhatsApp message when it's your turn.
+                  {isWhatsAppConnected 
+                    ? "We will update your position in real-time. You'll also receive a WhatsApp message when it's your turn."
+                    : "We will update your position in real-time. Keep this page open to see when it's your turn."}
                 </p>
               </div>
             </motion.div>

@@ -8,7 +8,12 @@ import { PermissionsModule } from '../permissions/permissions.module';
 import { CommunicationModule } from '../communication/communication.module';
 
 @Module({
-  imports: [PrismaModule, BillingModule, PermissionsModule, CommunicationModule],
+  imports: [
+    PrismaModule,
+    BillingModule,
+    PermissionsModule,
+    CommunicationModule,
+  ],
   controllers: [SubscriptionController],
   providers: [SubscriptionService, SubscriptionCron],
   exports: [SubscriptionService],

@@ -110,9 +110,6 @@ async function main() {
   });
 
   console.log('✅ Seed completed successfully');
-  console.log('Admin Credentials:');
-  console.log('Email: admin@yqqueue.com (admin123)');
-  console.log('Email: yqbuddysa@gmail.com (Admin@123)');
   console.log('Default Plan:', defaultPlan.name);
 }
 

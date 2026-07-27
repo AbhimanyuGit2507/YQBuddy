@@ -21,7 +21,7 @@ import { SubscriptionService } from '../subscription/subscription.service';
 import { PaymentsService } from '../payments/payments.service';
 import { InvoiceService } from '../invoice/invoice.service';
 import { UsageService } from '../usage/usage.service';
-import { CreatePlanDto } from '../plans/dto/plan.dto';
+import { CreatePlanDto, UpdatePlanDto } from '../plans/dto/plan.dto';
 import { CreateSubscriptionDto } from '../subscription/dto/subscription.dto';
 import { UpgradeSubscriptionDto } from '../subscription/dto/subscription.dto';
 import { DowngradeSubscriptionDto } from '../subscription/dto/subscription.dto';
@@ -29,6 +29,8 @@ import { CancelSubscriptionDto } from '../subscription/dto/subscription.dto';
 import { ResumeSubscriptionDto } from '../subscription/dto/subscription.dto';
 import { CreatePaymentDto } from '../payments/dto/payment.dto';
 import { UuidPipe } from '../common/pipes/validation.pipes';
+import { GenerateInvoiceDto } from './dto/billing.dto';
+import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('billing')
 @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
@@ -43,7 +45,7 @@ export class BillingController {
   ) {}
 
   @Get('workspace')
-  async getWorkspaceBilling(@Request() req: any) {
+  async getWorkspaceBilling(@Request() req: AuthenticatedRequest) {
     const workspaceId = req.user.workspaceId;
     const [subscription, transactions, usage] = await Promise.all([
       this.subscriptionService.getSubscription(workspaceId),
@@ -61,7 +63,7 @@ export class BillingController {
 
   @Get('workspace/usage')
   async getUsage(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Query('periodStart') periodStart?: string,
     @Query('periodEnd') periodEnd?: string,
   ) {
@@ -71,14 +73,14 @@ export class BillingController {
   }
 
   @Get('workspace/subscription')
-  async getCurrentSubscription(@Request() req: any) {
+  async getCurrentSubscription(@Request() req: AuthenticatedRequest) {
     return this.subscriptionService.getSubscription(req.user.workspaceId);
   }
 
   @Post('workspace/subscription')
   @Roles(Role.ADMIN)
   async createSubscription(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: CreateSubscriptionDto,
   ) {
     return this.subscriptionService.createSubscription(
@@ -90,20 +92,20 @@ export class BillingController {
   @Post('workspace/subscription/trial')
   @Roles(Role.ADMIN)
   async startTrial(
-    @Request() req: any,
-    @Body() body: { planId: string; trialDays: number },
+    @Request() req: AuthenticatedRequest,
+    @Body() body: CreateSubscriptionDto,
   ) {
     return this.subscriptionService.startFreeTrial(
       req.user.workspaceId,
       body.planId,
-      body.trialDays,
+      body.trialDays ?? 7,
     );
   }
 
   @Put('workspace/subscription/upgrade')
   @Roles(Role.ADMIN)
   async upgradeSubscription(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: UpgradeSubscriptionDto,
   ) {
     return this.subscriptionService.upgradeSubscription(
@@ -115,7 +117,7 @@ export class BillingController {
   @Put('workspace/subscription/downgrade')
   @Roles(Role.ADMIN)
   async downgradeSubscription(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: DowngradeSubscriptionDto,
   ) {
     return this.subscriptionService.downgradeSubscription(
@@ -127,7 +129,7 @@ export class BillingController {
   @Post('workspace/subscription/cancel')
   @Roles(Role.ADMIN)
   async cancelSubscription(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: CancelSubscriptionDto,
   ) {
     return this.subscriptionService.cancelSubscription(
@@ -139,7 +141,7 @@ export class BillingController {
   @Post('workspace/subscription/resume')
   @Roles(Role.ADMIN)
   async resumeSubscription(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: ResumeSubscriptionDto,
   ) {
     return this.subscriptionService.resumeSubscription(
@@ -150,7 +152,7 @@ export class BillingController {
 
   @Get('workspace/subscription/history')
   async getSubscriptionHistory(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Query('offset') offset?: number,
     @Query('limit') limit?: number,
   ) {
@@ -163,13 +165,13 @@ export class BillingController {
 
   @Post('workspace/subscription/renew')
   @Roles(Role.ADMIN)
-  async renewSubscription(@Request() req: any) {
+  async renewSubscription(@Request() req: AuthenticatedRequest) {
     return this.subscriptionService.renewSubscription(req.user.workspaceId);
   }
 
   @Post('workspace/subscription/expire-trial')
   @Roles(Role.ADMIN)
-  async expireTrial(@Request() req: any) {
+  async expireTrial(@Request() req: AuthenticatedRequest) {
     return this.subscriptionService.expireTrial(req.user.workspaceId);
   }
 }
@@ -200,8 +202,11 @@ export class BillingPlansController {
 
   @Put(':id')
   @Roles(Role.ADMIN)
-  async updatePlan(@Param('id', UuidPipe) id: string, @Body() dto: CreatePlanDto) {
-    return this.plansService.updatePlan(id, dto as any);
+  async updatePlan(
+    @Param('id', UuidPipe) id: string,
+    @Body() dto: UpdatePlanDto,
+  ) {
+    return this.plansService.updatePlan(id, dto);
   }
 }
 
@@ -210,7 +215,10 @@ export class BillingPaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post('checkout')
-  async createCheckout(@Request() req: any, @Body() dto: CreatePaymentDto) {
+  async createCheckout(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: CreatePaymentDto,
+  ) {
     return this.paymentsService.createCheckout(dto, req.user.workspaceId);
   }
 
@@ -221,7 +229,7 @@ export class BillingPaymentsController {
 
   @Get('history')
   async getTransactionHistory(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Query('offset') offset?: number,
     @Query('limit') limit?: number,
   ) {
@@ -238,13 +246,28 @@ export class BillingInvoicesController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
   @Get('')
-  async listInvoices(@Request() req: any, @Query('offset') offset?: number, @Query('limit') limit?: number) {
-    return this.invoiceService.listInvoices(req.user.workspaceId, offset ?? 0, limit ?? 50);
+  async listInvoices(
+    @Request() req: AuthenticatedRequest,
+    @Query('offset') offset?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.invoiceService.listInvoices(
+      req.user.workspaceId,
+      offset ?? 0,
+      limit ?? 50,
+    );
   }
 
   @Post('generate')
   @Roles(Role.ADMIN)
-  async generateInvoice(@Request() req: any, @Body() body: { subscriptionId?: string; transactionId?: string }) {
-    return this.invoiceService.generateInvoice(req.user.workspaceId, body.subscriptionId, body.transactionId);
+  async generateInvoice(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: GenerateInvoiceDto,
+  ) {
+    return this.invoiceService.generateInvoice(
+      req.user.workspaceId,
+      body.subscriptionId,
+      body.transactionId,
+    );
   }
 }

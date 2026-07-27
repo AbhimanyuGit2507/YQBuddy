@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CommunicationLogService, CommunicationChannel, CommunicationStatus } from '../logging/communication-log.service';
+import {
+  CommunicationLogService,
+  CommunicationChannel,
+  CommunicationStatus,
+} from '../logging/communication-log.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 describe('CommunicationLogService', () => {
@@ -19,7 +23,9 @@ describe('CommunicationLogService', () => {
   });
 
   it('should log communication entry', async () => {
-    const mockCreate = jest.spyOn(service['prisma'].communicationLog, 'create').mockResolvedValue({} as any);
+    const mockCreate = jest
+      .spyOn(service['prisma'].communicationLog, 'create')
+      .mockResolvedValue({} as any);
 
     await service.log({
       channel: CommunicationChannel.EMAIL,
@@ -34,8 +40,12 @@ describe('CommunicationLogService', () => {
   });
 
   it('should get logs with pagination', async () => {
-    const mockFindMany = jest.spyOn(service['prisma'].communicationLog, 'findMany').mockResolvedValue([]);
-    const mockCount = jest.spyOn(service['prisma'].communicationLog, 'count').mockResolvedValue(0);
+    const mockFindMany = jest
+      .spyOn(service['prisma'].communicationLog, 'findMany')
+      .mockResolvedValue([]);
+    const mockCount = jest
+      .spyOn(service['prisma'].communicationLog, 'count')
+      .mockResolvedValue(0);
 
     const result = await service.getLogs('workspace-1', 1, 50);
 
@@ -46,7 +56,9 @@ describe('CommunicationLogService', () => {
   });
 
   it('should get failed logs', async () => {
-    const mockFindMany = jest.spyOn(service['prisma'].communicationLog, 'findMany').mockResolvedValue([]);
+    const mockFindMany = jest
+      .spyOn(service['prisma'].communicationLog, 'findMany')
+      .mockResolvedValue([]);
 
     const result = await service.getFailedLogs('workspace-1');
 

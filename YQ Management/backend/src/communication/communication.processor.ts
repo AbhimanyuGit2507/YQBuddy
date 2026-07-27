@@ -13,7 +13,9 @@ export class CommunicationProcessor extends WorkerHost {
   }
 
   async process(job: Job<any, any, string>): Promise<any> {
-    this.logger.log(`Processing communication job ${job.id}: ${job.data.event}`);
+    this.logger.log(
+      `Processing communication job ${job.id}: ${job.data.event}`,
+    );
     const { event, payload } = job.data;
     await this.communicationService.processEvent(event, payload);
   }

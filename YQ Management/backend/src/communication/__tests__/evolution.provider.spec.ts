@@ -23,7 +23,9 @@ describe('EvolutionProvider', () => {
   });
 
   it('should mock sendButtons when no API config', async () => {
-    const result = await provider.sendButtons('27821234567', 'Test', 'Footer', [{ id: '1', text: 'OK' }]);
+    const result = await provider.sendButtons('27821234567', 'Test', 'Footer', [
+      { id: '1', text: 'OK' },
+    ]);
     expect(result.success).toBe(true);
     expect(result.providerId).toBe('mock');
   });

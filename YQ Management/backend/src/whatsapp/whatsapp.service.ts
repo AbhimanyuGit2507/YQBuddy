@@ -7,8 +7,7 @@ export class WhatsappService {
   private readonly logger = new Logger(WhatsappService.name);
   private readonly evoUrl =
     process.env.EVOLUTION_API_URL || 'http://localhost:8080';
-  private readonly evoApiKey: string =
-    process.env.EVOLUTION_API_KEY || '';
+  private readonly evoApiKey: string = process.env.EVOLUTION_API_KEY || '';
   private readonly appUrl =
     process.env.APP_URL || 'http://host.docker.internal:3000';
 
@@ -17,7 +16,12 @@ export class WhatsappService {
     private redisService: RedisService,
   ) {}
 
-  async fetchEvo(path: string, method: string = 'GET', body?: any, retries = 3): Promise<{ status: number; data: any }> {
+  async fetchEvo(
+    path: string,
+    method: string = 'GET',
+    body?: any,
+    retries = 3,
+  ): Promise<{ status: number; data: any }> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
 
@@ -34,7 +38,11 @@ export class WhatsappService {
 
       const text = await res.text();
       if (!res.ok) {
-        this.logger.error(`Evolution API Error: ${res.status} ${text}`);
+        if (res.status === 404) {
+          this.logger.warn(`Evolution API 404: ${text}`);
+        } else {
+          this.logger.error(`Evolution API Error: ${res.status} ${text}`);
+        }
       }
 
       try {
@@ -43,12 +51,24 @@ export class WhatsappService {
         return { status: res.status, data: text };
       }
     } catch (error) {
-      if (retries > 1 && (error instanceof Error && error.name === 'AbortError' || error instanceof TypeError)) {
-        this.logger.warn(`Evolution API request failed, retrying... (${retries} retries left)`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
+      if (
+        retries > 1 &&
+        error instanceof Error &&
+        (error.name === 'AbortError' || error instanceof TypeError)
+      ) {
+        this.logger.warn(
+          `Evolution API request failed, retrying... (${retries} retries left)`,
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1000 * (4 - retries)),
+        );
         return this.fetchEvo(path, method, body, retries - 1);
       }
-      throw error;
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Evolution API unreachable: ${message}`,
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
     } finally {
       clearTimeout(timeout);
     }
@@ -90,7 +110,9 @@ export class WhatsappService {
     );
     const cleanupState = cleanupStateRes.data?.instance?.state || 'close';
     if (cleanupState === 'connecting') {
-      this.logger.warn(`Instance ${instanceName} stuck in connecting, deleting`);
+      this.logger.warn(
+        `Instance ${instanceName} stuck in connecting, deleting`,
+      );
       await this.fetchEvo(`/instance/delete/${instanceName}`, 'DELETE').catch(
         () => {},
       );
@@ -151,29 +173,57 @@ export class WhatsappService {
       return { state: 'unconfigured' };
     }
 
-    const stateRes = await this.fetchEvo(
-      `/instance/connectionState/${workspace.whatsappInstanceId}`,
-      'GET',
-    );
-    const state = stateRes.data?.instance?.state || 'close';
+    try {
+      const stateRes = await this.fetchEvo(
+        `/instance/connectionState/${workspace.whatsappInstanceId}`,
+        'GET',
+      );
+      const state = stateRes.data?.instance?.state || 'close';
 
-    if (state === 'open' && !workspace.whatsappConnected) {
-      await this.prisma.workspace.update({
-        where: { id: workspaceId },
-        data: { whatsappConnected: true },
-      });
-    } else if (state !== 'open' && workspace.whatsappConnected) {
-      await this.prisma.workspace.update({
-        where: { id: workspaceId },
-        data: { whatsappConnected: false },
-      });
+      if (state === 'open' && !workspace.whatsappConnected) {
+        await this.prisma.workspace.update({
+          where: { id: workspaceId },
+          data: { whatsappConnected: true },
+        });
+      } else if (state !== 'open' && workspace.whatsappConnected) {
+        await this.prisma.workspace.update({
+          where: { id: workspaceId },
+          data: { whatsappConnected: false },
+        });
+      }
+
+      return {
+        instanceName: workspace.whatsappInstanceId,
+        state,
+        whatsappConnected: state === 'open',
+      };
+    } catch (error) {
+      const status = error instanceof HttpException ? error.getStatus() : 500;
+      if (status === 404) {
+        this.logger.warn(
+          `WhatsApp instance ${workspace.whatsappInstanceId} not found in Evolution API, marking as unconfigured`,
+        );
+        await this.prisma.workspace
+          .update({
+            where: { id: workspaceId },
+            data: { whatsappInstanceId: null, whatsappConnected: false },
+          })
+          .catch(() => {});
+        return {
+          state: 'unconfigured',
+          instanceName: null,
+          whatsappConnected: false,
+        };
+      }
+      this.logger.warn(
+        `Evolution API unavailable for status check: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      return {
+        instanceName: workspace.whatsappInstanceId,
+        state: 'close',
+        whatsappConnected: false,
+      };
     }
-
-    return {
-      instanceName: workspace.whatsappInstanceId,
-      state,
-      whatsappConnected: state === 'open',
-    };
   }
 
   async saveChatbotSettings(workspaceId: string, settings: any) {

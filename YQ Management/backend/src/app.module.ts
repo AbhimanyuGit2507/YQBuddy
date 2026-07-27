@@ -9,6 +9,7 @@ import { AppService } from './app.service';
 import { WorkspaceModule } from './workspace/workspace.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { WorkspaceContextMiddleware } from './workspace/middlewares/workspace-context/workspace-context.middleware';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { QueueModule } from './queue/queue.module';
@@ -34,9 +35,15 @@ import { HealthModule } from './health/health.module';
     ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule.forRoot({
       pinoHttp: {
+        genReqId: () =>
+          `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
         transport: {
           target: 'pino-pretty',
-          options: { singleLine: true },
+          options: {
+            singleLine: true,
+            colorize: true,
+            levelFirst: true,
+          },
         },
       },
     }),
@@ -80,6 +87,7 @@ import { HealthModule } from './health/health.module';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestIdMiddleware).forRoutes('*');
     consumer
       .apply(WorkspaceContextMiddleware)
       .exclude('/health', '/auth/(.*)')

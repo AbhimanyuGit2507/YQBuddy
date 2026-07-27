@@ -7,34 +7,44 @@ import {
 } from '@nestjs/common';
 import { SuperAdminService } from './super-admin.service';
 import { AuthGuard } from '@nestjs/passport';
-// Assuming we have a Roles guard, otherwise we manually check in the controller
-// For simplicity, we'll manually check req.user.role if a global RolesGuard isn't set up.
+import { ConfigService } from '@nestjs/config';
+import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('super-admin')
 @UseGuards(AuthGuard('jwt'))
 export class SuperAdminController {
-  constructor(private readonly superAdminService: SuperAdminService) {}
+  constructor(
+    private readonly superAdminService: SuperAdminService,
+    private readonly configService: ConfigService,
+  ) {}
 
   private checkSuperAdmin(req: any) {
-    if (req.user?.role !== 'SUPER_ADMIN') {
+    const superAdminEmail = this.configService.get<string>('SUPER_ADMIN_EMAIL');
+    if (req.user?.email !== superAdminEmail) {
       throw new UnauthorizedException('Access denied. Super Admin only.');
     }
   }
 
   @Get('metrics')
-  async getMetrics(@Req() req: any) {
+  async getMetrics(@Req() req: AuthenticatedRequest) {
     this.checkSuperAdmin(req);
     return this.superAdminService.getGlobalMetrics();
   }
 
   @Get('workspaces')
-  async getWorkspaces(@Req() req: any) {
+  async getWorkspaces(@Req() req: AuthenticatedRequest) {
+    this.checkSuperAdmin(req);
+    return this.superAdminService.getAllWorkspaces();
+  }
+
+  @Get('tenants')
+  async getTenants(@Req() req: AuthenticatedRequest) {
     this.checkSuperAdmin(req);
     return this.superAdminService.getAllWorkspaces();
   }
 
   @Get('transactions')
-  async getTransactions(@Req() req: any) {
+  async getTransactions(@Req() req: AuthenticatedRequest) {
     this.checkSuperAdmin(req);
     return this.superAdminService.getRecentTransactions();
   }

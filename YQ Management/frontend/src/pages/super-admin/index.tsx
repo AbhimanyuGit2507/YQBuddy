@@ -4,8 +4,11 @@ import SuperAdminLayout from '../../components/SuperAdminLayout';
 import { fetchApi } from '../../lib/api';
 import { useQuery } from '@tanstack/react-query';
 import { Building2, CreditCard, Users, Activity, ArrowUpRight } from 'lucide-react';
+import { useRouter } from 'next/router';
+import { toast } from 'sonner';
 
 export default function SuperAdminDashboard() {
+  const router = useRouter();
   const { data: metrics, isLoading } = useQuery({
     queryKey: ['super-admin-metrics'],
     queryFn: () => fetchApi('/super-admin/metrics')
@@ -52,11 +55,11 @@ export default function SuperAdminDashboard() {
           <div className="lg:col-span-1 space-y-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
             <div className="space-y-3">
-              <button className="w-full flex items-center justify-between p-4 rounded-xl bg-white dark:bg-[#120005] border border-gray-200 dark:border-rose-900/30 hover:border-rose-400 dark:hover:border-rose-500/50 transition-colors group">
+              <button onClick={() => router.push('/super-admin/tenants')} className="w-full flex items-center justify-between p-4 rounded-xl bg-white dark:bg-[#120005] border border-gray-200 dark:border-rose-900/30 hover:border-rose-400 dark:hover:border-rose-500/50 transition-colors group">
                 <span className="font-bold text-gray-700 dark:text-rose-100">Add New Tenant</span>
                 <ArrowUpRight className="w-5 h-5 text-gray-400 dark:text-rose-500 group-hover:text-rose-600 transition-colors" />
               </button>
-              <button className="w-full flex items-center justify-between p-4 rounded-xl bg-white dark:bg-[#120005] border border-gray-200 dark:border-rose-900/30 hover:border-rose-400 dark:hover:border-rose-500/50 transition-colors group">
+              <button onClick={() => toast.info('System logs coming soon')} className="w-full flex items-center justify-between p-4 rounded-xl bg-white dark:bg-[#120005] border border-gray-200 dark:border-rose-900/30 hover:border-rose-400 dark:hover:border-rose-500/50 transition-colors group">
                 <span className="font-bold text-gray-700 dark:text-rose-100">System Logs</span>
                 <ArrowUpRight className="w-5 h-5 text-gray-400 dark:text-rose-500 group-hover:text-rose-600 transition-colors" />
               </button>

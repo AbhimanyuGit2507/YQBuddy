@@ -22,6 +22,8 @@ import { RequirePermissions } from '../permissions/permissions.guard';
 import { PermissionsGuard } from '../permissions/permissions.guard';
 import { WorkspaceGuard } from '../auth/workspace.guard';
 import { UuidPipe } from '../common/pipes/validation.pipes';
+import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
+import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('users')
 @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)
@@ -31,29 +33,39 @@ export class UsersController {
   @Roles(Role.ADMIN)
   @RequirePermissions(Permission.USER_READ)
   @Get()
-  getUsers(@Request() req: any) {
+  getUsers(@Request() req: AuthenticatedRequest) {
     return this.usersService.getUsersByWorkspace(req.user.workspaceId);
   }
 
   @Roles(Role.ADMIN)
   @RequirePermissions(Permission.USER_INVITE)
   @Post()
-  createUser(@Request() req: any, @Body() body: any) {
+  createUser(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: CreateUserDto,
+  ) {
     return this.usersService.createUser(req.user.workspaceId, body);
   }
 
   @Roles(Role.ADMIN)
   @RequirePermissions(Permission.USER_DELETE)
   @Delete(':id')
-  deleteUser(@Request() req: any, @Param('id', UuidPipe) id: string) {
-    return this.usersService.deleteUser(req.user.workspaceId, id, req.user.userId);
+  deleteUser(
+    @Request() req: AuthenticatedRequest,
+    @Param('id', UuidPipe) id: string,
+  ) {
+    return this.usersService.deleteUser(
+      req.user.workspaceId,
+      id,
+      req.user.userId,
+    );
   }
 
   @Roles(Role.ADMIN)
   @RequirePermissions(Permission.USER_UPDATE_ROLE)
   @Patch(':id/role')
   updateUserRole(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Param('id', UuidPipe) id: string,
     @Body() body: { role: string },
   ) {
@@ -68,7 +80,10 @@ export class UsersController {
   @Roles(Role.ADMIN)
   @RequirePermissions(Permission.USER_DISABLE)
   @Patch(':id/status')
-  toggleUserStatus(@Request() req: any, @Param('id', UuidPipe) id: string) {
+  toggleUserStatus(
+    @Request() req: AuthenticatedRequest,
+    @Param('id', UuidPipe) id: string,
+  ) {
     return this.usersService.toggleUserStatus(
       req.user.workspaceId,
       id,
@@ -79,7 +94,10 @@ export class UsersController {
   @Roles(Role.ADMIN)
   @RequirePermissions(Permission.WORKSPACE_TRANSFER)
   @Post('transfer-ownership')
-  transferOwnership(@Request() req: any, @Body() body: { newAdminId: string }) {
+  transferOwnership(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: { newAdminId: string },
+  ) {
     return this.usersService.transferOwnership(
       req.user.workspaceId,
       req.user.userId,

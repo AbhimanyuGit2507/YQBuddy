@@ -34,7 +34,10 @@ export class EvolutionProvider implements WhatsAppProvider {
     }
   }
 
-  async sendText(to: string, body: string): Promise<{ success: boolean; providerId?: string; error?: string }> {
+  async sendText(
+    to: string,
+    body: string,
+  ): Promise<{ success: boolean; providerId?: string; error?: string }> {
     try {
       if (!this.baseUrl || !this.apiKey || !this.defaultInstance) {
         this.logger.warn(`[MOCK WHATSAPP] To: ${to} | Body: ${body}`);
@@ -42,22 +45,30 @@ export class EvolutionProvider implements WhatsAppProvider {
       }
 
       const cleanNumber = to.replace(/\D/g, '');
-      const res = await fetch(`${this.baseUrl}/message/sendText/${this.defaultInstance}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: this.apiKey,
+      const res = await fetch(
+        `${this.baseUrl}/message/sendText/${this.defaultInstance}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: this.apiKey,
+          },
+          body: JSON.stringify({
+            number: cleanNumber,
+            text: body,
+          }),
         },
-        body: JSON.stringify({
-          number: cleanNumber,
-          text: body,
-        }),
-      });
+      );
 
       if (!res.ok) {
         const errorText = await res.text();
-        this.logger.error(`Evolution API error sending message: ${res.status} ${errorText}`);
-        return { success: false, error: `Evolution API error: ${res.status} ${errorText}` };
+        this.logger.error(
+          `Evolution API error sending message: ${res.status} ${errorText}`,
+        );
+        return {
+          success: false,
+          error: `Evolution API error: ${res.status} ${errorText}`,
+        };
       }
 
       const data = await res.json();
@@ -65,7 +76,10 @@ export class EvolutionProvider implements WhatsAppProvider {
       return { success: true, providerId: data.key?.id };
     } catch (error) {
       this.logger.error(`Failed to send WhatsApp message to ${to}`, error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
   }
 
@@ -82,23 +96,31 @@ export class EvolutionProvider implements WhatsAppProvider {
       }
 
       const cleanNumber = to.replace(/\D/g, '');
-      const res = await fetch(`${this.baseUrl}/message/sendButtons/${this.defaultInstance}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: this.apiKey,
+      const res = await fetch(
+        `${this.baseUrl}/message/sendButtons/${this.defaultInstance}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: this.apiKey,
+          },
+          body: JSON.stringify({
+            number: cleanNumber,
+            options: { delay: 1200, presence: 'composing' },
+            buttonMessage: { text, footer, buttons },
+          }),
         },
-        body: JSON.stringify({
-          number: cleanNumber,
-          options: { delay: 1200, presence: 'composing' },
-          buttonMessage: { text, footer, buttons },
-        }),
-      });
+      );
 
       if (!res.ok) {
         const errorText = await res.text();
-        this.logger.error(`Evolution API error sending buttons: ${res.status} ${errorText}`);
-        return { success: false, error: `Evolution API error: ${res.status} ${errorText}` };
+        this.logger.error(
+          `Evolution API error sending buttons: ${res.status} ${errorText}`,
+        );
+        return {
+          success: false,
+          error: `Evolution API error: ${res.status} ${errorText}`,
+        };
       }
 
       const data = await res.json();
@@ -106,13 +128,21 @@ export class EvolutionProvider implements WhatsAppProvider {
       return { success: true, providerId: data.key?.id };
     } catch (error) {
       this.logger.error(`Failed to send WhatsApp buttons to ${to}`, error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
   }
 
-  async connect(workspaceId: string): Promise<{ instanceName: string; state: string; qr?: string }> {
+  async connect(
+    workspaceId: string,
+  ): Promise<{ instanceName: string; state: string; qr?: string }> {
     if (!this.baseUrl || !this.apiKey || !this.defaultInstance) {
-      return { instanceName: `workspace_${workspaceId.substring(0, 8)}`, state: 'close' };
+      return {
+        instanceName: `workspace_${workspaceId.substring(0, 8)}`,
+        state: 'close',
+      };
     }
 
     const instanceName = `workspace_${workspaceId.substring(0, 8)}`;
@@ -122,11 +152,18 @@ export class EvolutionProvider implements WhatsAppProvider {
       integration: 'WHATSAPP-BAILEYS',
     });
 
-    if (connectRes.status === 403 || connectRes.status === 400 || connectRes.status === 409) {
+    if (
+      connectRes.status === 403 ||
+      connectRes.status === 400 ||
+      connectRes.status === 409
+    ) {
       connectRes = await this.fetch(`/instance/connect/${instanceName}`, 'GET');
     }
 
-    const stateRes = await this.fetch(`/instance/connectionState/${instanceName}`, 'GET');
+    const stateRes = await this.fetch(
+      `/instance/connectionState/${instanceName}`,
+      'GET',
+    );
     const state = stateRes.data?.instance?.state || 'close';
 
     let qr: string | undefined;
@@ -144,7 +181,10 @@ export class EvolutionProvider implements WhatsAppProvider {
       return { state: 'close' };
     }
 
-    const stateRes = await this.fetch(`/instance/connectionState/${instanceName}`, 'GET');
+    const stateRes = await this.fetch(
+      `/instance/connectionState/${instanceName}`,
+      'GET',
+    );
     return { state: stateRes.data?.instance?.state || 'close' };
   }
 

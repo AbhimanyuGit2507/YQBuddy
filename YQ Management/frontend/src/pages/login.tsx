@@ -15,6 +15,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const redirect = router.query.redirect as string || '/dashboard';
+
   useEffect(() => {
     document.cookie = 'token=; Max-Age=0; path=/';
     document.cookie = 'access_token=; Max-Age=0; path=/';
@@ -39,7 +41,11 @@ export default function Login() {
       if (data.requiresOtp) {
         setStep('otp');
       } else {
-        router.push('/dashboard');
+        if (data.user && !data.user.workspaceId) {
+          router.push('/onboarding');
+        } else {
+          router.push(redirect);
+        }
       }
     } catch (err: any) {
       setError(err.message);
@@ -64,14 +70,12 @@ export default function Login() {
       if (!res.ok) throw new Error(data.message || 'Invalid OTP');
 
       if (data.access_token) {
-        // Backend sets HttpOnly cookies, no manual cookie needed
       }
 
-      // Check if user has workspace
       if (data.user && !data.user.workspaceId) {
         router.push('/onboarding');
       } else {
-        router.push('/dashboard');
+        router.push(redirect);
       }
     } catch (err: any) {
       setError(err.message);
@@ -132,6 +136,7 @@ export default function Login() {
                   <input 
                     type="email" 
                     required
+                    data-testid="login-email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-zinc-900 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
@@ -147,6 +152,7 @@ export default function Login() {
                   <input 
                     type="password" 
                     required
+                    data-testid="login-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-zinc-900 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
@@ -161,6 +167,7 @@ export default function Login() {
 
               <button 
                 type="submit" 
+                data-testid="login-submit"
                 disabled={loading}
                 className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white text-black rounded-xl font-semibold hover:bg-zinc-200 transition-colors disabled:opacity-70"
               >

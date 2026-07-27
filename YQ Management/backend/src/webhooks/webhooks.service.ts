@@ -6,7 +6,10 @@ import { WebhookUrlValidator } from './webhook-url-validator.service';
 export class WebhooksService {
   private readonly logger = new Logger(WebhooksService.name);
 
-  constructor(private prisma: PrismaService, private readonly urlValidator: WebhookUrlValidator) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly urlValidator: WebhookUrlValidator,
+  ) {}
 
   async createWebhook(
     workspaceId: string,

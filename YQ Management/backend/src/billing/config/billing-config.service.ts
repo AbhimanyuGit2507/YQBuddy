@@ -60,7 +60,7 @@ export class BillingConfigService {
     const providers = await this.prisma.paymentProvider.findMany({
       where: { isActive: true },
     });
-    return providers.map((p) => p.name as PaymentProviderName);
+    return providers.map((p) => p.name);
   }
 
   async getDefaultPaymentProvider(): Promise<PaymentProviderName> {
@@ -71,7 +71,7 @@ export class BillingConfigService {
     if (!provider) {
       throw new Error('No active payment provider configured');
     }
-    return provider.name as PaymentProviderName;
+    return provider.name;
   }
 
   async ensurePaymentProvidersExist(): Promise<void> {

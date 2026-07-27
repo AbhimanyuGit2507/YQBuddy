@@ -1,9 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { InvitationService } from '../invitation/invitation.service';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class WorkspaceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly invitationService: InvitationService,
+  ) {}
 
   async getWorkspaceBySubdomain(subdomain: string) {
     const workspace = await this.prisma.workspace.findUnique({
@@ -31,5 +40,42 @@ export class WorkspaceService {
 
   async getAllWorkspaces() {
     return this.prisma.workspace.findMany();
+  }
+
+  async joinWorkspace(userId: string, code: string) {
+    const invitation =
+      await this.invitationService.validateAndUseInvitation(code);
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        workspaceId: invitation.workspaceId,
+        role: invitation.role as Role,
+      },
+      include: { workspace: true },
+    });
+
+    return {
+      success: true,
+      workspace: user.workspace,
+      role: user.role,
+    };
+  }
+
+  async getJoinInfo(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { workspace: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      hasWorkspace: !!user.workspaceId,
+      workspace: user.workspace,
+      role: user.role,
+    };
   }
 }

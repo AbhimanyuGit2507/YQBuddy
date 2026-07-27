@@ -1,4 +1,12 @@
-import { IsString, IsEnum, IsOptional, IsNumber, IsObject, IsBoolean, IsNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsNumber,
+  IsObject,
+  IsBoolean,
+  IsNotEmpty,
+} from 'class-validator';
 import { SubscriptionStatus } from '@prisma/client';
 
 export class CreateSubscriptionDto {

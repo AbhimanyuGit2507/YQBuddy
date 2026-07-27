@@ -42,11 +42,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!router.isReady || loading) return;
     
     if (!user) {
-      if (router.pathname.startsWith('/dashboard') || router.pathname.startsWith('/onboarding')) {
+      if (router.pathname.startsWith('/dashboard') || router.pathname.startsWith('/onboarding') || router.pathname.startsWith('/join')) {
         router.push('/login');
       }
     } else if (!user.workspaceId) {
-      if (!router.pathname.startsWith('/onboarding')) {
+      if (!router.pathname.startsWith('/onboarding') && !router.pathname.startsWith('/join')) {
         router.push('/onboarding');
       }
     }
@@ -55,8 +55,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     try {
       await fetchApi('/auth/logout', { method: 'POST' });
-    } catch (e) {
-      console.error('Logout error', e);
+    } catch {
+      // logout locally even if API fails
     }
     setUser(null);
     router.push('/login');

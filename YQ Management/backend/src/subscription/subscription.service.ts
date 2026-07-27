@@ -18,7 +18,10 @@ export class SubscriptionService {
   async getSubscription(workspaceId: string): Promise<Subscription | null> {
     return this.prisma.subscription.findUnique({
       where: { workspaceId },
-      include: { plan: true, transactions: { orderBy: { createdAt: 'desc' }, take: 10 } },
+      include: {
+        plan: true,
+        transactions: { orderBy: { createdAt: 'desc' }, take: 10 },
+      },
     });
   }
 
@@ -42,15 +45,21 @@ export class SubscriptionService {
     });
 
     if (existing) {
-      throw new BillingException('Workspace already has an active subscription');
+      throw new BillingException(
+        'Workspace already has an active subscription',
+      );
     }
 
-    const billingInterval = dto.billingInterval || plan.billingInterval || 'MONTHLY';
+    const billingInterval =
+      dto.billingInterval || plan.billingInterval || 'MONTHLY';
     const trialDays = dto.trialDays ?? plan.trialDays;
     const now = new Date();
 
     const trialStartDate = dto.startTrial ? now : null;
-    const trialEndDate = dto.startTrial && trialDays > 0 ? new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000) : null;
+    const trialEndDate =
+      dto.startTrial && trialDays > 0
+        ? new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000)
+        : null;
 
     let status: SubscriptionStatus;
     let currentPeriodStart: Date | null = null;
@@ -65,7 +74,9 @@ export class SubscriptionService {
       status = SubscriptionStatus.PENDING_PAYMENT;
       currentPeriodStart = now;
       const periodMs = billingInterval === 'YEARLY' ? 365 : 30;
-      currentPeriodEnd = new Date(now.getTime() + periodMs * 24 * 60 * 60 * 1000);
+      currentPeriodEnd = new Date(
+        now.getTime() + periodMs * 24 * 60 * 60 * 1000,
+      );
       nextBillingDate = currentPeriodEnd;
     }
 
@@ -92,7 +103,9 @@ export class SubscriptionService {
       data: { subscriptionStatus: status },
     });
 
-    this.logger.log(`Subscription created for workspace ${workspaceId}, plan ${dto.planId}, status ${status}`);
+    this.logger.log(
+      `Subscription created for workspace ${workspaceId}, plan ${dto.planId}, status ${status}`,
+    );
     return subscription;
   }
 
@@ -128,7 +141,7 @@ export class SubscriptionService {
         currentPeriodEnd: this.calculatePeriodEnd(new Date(), billingInterval),
         nextBillingDate: this.calculatePeriodEnd(new Date(), billingInterval),
         metadata: {
-          ...(subscription.metadata ?? {}) as Record<string, unknown>,
+          ...((subscription.metadata ?? {}) as Record<string, unknown>),
           upgradedFrom: subscription.planId,
           upgradedAt: new Date().toISOString(),
           prorated: dto.prorate ?? true,
@@ -137,7 +150,9 @@ export class SubscriptionService {
       include: { plan: true },
     });
 
-    this.logger.log(`Subscription upgraded for workspace ${workspaceId} to plan ${dto.planId}`);
+    this.logger.log(
+      `Subscription upgraded for workspace ${workspaceId} to plan ${dto.planId}`,
+    );
     return updated;
   }
 
@@ -167,10 +182,16 @@ export class SubscriptionService {
         planId: dto.planId,
         status: SubscriptionStatus.ACTIVE,
         currentPeriodStart: new Date(),
-        currentPeriodEnd: this.calculatePeriodEnd(new Date(), subscription.billingInterval),
-        nextBillingDate: this.calculatePeriodEnd(new Date(), subscription.billingInterval),
+        currentPeriodEnd: this.calculatePeriodEnd(
+          new Date(),
+          subscription.billingInterval,
+        ),
+        nextBillingDate: this.calculatePeriodEnd(
+          new Date(),
+          subscription.billingInterval,
+        ),
         metadata: {
-          ...(subscription.metadata ?? {}) as Record<string, unknown>,
+          ...((subscription.metadata ?? {}) as Record<string, unknown>),
           downgradedFrom: subscription.planId,
           downgradedAt: new Date().toISOString(),
         },
@@ -178,7 +199,9 @@ export class SubscriptionService {
       include: { plan: true },
     });
 
-    this.logger.log(`Subscription downgraded for workspace ${workspaceId} to plan ${dto.planId}`);
+    this.logger.log(
+      `Subscription downgraded for workspace ${workspaceId} to plan ${dto.planId}`,
+    );
     return updated;
   }
 
@@ -200,10 +223,12 @@ export class SubscriptionService {
         endedAt: dto.immediate ? now : null,
         nextBillingDate: null,
         metadata: {
-          ...(subscription.metadata ?? {}) as Record<string, unknown>,
+          ...((subscription.metadata ?? {}) as Record<string, unknown>),
           cancellationReason: dto.reason,
           cancelledAt: now.toISOString(),
-          effectiveDate: dto.immediate ? now.toISOString() : subscription.currentPeriodEnd?.toISOString(),
+          effectiveDate: dto.immediate
+            ? now.toISOString()
+            : subscription.currentPeriodEnd?.toISOString(),
         },
       },
       include: { plan: true },
@@ -214,7 +239,9 @@ export class SubscriptionService {
       data: { subscriptionStatus: 'CANCELLED' },
     });
 
-    this.logger.log(`Subscription cancelled for workspace ${workspaceId}, immediate=${dto.immediate}`);
+    this.logger.log(
+      `Subscription cancelled for workspace ${workspaceId}, immediate=${dto.immediate}`,
+    );
     return updated;
   }
 
@@ -227,8 +254,13 @@ export class SubscriptionService {
       throw new NotFoundException('No subscription found for workspace');
     }
 
-    if (subscription.status !== SubscriptionStatus.CANCELLED && subscription.status !== SubscriptionStatus.PAST_DUE) {
-      throw new BillingException('Subscription is not in a state that allows resumption');
+    if (
+      subscription.status !== SubscriptionStatus.CANCELLED &&
+      subscription.status !== SubscriptionStatus.PAST_DUE
+    ) {
+      throw new BillingException(
+        'Subscription is not in a state that allows resumption',
+      );
     }
 
     const plan = await this.prisma.plan.findUnique({
@@ -252,7 +284,7 @@ export class SubscriptionService {
         cancellationDate: null,
         endedAt: null,
         metadata: {
-          ...(subscription.metadata ?? {}) as Record<string, unknown>,
+          ...((subscription.metadata ?? {}) as Record<string, unknown>),
           resumedAt: now.toISOString(),
         },
       },
@@ -284,12 +316,20 @@ export class SubscriptionService {
       where: { workspaceId },
     });
 
-    if (existing && existing.status !== SubscriptionStatus.EXPIRED && existing.status !== SubscriptionStatus.CANCELLED) {
-      throw new BillingException('Workspace already has an active subscription');
+    if (
+      existing &&
+      existing.status !== SubscriptionStatus.EXPIRED &&
+      existing.status !== SubscriptionStatus.CANCELLED
+    ) {
+      throw new BillingException(
+        'Workspace already has an active subscription',
+      );
     }
 
     const now = new Date();
-    const trialEndDate = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
+    const trialEndDate = new Date(
+      now.getTime() + trialDays * 24 * 60 * 60 * 1000,
+    );
 
     const subscription = await this.prisma.subscription.create({
       data: {
@@ -312,7 +352,9 @@ export class SubscriptionService {
       data: { subscriptionStatus: 'TRIAL' },
     });
 
-    this.logger.log(`Free trial started for workspace ${workspaceId}, plan ${planId}, ${trialDays} days`);
+    this.logger.log(
+      `Free trial started for workspace ${workspaceId}, plan ${planId}, ${trialDays} days`,
+    );
     return subscription;
   }
 
@@ -376,7 +418,7 @@ export class SubscriptionService {
         cancellationDate: null,
         endedAt: null,
         metadata: {
-          ...(subscription.metadata ?? {}) as Record<string, unknown>,
+          ...((subscription.metadata ?? {}) as Record<string, unknown>),
           renewedAt: now.toISOString(),
         },
       },
@@ -392,7 +434,11 @@ export class SubscriptionService {
     return updated;
   }
 
-  async getSubscriptionHistory(workspaceId: string, offset = 0, limit = 50): Promise<Subscription[]> {
+  async getSubscriptionHistory(
+    workspaceId: string,
+    offset = 0,
+    limit = 50,
+  ): Promise<Subscription[]> {
     return this.prisma.subscription.findMany({
       where: { workspaceId },
       skip: offset,
@@ -403,7 +449,10 @@ export class SubscriptionService {
   }
 
   private calculatePeriodEnd(startDate: Date, interval: string): Date {
-    const ms = interval === 'YEARLY' ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
+    const ms =
+      interval === 'YEARLY'
+        ? 365 * 24 * 60 * 60 * 1000
+        : 30 * 24 * 60 * 60 * 1000;
     return new Date(startDate.getTime() + ms);
   }
 }

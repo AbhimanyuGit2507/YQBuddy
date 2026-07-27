@@ -31,7 +31,10 @@ export class SubscriptionCron {
         await this.subscriptionService.expireTrial(sub.workspaceId);
         this.logger.log(`Expired trial for workspace ${sub.workspaceId}`);
       } catch (e) {
-        this.logger.error(`Failed to expire trial for workspace ${sub.workspaceId}`, e);
+        this.logger.error(
+          `Failed to expire trial for workspace ${sub.workspaceId}`,
+          e,
+        );
       }
     }
   }
@@ -56,21 +59,34 @@ export class SubscriptionCron {
     for (const sub of upcoming) {
       try {
         const daysRemaining = Math.ceil(
-          ((sub.nextBillingDate?.getTime() || Date.now()) - Date.now()) / (24 * 60 * 60 * 1000),
+          ((sub.nextBillingDate?.getTime() || Date.now()) - Date.now()) /
+            (24 * 60 * 60 * 1000),
         );
+
+        const workspaceOwner = await this.prisma.user.findFirst({
+          where: { workspaceId: sub.workspaceId, role: 'ADMIN' },
+          select: { email: true },
+        });
+
+        const email = workspaceOwner?.email || 'admin@example.com';
 
         await this.communicationService.publish(
           CommunicationEvent.BILLING_TRIAL_ENDING,
           {
-            email: sub.workspace?.name || 'admin@example.com',
+            email,
             workspaceName: sub.workspace?.name || 'Your Workspace',
             daysRemaining,
             workspaceId: sub.workspaceId,
           },
         );
-        this.logger.log(`Sent renewal reminder for workspace ${sub.workspaceId}`);
+        this.logger.log(
+          `Sent renewal reminder for workspace ${sub.workspaceId}`,
+        );
       } catch (e) {
-        this.logger.error(`Failed to send renewal reminder for workspace ${sub.workspaceId}`, e);
+        this.logger.error(
+          `Failed to send renewal reminder for workspace ${sub.workspaceId}`,
+          e,
+        );
       }
     }
   }
@@ -92,9 +108,14 @@ export class SubscriptionCron {
           immediate: true,
           reason: 'Payment failed - subscription expired',
         });
-        this.logger.log(`Cancelled expired subscription for workspace ${sub.workspaceId}`);
+        this.logger.log(
+          `Cancelled expired subscription for workspace ${sub.workspaceId}`,
+        );
       } catch (e) {
-        this.logger.error(`Failed to cancel expired subscription for workspace ${sub.workspaceId}`, e);
+        this.logger.error(
+          `Failed to cancel expired subscription for workspace ${sub.workspaceId}`,
+          e,
+        );
       }
     }
   }

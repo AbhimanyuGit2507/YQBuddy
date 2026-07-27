@@ -36,6 +36,13 @@ import { WhatsAppTemplateService } from './templates/whatsapp-template.service';
     },
   ],
   controllers: [CommunicationController],
-  exports: [CommunicationService, TemplateService, CommunicationLogService, WhatsAppTemplateService, 'EmailProvider', 'WhatsAppProvider'],
+  exports: [
+    CommunicationService,
+    TemplateService,
+    CommunicationLogService,
+    WhatsAppTemplateService,
+    'EmailProvider',
+    'WhatsAppProvider',
+  ],
 })
 export class CommunicationModule {}

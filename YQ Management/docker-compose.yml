@@ -35,7 +35,7 @@ services:
       retries: 5
 
   evolution-api:
-    image: evoapicloud/evolution-api:2.3.7
+    image: evoapicloud/evolution-api:latest
     container_name: yq_evolution_api
     restart: unless-stopped
     ports:
@@ -47,7 +47,7 @@ services:
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-yq_queue}?schema=public
+      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${EVOLUTION_DB:-yq_evolution}?schema=public
       - DATABASE_CONNECTION_CLIENT_NAME=evolution_api
       - REDIS_URI=redis://redis:6379
       - REDIS_PREFIX_KEY=evolution

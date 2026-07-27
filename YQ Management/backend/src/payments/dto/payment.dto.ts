@@ -1,4 +1,13 @@
-import { IsString, IsNumber, IsNotEmpty, IsOptional, IsEnum, IsObject, IsBoolean, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsObject,
+  IsBoolean,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { TransactionStatus } from '@prisma/client';
 import { SubscriptionStatus } from '@prisma/client';
@@ -9,7 +18,8 @@ export class CreatePaymentDto {
   planId: string;
 
   @IsNumber()
-  amount: number;
+  @IsOptional()
+  amount?: number;
 
   @IsString()
   @IsOptional()

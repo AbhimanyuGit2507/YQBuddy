@@ -1,4 +1,11 @@
-import { IsString, IsObject, IsOptional, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsObject,
+  IsOptional,
+  IsEnum,
+  IsArray,
+  IsNotEmpty,
+} from 'class-validator';
 import { WebhookEventType } from '@prisma/client';
 
 export class ProcessWebhookDto {
@@ -24,4 +31,18 @@ export class ProcessWebhookDto {
   @IsString()
   @IsOptional()
   idempotencyKey?: string;
+}
+
+export class CreateWebhookDto {
+  @IsString()
+  @IsNotEmpty()
+  url: string;
+
+  @IsOptional()
+  @IsString()
+  secret?: string;
+
+  @IsArray()
+  @IsOptional()
+  events?: string[];
 }

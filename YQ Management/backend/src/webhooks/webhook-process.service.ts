@@ -22,8 +22,12 @@ export class WebhookProcessService {
     private readonly paymentsService: PaymentsService,
   ) {}
 
-  async processPaymentWebhook(body: any, headers: any): Promise<{ success: boolean }> {
-    const providerEventId = headers['x-ozow-event-id'] || body.id || body.eventId;
+  async processPaymentWebhook(
+    body: any,
+    headers: any,
+  ): Promise<{ success: boolean }> {
+    const providerEventId =
+      headers['x-ozow-event-id'] || body.id || body.eventId;
     const idempotencyKey = `ozow-${providerEventId}`;
 
     const existing = await this.prisma.webhookEvent.findFirst({
@@ -31,7 +35,9 @@ export class WebhookProcessService {
     });
 
     if (existing) {
-      this.logger.log(`Duplicate webhook detected: ${idempotencyKey}, returning 200`);
+      this.logger.log(
+        `Duplicate webhook detected: ${idempotencyKey}, returning 200`,
+      );
       return { success: true };
     }
 
@@ -42,7 +48,7 @@ export class WebhookProcessService {
         eventType: this.mapEventType(body.Status),
         workspaceId: body.workspaceId || undefined,
         transactionId: body.TransactionReference || undefined,
-        payload: body as any,
+        payload: body,
         headers: Object.fromEntries(Object.entries(headers)) as any,
         signature: headers['x-ozow-signature'] || body.signature || undefined,
         idempotencyKey,
@@ -51,11 +57,13 @@ export class WebhookProcessService {
     });
 
     try {
-      const provider = this.providerRegistry.getProvider(PaymentProviderName.OZOW);
+      const provider = this.providerRegistry.getProvider(
+        PaymentProviderName.OZOW,
+      );
       const sig = headers['x-ozow-signature'] || body.signature || '';
       const verification = await provider.verifyWebhook({
-        payload: body as any,
-        headers: Object.fromEntries(Object.entries(headers)) as any,
+        payload: body,
+        headers: Object.fromEntries(Object.entries(headers)),
         signature: sig,
       });
 
@@ -108,7 +116,9 @@ export class WebhookProcessService {
               processingResult: 'Transaction not found',
             },
           });
-          throw new BillingException(`Transaction ${TransactionReference} not found`);
+          throw new BillingException(
+            `Transaction ${TransactionReference} not found`,
+          );
         }
 
         await this.prisma.webhookEvent.update({
@@ -119,7 +129,12 @@ export class WebhookProcessService {
         await this.prisma.transaction.update({
           where: { id: transaction.id },
           data: {
-            status: Status === 'Complete' ? 'SUCCESS' : Status === 'Cancelled' ? 'CANCELLED' : 'FAILED',
+            status:
+              Status === 'Complete'
+                ? 'SUCCESS'
+                : Status === 'Cancelled'
+                  ? 'CANCELLED'
+                  : 'FAILED',
             rawProviderResponse: body,
           },
         });
@@ -142,8 +157,12 @@ export class WebhookProcessService {
               data: {
                 status: 'ACTIVE',
                 currentPeriodStart: new Date(),
-                currentPeriodEnd: new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000),
-                nextBillingDate: new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000),
+                currentPeriodEnd: new Date(
+                  Date.now() + periodDays * 24 * 60 * 60 * 1000,
+                ),
+                nextBillingDate: new Date(
+                  Date.now() + periodDays * 24 * 60 * 60 * 1000,
+                ),
                 renewalDate: new Date(),
               },
             });
@@ -166,21 +185,24 @@ export class WebhookProcessService {
         where: { id: webhookEvent.id },
         data: {
           processingStatus: WebhookProcessingStatus.FAILED,
-          processingResult: error instanceof Error ? error.message : 'Unknown error',
+          processingResult:
+            error instanceof Error ? error.message : 'Unknown error',
         },
       });
-      this.logger.error(`Webhook processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.logger.error(
+        `Webhook processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
       throw error;
     }
   }
 
   private mapEventType(status: string): WebhookEventType {
     const statusMap: Record<string, WebhookEventType> = {
-      'Complete': WebhookEventType.PAYMENT_SUCCESS,
-      'Cancelled': WebhookEventType.PAYMENT_FAILED,
-      'Pending': WebhookEventType.PAYMENT_PENDING,
-      'Verified': WebhookEventType.PAYMENT_SUCCESS,
-      'Expired': WebhookEventType.PAYMENT_FAILED,
+      Complete: WebhookEventType.PAYMENT_SUCCESS,
+      Cancelled: WebhookEventType.PAYMENT_FAILED,
+      Pending: WebhookEventType.PAYMENT_PENDING,
+      Verified: WebhookEventType.PAYMENT_SUCCESS,
+      Expired: WebhookEventType.PAYMENT_FAILED,
     };
     return statusMap[status] || WebhookEventType.PAYMENT_PENDING;
   }

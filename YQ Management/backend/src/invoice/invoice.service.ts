@@ -23,7 +23,11 @@ export class InvoiceService {
     });
   }
 
-  async generateInvoice(workspaceId: string, subscriptionId?: string, transactionId?: string) {
+  async generateInvoice(
+    workspaceId: string,
+    subscriptionId?: string,
+    transactionId?: string,
+  ) {
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { name: true, subdomain: true },
@@ -60,7 +64,9 @@ export class InvoiceService {
       },
     });
 
-    this.logger.log(`Invoice generated: ${invoiceNumber} for workspace ${workspaceId}`);
+    this.logger.log(
+      `Invoice generated: ${invoiceNumber} for workspace ${workspaceId}`,
+    );
     return invoice;
   }
 }

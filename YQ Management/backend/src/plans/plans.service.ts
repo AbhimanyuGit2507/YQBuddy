@@ -60,7 +60,8 @@ export class PlansService {
     const data: Record<string, unknown> = {};
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.description !== undefined) data.description = dto.description;
-    if (dto.billingInterval !== undefined) data.billingInterval = dto.billingInterval;
+    if (dto.billingInterval !== undefined)
+      data.billingInterval = dto.billingInterval;
     if (dto.price !== undefined) data.price = dto.price;
     if (dto.currency !== undefined) data.currency = dto.currency;
     if (dto.trialDays !== undefined) data.trialDays = dto.trialDays;

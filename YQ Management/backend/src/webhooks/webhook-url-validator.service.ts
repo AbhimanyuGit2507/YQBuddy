@@ -61,24 +61,32 @@ export class WebhookUrlValidator {
         hostname !== '0.0.0.0' &&
         hostname !== '::1'
       ) {
-        throw new BadRequestException('Insecure webhook URL: use HTTPS for external URLs');
+        throw new BadRequestException(
+          'Insecure webhook URL: use HTTPS for external URLs',
+        );
       }
     }
 
     for (const blocked of this.blockedHosts) {
       if (parsed.hostname.toLowerCase() === blocked) {
-        throw new BadRequestException('Webhook URL points to a blocked internal address');
+        throw new BadRequestException(
+          'Webhook URL points to a blocked internal address',
+        );
       }
     }
 
     if (parsed.hostname.toLowerCase().endsWith('.internal')) {
-      throw new BadRequestException('Webhook URL points to an internal address');
+      throw new BadRequestException(
+        'Webhook URL points to an internal address',
+      );
     }
 
     try {
       const resolved = await this.resolveIp(parsed.hostname);
       if (this.isPrivateIp(resolved)) {
-        throw new BadRequestException('Webhook URL resolves to a private/internal IP address');
+        throw new BadRequestException(
+          'Webhook URL resolves to a private/internal IP address',
+        );
       }
     } catch (error) {
       if (error instanceof BadRequestException) {

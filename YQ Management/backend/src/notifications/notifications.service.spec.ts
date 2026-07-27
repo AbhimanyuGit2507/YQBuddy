@@ -13,7 +13,9 @@ describe('NotificationsService', () => {
         {
           provide: 'WhatsAppProvider',
           useValue: {
-            sendText: jest.fn(() => Promise.resolve({ success: true, providerId: 'mock' })),
+            sendText: jest.fn(() =>
+              Promise.resolve({ success: true, providerId: 'mock' }),
+            ),
           },
         },
         {

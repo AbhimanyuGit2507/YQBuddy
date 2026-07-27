@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
+import { toast } from 'sonner';
 
 export default function Kiosk() {
   const router = useRouter();
@@ -18,25 +19,38 @@ export default function Kiosk() {
   };
 
   const handleSubmit = async () => {
-    if (!phone) return;
+    if (!phone || !tenantId) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/queue/join`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/token/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, customerName: 'Walk-in', phone })
+        body: JSON.stringify({
+          queueId: tenantId,
+          customerName: 'Walk-in',
+          phone,
+          formResponses: {},
+          language: 'en'
+        })
       });
+      const data = await res.json();
       if (res.ok) {
         setSuccess(true);
         setTimeout(() => {
-          setSuccess(false);
-          setPhone('');
-        }, 5000);
+          router.push(`/customer/confirmation/${data.id}`);
+        }, 2000);
+      } else {
+        toast.error(data.message || 'Failed to join queue');
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      toast.error('Network error. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
+  };
+
+  const handleRetry = () => {
+    setSuccess(false);
   };
 
   if (success) {
@@ -45,6 +59,9 @@ export default function Kiosk() {
         <div className="text-center">
           <h1 className="text-5xl font-bold text-green-700 mb-4">You're in line!</h1>
           <p className="text-2xl text-green-600">Please check your WhatsApp for your digital token and live updates.</p>
+          <button onClick={handleRetry} className="mt-8 px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors">
+            Join Another Person
+          </button>
         </div>
       </div>
     );
@@ -89,7 +106,7 @@ export default function Kiosk() {
              disabled={isSubmitting || phone.length < 5}
              className="text-xl p-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-xl font-bold transition-colors"
           >
-            GO
+            {isSubmitting ? '...' : 'GO'}
           </button>
         </div>
       </div>

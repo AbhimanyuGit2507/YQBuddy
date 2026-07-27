@@ -44,10 +44,37 @@ export class InvitationService {
     return invitation;
   }
 
+  async createJoinCode(
+    workspaceId: string,
+    createdBy: string,
+    role: Role = Role.OPERATOR,
+  ) {
+    const code = this.generateCode();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    const invitation = await this.prisma.invitation.create({
+      data: {
+        workspaceId,
+        code,
+        email: null,
+        role,
+        maxUses: 100,
+        expiresAt,
+        createdBy,
+      },
+    });
+
+    return invitation;
+  }
+
   async getInvitations(workspaceId: string) {
     return this.prisma.invitation.findMany({
       where: { workspaceId },
       orderBy: { createdAt: 'desc' },
+      include: {
+        workspace: { select: { id: true, name: true, subdomain: true } },
+      },
     });
   }
 

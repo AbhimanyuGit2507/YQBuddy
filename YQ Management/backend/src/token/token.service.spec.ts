@@ -13,7 +13,14 @@ describe('TokenService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [TokenService],
-      imports: [PrismaModule, RedisModule, NotificationsModule, WebhooksModule, WhatsappModule, CommunicationModule],
+      imports: [
+        PrismaModule,
+        RedisModule,
+        NotificationsModule,
+        WebhooksModule,
+        WhatsappModule,
+        CommunicationModule,
+      ],
     }).compile();
 
     service = module.get<TokenService>(TokenService);

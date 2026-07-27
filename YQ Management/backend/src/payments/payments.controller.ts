@@ -9,6 +9,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -19,6 +20,8 @@ import { CreatePaymentDto } from './dto/payment.dto';
 import { WebhookProcessService } from '../webhooks/webhook-process.service';
 import { WorkspaceGuard } from '../auth/workspace.guard';
 import { UuidPipe } from '../common/pipes/validation.pipes';
+import { PrismaService } from '../prisma/prisma.service';
+import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('billing/payments')
 @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
@@ -27,11 +30,41 @@ export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly webhookProcessService: WebhookProcessService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Post('checkout')
-  async createCheckout(@Request() req: any, @Body() dto: CreatePaymentDto) {
+  async createCheckout(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: CreatePaymentDto,
+  ) {
     return this.paymentsService.createCheckout(dto, req.user.workspaceId);
+  }
+
+  @Post('generate-link')
+  async generateLink(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: { planId?: string },
+  ) {
+    const planId = body.planId;
+    if (!planId) {
+      const plan = await this.prisma.plan.findFirst({
+        where: { status: 'ACTIVE' },
+      });
+      if (!plan) {
+        throw new BadRequestException(
+          'No active plan available for subscription',
+        );
+      }
+      return this.paymentsService.createCheckout(
+        { planId: plan.id },
+        req.user.workspaceId,
+      );
+    }
+    return this.paymentsService.createCheckout(
+      { planId },
+      req.user.workspaceId,
+    );
   }
 
   @Get('status/:transactionRef')
@@ -41,7 +74,7 @@ export class PaymentsController {
 
   @Get('history')
   async getTransactionHistory(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Query('offset') offset?: number,
     @Query('limit') limit?: number,
   ) {
@@ -59,7 +92,10 @@ export class PaymentsController {
 
   @Post('webhooks/ozow')
   @HttpCode(HttpStatus.OK)
-  async handleOzowWebhook(@Body() body: any, @Request() req: any) {
+  async handleOzowWebhook(
+    @Body() body: any,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.webhookProcessService.processPaymentWebhook(body, req.headers);
   }
 }

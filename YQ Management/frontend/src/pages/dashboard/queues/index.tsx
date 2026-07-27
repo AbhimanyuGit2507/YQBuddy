@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import Head from 'next/head';
 import AdminLayout from '../../../components/AdminLayout';
-import { Plus, QrCode, X, Check, Loader2 } from 'lucide-react';
+import { Plus, QrCode, X, Check, Loader2, List } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
+import { toast } from 'sonner';
+import AlertDialog from '../../../components/AlertDialog';
 
 export default function QueuesList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,6 +16,7 @@ export default function QueuesList() {
   const [includeName, setIncludeName] = useState(true);
   const [includePhone, setIncludePhone] = useState(true);
   const [includePurpose, setIncludePurpose] = useState(true);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: queues = [], isLoading, refetch } = useQuery({
     queryKey: ['queues'],
@@ -61,8 +64,8 @@ export default function QueuesList() {
       setIncludePhone(true);
       setIncludePurpose(true);
       refetch();
-    } catch (e) {
-      alert('Error creating queue');
+    } catch {
+      // fetchApi handles error toasts
     }
     setCreating(false);
   };
@@ -74,10 +77,26 @@ export default function QueuesList() {
         body: JSON.stringify({ status: currentStatus === 'ACTIVE' ? 'PAUSED' : 'ACTIVE' }) 
       });
       refetch();
-    } catch (e) {
-      alert('Error updating status');
+    } catch {
+      // fetchApi handles error toasts
     }
   }
+
+  const handleDelete = async (id: string) => {
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await fetchApi(`/queue/${deleteId}`, { method: 'DELETE' });
+      refetch();
+      toast.success('Queue deleted successfully');
+    } catch {
+      // fetchApi handles error toasts
+    }
+    setDeleteId(null);
+  };
 
   return (
     <AdminLayout>
@@ -96,6 +115,7 @@ export default function QueuesList() {
           <button 
             id="tour-create-queue-btn"
             onClick={() => setIsModalOpen(true)} 
+            data-testid="create-queue-button"
             className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors shadow-[0_0_15px_rgba(79,70,229,0.3)] border border-indigo-500/50"
           >
             <Plus className="w-5 h-5" />
@@ -108,9 +128,18 @@ export default function QueuesList() {
           
           <div className="divide-y divide-gray-200 dark:divide-white/10">
             {isLoading && <div className="p-8 text-center text-gray-500 dark:text-zinc-500">Loading queues...</div>}
-            
+            {!isLoading && queues.length === 0 && (
+              <div className="p-12 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center">
+                  <List className="w-8 h-8 text-gray-400 dark:text-zinc-500" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">No queues yet</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4">Create your first queue to start managing customers.</p>
+                <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors">Create Queue</button>
+              </div>
+            )}
             {queues.map((queue: any) => (
-              <div key={queue.id} className="p-6 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
+              <div key={queue.id} data-testid={`queue-item-${queue.id}`} className="p-6 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white">{queue.name}</h3>
@@ -126,13 +155,14 @@ export default function QueuesList() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <Link 
-                    href={`/dashboard/queues/${queue.id}`}
-                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors border border-white/5"
-                  >
-                    Manage
-                  </Link>
+                <div className="flex items-center gap-3 flex-wrap">
+                   <Link 
+                     href={`/dashboard/queues/${queue.id}`}
+                     data-testid={`manage-queue-${queue.id}`}
+                     className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors border border-white/5"
+                   >
+                     Manage
+                   </Link>
                   <Link 
                     href={`/dashboard/queues/${queue.id}/display`}
                     target="_blank"
@@ -141,12 +171,12 @@ export default function QueuesList() {
                     <QrCode className="w-4 h-4" />
                     QR Display
                   </Link>
-                  <button onClick={() => handleToggleStatus(queue.id, queue.status)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors border border-white/5">
-                    {queue.status === 'ACTIVE' ? 'Pause' : 'Resume'}
-                  </button>
-                  <button className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-sm font-medium transition-colors border border-red-500/20">
-                    Delete
-                  </button>
+                   <button onClick={() => handleToggleStatus(queue.id, queue.status)} data-testid={`toggle-status-${queue.id}`} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors border border-white/5">
+                     {queue.status === 'ACTIVE' ? 'Pause' : 'Resume'}
+                   </button>
+                   <button onClick={() => handleDelete(queue.id)} data-testid={`delete-queue-${queue.id}`} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-sm font-medium transition-colors border border-red-500/20">
+                     Delete
+                   </button>
                 </div>
               </div>
             ))}
@@ -222,9 +252,10 @@ export default function QueuesList() {
               </div>
 
               <div className="pt-4 flex justify-end gap-3 border-t border-gray-200 dark:border-white/10">
-                <button 
+               <button 
                   type="button"
                   onClick={() => setIsModalOpen(false)}
+                  data-testid="cancel-create-queue"
                   className="px-5 py-2.5 text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl font-medium transition-colors"
                 >
                   Cancel
@@ -232,6 +263,7 @@ export default function QueuesList() {
                 <button 
                   type="submit"
                   disabled={creating || !newQueueName.trim()}
+                  data-testid="submit-create-queue"
                   className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors shadow-[0_0_15px_rgba(79,70,229,0.3)] disabled:opacity-50"
                 >
                   {creating && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -243,6 +275,16 @@ export default function QueuesList() {
         </div>,
         document.body
       )}
+      
+      <AlertDialog
+        open={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={confirmDelete}
+        title="Delete Queue"
+        description="Are you sure you want to delete this queue? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+      />
     </AdminLayout>
   );
 }

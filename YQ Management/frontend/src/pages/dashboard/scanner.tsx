@@ -94,11 +94,8 @@ export default function AdminScanner() {
       if (scannerRef.current) {
         try {
           await scannerRef.current.stop();
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          if (!message.includes('removeChild') && !message.includes('is not of type')) {
-            console.error('Error stopping scanner:', err);
-          }
+        } catch {
+          // ignore stop errors when page is leaving
         }
         scannerRef.current = null;
       }
@@ -137,8 +134,7 @@ export default function AdminScanner() {
           : sortedCameras.find(c => !c.label.toLowerCase().includes('front'));
         setSelectedCamera(defaultCamera?.deviceId || sortedCameras[0].deviceId);
       }
-    } catch (err) {
-      console.error('Error accessing cameras:', err);
+    } catch {
       setError('Unable to access camera. Please check permissions.');
     }
   }, [useFrontCamera]);
@@ -149,8 +145,7 @@ export default function AdminScanner() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       stream.getTracks().forEach(track => track.stop());
       await getCameras();
-    } catch (err) {
-      console.error('Camera permission error:', err);
+    } catch {
       setError('Camera permission denied. Please allow camera access and try again.');
     }
   }, [getCameras]);
@@ -218,8 +213,6 @@ export default function AdminScanner() {
             }, 2000);
 
           } catch (e: unknown) {
-            console.error('Validation error:', e);
-
             let status = 'Invalid QR Code';
             let reason = 'Unknown error';
 
@@ -276,8 +269,7 @@ export default function AdminScanner() {
       setScannerStatus('scanning');
       resetIdleTimer();
 
-    } catch (err) {
-      console.error('Scanner initialization error:', err);
+    } catch {
       setError('Failed to initialize scanner. Please try again.');
       setScannerStatus('error');
     }
@@ -291,11 +283,8 @@ export default function AdminScanner() {
       }
       try {
         await scannerRef.current.stop();
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        if (!message.includes('removeChild') && !message.includes('is not of type')) {
-          console.error('Error stopping scanner:', err);
-        }
+      } catch {
+        // ignore cleanup errors
       }
       scannerRef.current = null;
     }

@@ -19,6 +19,7 @@ import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
 import { WorkspaceGuard } from '../auth/workspace.guard';
 import { UuidPipe } from '../common/pipes/validation.pipes';
+import { CreateWebhookDto } from './dto/webhook.dto';
 
 @Controller('webhooks')
 @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
@@ -30,15 +31,12 @@ export class WebhooksController {
   ) {}
 
   @Post()
-  async createWebhook(
-    @Req() req: any,
-    @Body() body: { url: string; secret?: string; events: string[] },
-  ) {
+  async createWebhook(@Req() req: any, @Body() body: CreateWebhookDto) {
     return this.webhooksService.createWebhook(
       req.user.workspaceId,
       body.url,
       body.secret || null,
-      body.events,
+      body.events || [],
     );
   }
 

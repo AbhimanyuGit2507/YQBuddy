@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
 import { languages, t } from '../../../lib/i18n';
+import PhoneInput from '../../../components/PhoneInput';
 
 export default function JoinQueue() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function JoinQueue() {
   const [language, setLanguage] = useState('en');
   const [joinMode, setJoinMode] = useState<'immediate' | 'appointment'>('immediate');
   const [scheduledFor, setScheduledFor] = useState<string>('');
+  const [phoneCountryCode, setPhoneCountryCode] = useState('+1');
 
   const { data: queue, isLoading: isLoadingQueue } = useQuery({
     queryKey: ['queue', queueId],
@@ -23,23 +25,17 @@ export default function JoinQueue() {
     enabled: !!queueId,
   });
 
-  // Pre-populate system defaults if needed
-  useEffect(() => {
-    if (queue?.formConfig) {
-      const initial: Record<string, any> = {};
-      queue.formConfig.forEach((field: any) => {
-        if (field.type === 'dropdown' && field.options?.length > 0) {
-          initial[field.id] = field.options[0];
-        } else if (field.type === 'checkbox') {
-          initial[field.id] = false;
-        } else {
-          initial[field.id] = '';
-        }
-      });
-      // Don't overwrite if user already typed something
-      setResponses((prev) => ({ ...initial, ...prev }));
-    }
-  }, [queue]);
+  const { data: whatsappStatus } = useQuery({
+    queryKey: ['whatsapp-status'],
+    queryFn: () => fetchApi('/whatsapp/status'),
+    enabled: !!queueId,
+    refetchInterval: 5000,
+  });
+
+  const isWhatsAppConnected = whatsappStatus?.state === 'open';
+
+  const phoneField = queue?.formConfig?.find((f: any) => f.type === 'phone');
+  const phoneFieldId = phoneField?.id;
 
   const requestOtpMutation = useMutation({
     mutationFn: (phone: string) => fetchApi('/token/request-otp', {
@@ -72,7 +68,6 @@ export default function JoinQueue() {
   const handleRequestOtp = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
     if (queue?.formConfig) {
       for (const field of queue.formConfig) {
         if (field.required && !responses[field.id]) {
@@ -87,19 +82,16 @@ export default function JoinQueue() {
       return;
     }
 
-    // Check if a phone field exists
-    const phoneField = queue?.formConfig?.find((f: any) => f.type === 'phone');
-
-    if (phoneField) {
-      const phone = responses[phoneField.id];
-      if (!phone && phoneField.required) {
+    if (phoneField && isWhatsAppConnected) {
+      const rawPhone = responses[phoneField.id];
+      const fullPhone = rawPhone ? `${phoneCountryCode}${rawPhone.replace(/\D/g, '')}` : '';
+      if (!fullPhone && phoneField.required) {
         setError('Please enter your phone number.');
         return;
       }
-      if (phone) {
-        requestOtpMutation.mutate(phone);
+      if (fullPhone) {
+        requestOtpMutation.mutate(fullPhone);
       } else {
-        // Phone field exists but is not required and not filled in
         joinMutation.mutate({
           queueId: queueId as string,
           customerName: responses['name'] || 'Customer',
@@ -111,7 +103,6 @@ export default function JoinQueue() {
         });
       }
     } else {
-      // No phone field configured at all, skip OTP step completely
       joinMutation.mutate({
         queueId: queueId as string,
         customerName: responses['name'] || 'Customer',
@@ -127,11 +118,12 @@ export default function JoinQueue() {
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
     if (!otp) return;
-    const phoneFieldId = queue?.formConfig?.find((f: any) => f.type === 'phone')?.id;
+    const rawPhone = phoneFieldId ? responses[phoneFieldId] : undefined;
+    const fullPhone = rawPhone ? `${phoneCountryCode}${rawPhone.replace(/\D/g, '')}` : undefined;
     joinMutation.mutate({
       queueId: queueId as string,
       customerName: responses['name'] || 'Customer',
-      phone: phoneFieldId ? responses[phoneFieldId] : undefined,
+      phone: fullPhone,
       otp,
       formResponses: responses,
       language,
@@ -156,13 +148,14 @@ export default function JoinQueue() {
     { id: 'phone', type: 'phone', label: 'WhatsApp Number', required: true, system: true },
   ];
 
+  const showPhoneField = phoneField && isWhatsAppConnected;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white flex flex-col items-center justify-center p-6 relative overflow-hidden transition-colors">
       <Head>
         <title>Join {queue.name} | QMover</title>
       </Head>
 
-      {/* Decorative Glow */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full mix-blend-screen filter blur-[150px] pointer-events-none z-0"></div>
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-600/10 rounded-full mix-blend-screen filter blur-[150px] pointer-events-none z-0"></div>
 
@@ -196,81 +189,92 @@ export default function JoinQueue() {
 
           {step === 1 ? (
             <form onSubmit={handleRequestOtp} className="space-y-5">
-              
-              {formConfig.map((field: any) => (
-                <div key={field.id}>
-                  {field.type !== 'checkbox' && (
-                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">
-                      {field.label} {field.required && <span className="text-red-500">*</span>}
-                    </label>
-                  )}
+              {formConfig.map((field: any) => {
+                if (field.type === 'phone' && !showPhoneField) return null;
+                
+                return (
+                  <div key={field.id}>
+                    {field.type !== 'checkbox' && (
+                      <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">
+                        {field.label} {field.required && <span className="text-red-500">*</span>}
+                      </label>
+                    )}
 
-                  {field.type === 'text' && (
-                    <input 
-                      type="text" 
-                      value={responses[field.id] || ''}
-                      onChange={(e) => handleInputChange(field.id, e.target.value)}
-                      className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                      placeholder={`Enter ${field.label.toLowerCase()}`}
-                      required={field.required}
-                    />
-                  )}
-
-                  {field.type === 'phone' && (
-                    <div>
+                    {field.type === 'text' && (
                       <input 
-                        type="tel" 
+                        type="text" 
                         value={responses[field.id] || ''}
                         onChange={(e) => handleInputChange(field.id, e.target.value)}
                         className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                        placeholder="+1234567890"
+                        placeholder={`Enter ${field.label.toLowerCase()}`}
                         required={field.required}
                       />
-                      <p className="text-xs text-gray-500 dark:text-zinc-500 mt-2">We'll send you an OTP via WhatsApp to verify your number.</p>
-                    </div>
-                  )}
+                    )}
 
-                  {field.type === 'textarea' && (
-                    <textarea 
-                      value={responses[field.id] || ''}
-                      onChange={(e) => handleInputChange(field.id, e.target.value)}
-                      className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
-                      rows={3}
-                      placeholder={`Enter ${field.label.toLowerCase()}`}
-                      required={field.required}
-                    />
-                  )}
+                    {field.type === 'phone' && showPhoneField && (
+                      <div>
+                        <PhoneInput
+                          value={responses[field.id] || ''}
+                          onChange={(val) => handleInputChange(field.id, val)}
+                          countryCode={phoneCountryCode}
+                          onCountryCodeChange={setPhoneCountryCode}
+                          placeholder="234 567 8900"
+                          required={field.required}
+                        />
+                        <p className="text-xs text-gray-500 dark:text-zinc-500 mt-2">We'll send you an OTP via WhatsApp to verify your number.</p>
+                      </div>
+                    )}
 
-                  {field.type === 'dropdown' && (
-                    <select
-                      value={responses[field.id] || ''}
-                      onChange={(e) => handleInputChange(field.id, e.target.value)}
-                      required={field.required}
-                      className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none"
-                    >
-                      <option value="" disabled>Select an option</option>
-                      {(field.options || []).map((opt: string, i: number) => (
-                        <option key={i} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  )}
-
-                  {field.type === 'checkbox' && (
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input 
-                        type="checkbox"
-                        checked={!!responses[field.id]}
-                        onChange={(e) => handleInputChange(field.id, e.target.checked)}
+                    {field.type === 'textarea' && (
+                      <textarea 
+                        value={responses[field.id] || ''}
+                        onChange={(e) => handleInputChange(field.id, e.target.value)}
+                        className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+                        rows={3}
+                        placeholder={`Enter ${field.label.toLowerCase()}`}
                         required={field.required}
-                        className="w-5 h-5 accent-indigo-600 border-gray-300 rounded"
                       />
-                      <span className="text-sm font-medium text-gray-700 dark:text-zinc-300">
-                        {field.label} {field.required && <span className="text-red-500">*</span>}
-                      </span>
-                    </label>
-                  )}
+                    )}
+
+                    {field.type === 'dropdown' && (
+                      <select
+                        value={responses[field.id] || ''}
+                        onChange={(e) => handleInputChange(field.id, e.target.value)}
+                        required={field.required}
+                        className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3.5 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none"
+                      >
+                        <option value="" disabled>Select an option</option>
+                        {(field.options || []).map((opt: string, i: number) => (
+                          <option key={i} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    )}
+
+                    {field.type === 'checkbox' && (
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input 
+                          type="checkbox"
+                          checked={!!responses[field.id]}
+                          onChange={(e) => handleInputChange(field.id, e.target.checked)}
+                          required={field.required}
+                          className="w-5 h-5 accent-indigo-600 border-gray-300 rounded"
+                        />
+                        <span className="text-sm font-medium text-gray-700 dark:text-zinc-300">
+                          {field.label} {field.required && <span className="text-red-500">*</span>}
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                );
+              })}
+
+              {!showPhoneField && phoneField && (
+                <div className="bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-xl p-4">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                    Phone verification is currently unavailable. You can join the queue without WhatsApp notifications.
+                  </p>
                 </div>
-              ))}
+              )}
 
               {queue?.allowAppointments && (
                 <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-white/10">
@@ -322,7 +326,7 @@ export default function JoinQueue() {
               <div className="text-center mb-6">
                 <p className="text-sm text-gray-600 dark:text-zinc-400">
                   Enter the 6-digit code sent to <br/>
-                  <strong className="text-gray-900 dark:text-white">{responses['phone']}</strong>
+                  <strong className="text-gray-900 dark:text-white">{phoneCountryCode} {responses[phoneFieldId]}</strong>
                 </p>
               </div>
 

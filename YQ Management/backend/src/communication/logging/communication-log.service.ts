@@ -47,9 +47,16 @@ export class CommunicationLogService {
           providerId: entry.providerId,
           errorMessage: entry.errorMessage,
           metadata: entry.metadata,
-          sentAt: entry.status === CommunicationStatus.SENT ? new Date() : undefined,
-          deliveredAt: entry.status === CommunicationStatus.DELIVERED ? new Date() : undefined,
-          failedAt: entry.status === CommunicationStatus.FAILED ? new Date() : undefined,
+          sentAt:
+            entry.status === CommunicationStatus.SENT ? new Date() : undefined,
+          deliveredAt:
+            entry.status === CommunicationStatus.DELIVERED
+              ? new Date()
+              : undefined,
+          failedAt:
+            entry.status === CommunicationStatus.FAILED
+              ? new Date()
+              : undefined,
         },
       });
     } catch (error) {

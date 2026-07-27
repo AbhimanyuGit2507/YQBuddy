@@ -29,8 +29,8 @@ export default function TVDisplay() {
         oscillator.connect(audioCtx.destination);
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.5);
-      } catch (e) {
-        console.error("Audio play failed", e);
+      } catch {
+        // audio not supported
       }
     });
 

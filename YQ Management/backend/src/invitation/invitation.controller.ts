@@ -21,6 +21,8 @@ import { RequirePermissions } from '../permissions/permissions.guard';
 import { PermissionsGuard } from '../permissions/permissions.guard';
 import { UuidPipe } from '../common/pipes/validation.pipes';
 import { WorkspaceGuard } from '../auth/workspace.guard';
+import { CreateInvitationDto } from './dto/invitation.dto';
+import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('invitations')
 @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)
@@ -30,7 +32,7 @@ export class InvitationController {
   @Roles(Role.ADMIN)
   @RequirePermissions(Permission.INVITATION_CREATE, Permission.INVITATION_READ)
   @Get()
-  async getInvitations(@Req() req: any) {
+  async getInvitations(@Req() req: AuthenticatedRequest) {
     return this.invitationService.getInvitations(req.user.workspaceId);
   }
 
@@ -38,14 +40,8 @@ export class InvitationController {
   @RequirePermissions(Permission.INVITATION_CREATE)
   @Post()
   async createInvitation(
-    @Req() req: any,
-    @Body()
-    body: {
-      email?: string;
-      role?: string;
-      maxUses?: number;
-      expiresInDays?: number;
-    },
+    @Req() req: AuthenticatedRequest,
+    @Body() body: CreateInvitationDto,
   ) {
     const invitation = await this.invitationService.createInvitation(
       req.user.workspaceId,
@@ -56,9 +52,28 @@ export class InvitationController {
   }
 
   @Roles(Role.ADMIN)
+  @RequirePermissions(Permission.INVITATION_CREATE)
+  @Post('join-code')
+  async createJoinCode(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: { role?: string },
+  ) {
+    const role = (body.role as Role) || Role.OPERATOR;
+    const invitation = await this.invitationService.createJoinCode(
+      req.user.workspaceId,
+      req.user.userId,
+      role,
+    );
+    return { success: true, invitation };
+  }
+
+  @Roles(Role.ADMIN)
   @RequirePermissions(Permission.INVITATION_REVOKE)
   @Delete(':id')
-  async revokeInvitation(@Req() req: any, @Param('id', UuidPipe) id: string) {
+  async revokeInvitation(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', UuidPipe) id: string,
+  ) {
     await this.invitationService.revokeInvitation(id, req.user.workspaceId);
     return { success: true };
   }

@@ -26,7 +26,9 @@ export class QueueService {
       where: { workspaceId, name },
     });
     if (existing) {
-      throw new BadRequestException(`Queue "${name}" already exists in this workspace`);
+      throw new BadRequestException(
+        `Queue "${name}" already exists in this workspace`,
+      );
     }
 
     const queue = await this.prisma.queue.create({
@@ -103,9 +105,14 @@ export class QueueService {
       status,
     );
 
-    this.queueGateway.broadcastQueueUpdate(queueId, queue.workspaceId, 'queue_status_changed', {
-      status,
-    });
+    this.queueGateway.broadcastQueueUpdate(
+      queueId,
+      queue.workspaceId,
+      'queue_status_changed',
+      {
+        status,
+      },
+    );
     return queue;
   }
 
@@ -138,7 +145,12 @@ export class QueueService {
       where: { id: queueId },
     });
     if (queue) {
-      this.queueGateway.broadcastQueueUpdate(queueId, queue.workspaceId, 'token_joined', { token });
+      this.queueGateway.broadcastQueueUpdate(
+        queueId,
+        queue.workspaceId,
+        'token_joined',
+        { token },
+      );
       this.webhooksService.triggerWebhooks(
         queue.workspaceId,
         'TOKEN_JOINED',
@@ -190,7 +202,12 @@ export class QueueService {
       where: { id: queueId },
     });
     if (queue) {
-      this.queueGateway.broadcastQueueUpdate(queueId, queue.workspaceId, 'token_serving', { token });
+      this.queueGateway.broadcastQueueUpdate(
+        queueId,
+        queue.workspaceId,
+        'token_serving',
+        { token },
+      );
       this.webhooksService.triggerWebhooks(
         queue.workspaceId,
         'TOKEN_SERVING',
@@ -246,9 +263,14 @@ export class QueueService {
       );
     }
 
-    this.queueGateway.broadcastQueueUpdate(token.queueId, token.queue.workspaceId, 'token_completed', {
-      tokenId,
-    });
+    this.queueGateway.broadcastQueueUpdate(
+      token.queueId,
+      token.queue.workspaceId,
+      'token_completed',
+      {
+        tokenId,
+      },
+    );
     this.webhooksService.triggerWebhooks(
       token.queue.workspaceId,
       'TOKEN_COMPLETED',
@@ -263,9 +285,14 @@ export class QueueService {
       data: { status: TokenStatus.MISSED },
       include: { queue: true },
     });
-    this.queueGateway.broadcastQueueUpdate(token.queueId, token.queue.workspaceId, 'token_missed', {
-      tokenId,
-    });
+    this.queueGateway.broadcastQueueUpdate(
+      token.queueId,
+      token.queue.workspaceId,
+      'token_missed',
+      {
+        tokenId,
+      },
+    );
     this.webhooksService.triggerWebhooks(
       token.queue.workspaceId,
       'TOKEN_MISSED',

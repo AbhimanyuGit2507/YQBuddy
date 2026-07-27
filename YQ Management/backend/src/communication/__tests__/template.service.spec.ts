@@ -25,7 +25,9 @@ describe('TemplateService', () => {
 
   it('should render WhatsApp template with variables', () => {
     const result = service.renderWhatsApp('otp', { otp: '654321' });
-    expect(result).toBe('Your Qmover verification code is 654321. It expires in 5 minutes.');
+    expect(result).toBe(
+      'Your Qmover verification code is 654321. It expires in 5 minutes.',
+    );
   });
 
   it('should return email template keys', () => {

@@ -8,23 +8,36 @@ export class EmailService {
 
   constructor(private readonly communicationService: CommunicationService) {}
 
-  async sendOTP(email: string, otpCode: string, purpose: 'signup' | 'login' | 'welcome') {
+  async sendOTP(
+    email: string,
+    otpCode: string,
+    purpose: 'signup' | 'login' | 'welcome',
+  ) {
     try {
       if (purpose === 'signup') {
-        await this.communicationService.publish(CommunicationEvent.SIGNUP_OTP_REQUESTED, {
-          email,
-          otp: otpCode,
-        });
+        await this.communicationService.publish(
+          CommunicationEvent.SIGNUP_OTP_REQUESTED,
+          {
+            email,
+            otp: otpCode,
+          },
+        );
       } else if (purpose === 'login') {
-        await this.communicationService.publish(CommunicationEvent.LOGIN_OTP_REQUESTED, {
-          email,
-          otp: otpCode,
-        });
+        await this.communicationService.publish(
+          CommunicationEvent.LOGIN_OTP_REQUESTED,
+          {
+            email,
+            otp: otpCode,
+          },
+        );
       } else if (purpose === 'welcome') {
-        await this.communicationService.publish(CommunicationEvent.MARKETING_WELCOME, {
-          email,
-          name: email.split('@')[0],
-        });
+        await this.communicationService.publish(
+          CommunicationEvent.MARKETING_WELCOME,
+          {
+            email,
+            name: email.split('@')[0],
+          },
+        );
       }
     } catch (error) {
       this.logger.error(`Failed to send ${purpose} OTP to ${email}`, error);
@@ -33,10 +46,13 @@ export class EmailService {
 
   async sendLoginNotification(email: string) {
     try {
-      await this.communicationService.publish(CommunicationEvent.USER_REGISTERED, {
-        email,
-        name: email.split('@')[0],
-      });
+      await this.communicationService.publish(
+        CommunicationEvent.USER_REGISTERED,
+        {
+          email,
+          name: email.split('@')[0],
+        },
+      );
     } catch (error) {
       this.logger.error(`Failed to send login notification to ${email}`, error);
     }

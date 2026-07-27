@@ -2,7 +2,11 @@ import { Injectable, Logger, Inject } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue, Job } from 'bullmq';
 import type { WhatsAppProvider } from '../communication/interfaces/whatsapp.provider';
-import { CommunicationLogService, CommunicationChannel, CommunicationStatus } from '../communication/logging/communication-log.service';
+import {
+  CommunicationLogService,
+  CommunicationChannel,
+  CommunicationStatus,
+} from '../communication/logging/communication-log.service';
 
 @Injectable()
 export class NotificationsService {
@@ -13,7 +17,8 @@ export class NotificationsService {
 
   constructor(
     @InjectQueue('whatsapp') private readonly whatsappQueue: Queue,
-    @Inject('WhatsAppProvider') private readonly whatsappProvider: WhatsAppProvider,
+    @Inject('WhatsAppProvider')
+    private readonly whatsappProvider: WhatsAppProvider,
     private readonly communicationLogService: CommunicationLogService,
   ) {}
 
@@ -38,7 +43,9 @@ export class NotificationsService {
         type: 'message',
         recipient: to,
         body,
-        status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+        status: result.success
+          ? CommunicationStatus.SENT
+          : CommunicationStatus.FAILED,
         provider: 'evolution',
         providerId: result.providerId,
         errorMessage: result.error,
@@ -48,7 +55,10 @@ export class NotificationsService {
       return result;
     } catch (error) {
       this.logger.error(`Failed to send WhatsApp message to ${to}`, error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
   }
 
@@ -57,7 +67,9 @@ export class NotificationsService {
     const command = body.trim().toUpperCase();
 
     if (command === 'LATE') {
-      this.logger.log(`[Action] Moving customer ${from} back 2 spots in the queue`);
+      this.logger.log(
+        `[Action] Moving customer ${from} back 2 spots in the queue`,
+      );
       await this.sendWhatsAppMessage(
         from,
         'Your turn has been delayed. We will notify you again soon.',

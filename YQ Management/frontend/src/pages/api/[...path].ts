@@ -26,20 +26,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const transport = isHttps ? https : http;
 
   const proxyReq = transport.request(options, (proxyRes) => {
-    res.status(proxyRes.statusCode || 200);
+    const statusCode = proxyRes.statusCode || 200;
+    res.status(statusCode);
+    
     if (proxyRes.headers) {
       Object.entries(proxyRes.headers).forEach(([key, value]) => {
-        if (key.toLowerCase() !== 'transfer-encoding') {
+        if (key.toLowerCase() !== 'transfer-encoding' && key.toLowerCase() !== 'content-encoding') {
           res.setHeader(key, value as string);
         }
       });
     }
-    proxyRes.pipe(res);
+    
+    proxyRes.on('data', (chunk) => {
+      res.write(chunk);
+    });
+    
+    proxyRes.on('end', () => {
+      res.end();
+    });
   });
 
   proxyReq.on('error', (err) => {
     console.error('Proxy error:', err);
-    res.status(500).json({ message: 'Proxy error', error: err.message });
+    if (!res.headersSent) {
+      res.status(503).json({ message: 'Backend service unavailable', error: err.message });
+    } else {
+      res.end();
+    }
+  });
+
+  proxyReq.setTimeout(30000, () => {
+    proxyReq.destroy();
+    if (!res.headersSent) {
+      res.status(503).json({ message: 'Backend request timeout' });
+    }
   });
 
   if (req.body && ['POST', 'PUT', 'PATCH'].includes(req.method || '') && Object.keys(req.body).length > 0) {
@@ -49,5 +69,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       delete (options.headers as Record<string, string>)['content-length'];
     }
   }
+  
   proxyReq.end();
 }

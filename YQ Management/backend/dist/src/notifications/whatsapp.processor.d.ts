@@ -1,9 +1,0 @@
-import { WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
-import { NotificationsService } from './notifications.service';
-export declare class WhatsappProcessor extends WorkerHost {
-    private readonly notificationsService;
-    private readonly logger;
-    constructor(notificationsService: NotificationsService);
-    process(job: Job<any, any, string>): Promise<any>;
-}

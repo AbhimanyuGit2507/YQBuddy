@@ -20,7 +20,16 @@ export class WhatsAppTemplateService {
     });
   }
 
-  async upsertTemplate(workspaceId: string, data: { key: string; name: string; content: string; variables?: string[]; isActive?: boolean }) {
+  async upsertTemplate(
+    workspaceId: string,
+    data: {
+      key: string;
+      name: string;
+      content: string;
+      variables?: string[];
+      isActive?: boolean;
+    },
+  ) {
     const existing = await this.prisma.whatsAppTemplate.findFirst({
       where: { workspaceId, key: data.key },
     });

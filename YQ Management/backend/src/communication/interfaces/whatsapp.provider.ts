@@ -11,8 +11,15 @@ export interface WhatsAppResult {
 
 export interface WhatsAppProvider {
   sendText(to: string, body: string): Promise<WhatsAppResult>;
-  sendButtons?(to: string, text: string, footer: string, buttons: Array<{ id: string; text: string }>): Promise<WhatsAppResult>;
-  connect?(workspaceId: string): Promise<{ instanceName: string; state: string; qr?: string }>;
+  sendButtons?(
+    to: string,
+    text: string,
+    footer: string,
+    buttons: Array<{ id: string; text: string }>,
+  ): Promise<WhatsAppResult>;
+  connect?(
+    workspaceId: string,
+  ): Promise<{ instanceName: string; state: string; qr?: string }>;
   status?(instanceName: string): Promise<{ state: string }>;
   disconnect?(instanceName: string): Promise<void>;
 }
