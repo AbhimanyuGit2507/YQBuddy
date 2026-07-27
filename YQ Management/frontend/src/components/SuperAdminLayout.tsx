@@ -9,7 +9,8 @@ import {
   LogOut,
   Activity,
   Menu,
-  X
+  X,
+  Mail
 } from 'lucide-react';
 
 import { useTheme } from './ThemeProvider';
@@ -43,6 +44,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
     { label: 'Command Center', href: '/super-admin', icon: Activity },
     { label: 'Tenants & Businesses', href: '/super-admin/tenants', icon: Building2 },
     { label: 'Revenue & Billing', href: '/super-admin/billing', icon: CreditCard },
+    { label: 'Email & Notifications', href: '/super-admin/communication', icon: Mail },
     { label: 'Global Users', href: '/super-admin/users', icon: Users },
   ];
 
@@ -114,11 +116,11 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
         <header className="h-16 flex items-center justify-between px-4 lg:px-8 border-b border-rose-200 dark:border-rose-900/30 bg-white/80 dark:bg-[#120005]/80 backdrop-blur-md z-10 shrink-0 transition-colors">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => setSidebarOpen(true)}
+              onClick={() => setSidebarOpen(!sidebarOpen)}
               className="lg:hidden p-2 rounded-xl bg-gray-100 dark:bg-black/50 border border-gray-200 dark:border-rose-900/30 hover:bg-gray-200 dark:hover:bg-black/80 transition-colors"
-              aria-label="Open sidebar"
+              aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
             >
-              <Menu className="w-5 h-5" />
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
           <div className="flex items-center gap-4">

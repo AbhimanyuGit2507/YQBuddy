@@ -2,14 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import AdminLayout from '../../../components/AdminLayout';
-import { QrCode, CheckCircle2, AlertCircle, Copy, Trash2, Shield, CreditCard, Loader2, Mail, MessageSquare, Send, Save, UserCog } from 'lucide-react';
+import { QrCode, CheckCircle2, AlertCircle, Copy, Trash2, Shield, CreditCard, Loader2, MessageSquare, Send, Save, UserCog } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
 import { useAuth } from '../../../components/AuthContext';
 import { useTheme } from '../../../components/ThemeProvider';
 import { toast } from 'sonner';
 
-type SettingsTab = 'General' | 'WhatsApp' | 'Email' | 'Billing' | 'Webhooks' | 'Invitations';
+type SettingsTab = 'General' | 'WhatsApp' | 'Billing' | 'Webhooks' | 'Invitations';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -17,9 +17,15 @@ export default function SettingsPage() {
   const { theme: currentTheme, toggleTheme } = useTheme();
   const queryClient = useQueryClient();
   const { tab: urlTab } = router.query as { tab?: string };
-  const validTabs: SettingsTab[] = ['General', 'WhatsApp', 'Email', 'Billing', 'Webhooks', 'Invitations'];
+  const validTabs: SettingsTab[] = ['General', 'WhatsApp', 'Billing', 'Webhooks', 'Invitations'];
   const initialTab = validTabs.includes(urlTab as SettingsTab) ? (urlTab as SettingsTab) : 'General';
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+
+  // Personal settings
+  const [theme, setTheme] = useState(user?.personalSettings?.theme || 'light');
+  const [language, setLanguage] = useState(user?.personalSettings?.language || 'en');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(user?.personalSettings?.notificationsEnabled ?? true);
+  const [savingPersonal, setSavingPersonal] = useState(false);
 
   useEffect(() => {
     if (user?.personalSettings?.theme) {
@@ -34,6 +40,16 @@ export default function SettingsPage() {
     }
   }, [user?.personalSettings?.theme]);
 
+  useEffect(() => {
+    const resolved = theme === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
+    if (resolved === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', resolved);
+  }, [theme]);
+
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [instanceName, setInstanceName] = useState<string | null>(null);
@@ -44,12 +60,6 @@ export default function SettingsPage() {
   const [loadingBilling, setLoadingBilling] = useState(false);
   const [paymentData, setPaymentData] = useState<any>(null);
   const [statusMessage, setStatusMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
-
-  const [testEmailTo, setTestEmailTo] = useState('');
-  const [testEmailSubject, setTestEmailSubject] = useState('QMover Test Email');
-  const [emailConnectionStatus, setEmailConnectionStatus] = useState<boolean | null>(null);
-  const [sendingTestEmail, setSendingTestEmail] = useState(false);
-  const [checkingEmailConnection, setCheckingEmailConnection] = useState(false);
 
   const [savingTemplate, setSavingTemplate] = useState<string | null>(null);
   const [testingWhatsApp, setTestingWhatsApp] = useState(false);
@@ -75,12 +85,6 @@ export default function SettingsPage() {
     localStorage.setItem('templateDrafts', JSON.stringify(templateDrafts));
   }, [templateDrafts]);
 
-  // Personal settings
-  const [theme, setTheme] = useState(user?.personalSettings?.theme || 'light');
-  const [language, setLanguage] = useState(user?.personalSettings?.language || 'en');
-  const [notificationsEnabled, setNotificationsEnabled] = useState(user?.personalSettings?.notificationsEnabled ?? true);
-  const [savingPersonal, setSavingPersonal] = useState(false);
-
   const { data: whatsappStatus, refetch: refetchWhatsAppStatus } = useQuery({
     queryKey: ['whatsapp-status'],
     queryFn: () => fetchApi('/whatsapp/status'),
@@ -94,12 +98,6 @@ export default function SettingsPage() {
 
   const isWhatsAppConnected = whatsappStatus?.state === 'open';
   const whatsappConnectionState = whatsappStatus?.state || 'unconfigured';
-
-  const { data: emailConnection } = useQuery({
-    queryKey: ['email-connection'],
-    queryFn: () => fetchApi('/communication/email/connection'),
-    enabled: activeTab === 'Email',
-  });
 
   const { data: waTemplates } = useQuery({
     queryKey: ['whatsapp-templates'],
@@ -130,6 +128,7 @@ export default function SettingsPage() {
       setInstanceName(whatsappStatus.instanceName);
     } else if (whatsappStatus?.state === 'connecting') {
       setInstanceName(prev => prev || whatsappStatus.instanceName || null);
+      if (whatsappStatus.qr) setQrCode(whatsappStatus.qr);
     } else if (whatsappStatus?.state === 'close' || whatsappStatus?.state === 'unconfigured') {
       setQrCode(null);
       setInstanceName(null);
@@ -169,10 +168,6 @@ export default function SettingsPage() {
       setTemplateDrafts(drafts);
     }
   }, [waTemplates]);
-
-  useEffect(() => {
-    if (emailConnection) setEmailConnectionStatus(emailConnection.connected);
-  }, [emailConnection]);
 
   const handleAddWebhook = async () => {
     if (!webhookUrl) return;
@@ -236,29 +231,9 @@ export default function SettingsPage() {
 
   const handleTemplateChange = (key: string, value: string) => setTemplateDrafts(prev => ({ ...prev, [key]: value }));
 
-  const handleTestEmail = async () => {
-    if (!testEmailTo) return;
-    setSendingTestEmail(true);
-    try {
-      const res = await fetchApi('/communication/test-email', { method: 'POST', body: JSON.stringify({ to: testEmailTo, subject: testEmailSubject }) });
-      setStatusMessage({ type: 'success' in res && res.success ? 'success' : 'error', text: 'success' in res && res.success ? 'Test email sent' : res.error || 'Failed' });
-    } catch (e: any) { setStatusMessage({ type: 'error', text: e.message || 'Error' }); }
-    setSendingTestEmail(false);
-  };
-
-  const handleCheckEmailConnection = async () => {
-    setCheckingEmailConnection(true);
-    try {
-      const res = await fetchApi('/communication/email/connection');
-      setEmailConnectionStatus(res.connected);
-      setStatusMessage({ type: 'success', text: res.connected ? 'Brevo connected' : 'Brevo disconnected' });
-    } catch (e: any) { setEmailConnectionStatus(false); setStatusMessage({ type: 'error', text: e.message || 'Error' }); }
-    setCheckingEmailConnection(false);
-  };
-
   const handleSubscribe = async () => {
     setLoadingBilling(true);
-    try { const data = await fetchApi('/payments/generate-link'); setPaymentData(data); }
+    try { const data = await fetchApi('/billing/payments/generate-link'); setPaymentData(data); }
     catch (e) { setStatusMessage({ type: 'error', text: 'Error generating payment link' }); }
     setLoadingBilling(false);
   };
@@ -454,34 +429,6 @@ export default function SettingsPage() {
                 </div>
               </>
             )}
-          </div>
-        )}
-
-        {activeTab === 'Email' && (
-          <div className="space-y-8 animate-in fade-in duration-300">
-            <div><h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Email Configuration</h2><p className="text-zinc-400">Manage your Brevo email settings.</p></div>
-            <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-3xl p-8">
-              <div className="mb-8 border-b border-gray-200 dark:border-white/10 pb-6"><h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Brevo Connection</h2><p className="text-zinc-500 dark:text-zinc-400 text-sm">Check your Brevo connection status.</p></div>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4"><div className={`w-3 h-3 rounded-full ${emailConnectionStatus ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">{emailConnectionStatus === true ? 'Connected' : emailConnectionStatus === false ? 'Disconnected' : 'Unknown'}</span></div>
-                <button onClick={handleCheckEmailConnection} disabled={checkingEmailConnection} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-600 text-white rounded-xl font-medium transition-colors flex items-center gap-2">
-                  {checkingEmailConnection ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mail className="w-5 h-5" />}{checkingEmailConnection ? 'Checking...' : 'Check Connection'}
-                </button>
-              </div>
-            </div>
-            <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-3xl p-8">
-              <div className="mb-8 border-b border-gray-200 dark:border-white/10 pb-6"><h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Send Test Email</h2><p className="text-zinc-500 dark:text-zinc-400 text-sm">Send a test email to verify Brevo configuration.</p></div>
-              <div className="space-y-4">
-                <div><label className="block text-sm font-medium text-zinc-400 mb-2">Recipient Email</label>
-                  <input type="email" placeholder="test@example.com" value={testEmailTo} onChange={(e) => setTestEmailTo(e.target.value)} className="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl py-3 px-4 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors" /></div>
-                <div><label className="block text-sm font-medium text-zinc-400 mb-2">Subject</label>
-                  <input type="text" value={testEmailSubject} onChange={(e) => setTestEmailSubject(e.target.value)} className="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl py-3 px-4 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors" /></div>
-                <button onClick={handleTestEmail} disabled={sendingTestEmail || !testEmailTo} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-600 text-white rounded-xl font-medium transition-colors flex items-center gap-2">
-                  {sendingTestEmail ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}{sendingTestEmail ? 'Sending...' : 'Send Test Email'}
-                </button>
-              </div>
-            </div>
           </div>
         )}
 

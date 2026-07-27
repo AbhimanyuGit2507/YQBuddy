@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import Head from 'next/head';
 import AdminLayout from '../../../components/AdminLayout';
-import { Plus, QrCode, X, Check, Loader2, List } from 'lucide-react';
+import { Plus, QrCode, X, Check, Loader2, List, Printer } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
 import { toast } from 'sonner';
 import AlertDialog from '../../../components/AlertDialog';
+import PrintQRModal from '../../../components/PrintQRModal';
 
 export default function QueuesList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -17,6 +18,7 @@ export default function QueuesList() {
   const [includePhone, setIncludePhone] = useState(true);
   const [includePurpose, setIncludePurpose] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
 
   const { data: queues = [], isLoading, refetch } = useQuery({
     queryKey: ['queues'],
@@ -112,15 +114,25 @@ export default function QueuesList() {
             <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium tracking-wider uppercase mb-1">Manage Queues</p>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Queues</h1>
           </div>
-          <button 
-            id="tour-create-queue-btn"
-            onClick={() => setIsModalOpen(true)} 
-            data-testid="create-queue-button"
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors shadow-[0_0_15px_rgba(79,70,229,0.3)] border border-indigo-500/50"
-          >
-            <Plus className="w-5 h-5" />
-            Create queue
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              id="tour-create-queue-btn"
+              onClick={() => setIsModalOpen(true)} 
+              data-testid="create-queue-button"
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors shadow-[0_0_15px_rgba(79,70,229,0.3)] border border-indigo-500/50"
+            >
+              <Plus className="w-5 h-5" />
+              Create queue
+            </button>
+            <button
+              onClick={() => setPrintModalOpen(true)}
+              disabled={queues.length === 0}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 text-gray-700 dark:text-white rounded-lg font-medium transition-colors border border-gray-200 dark:border-white/5 disabled:opacity-50"
+            >
+              <Printer className="w-5 h-5" />
+              Print QR
+            </button>
+          </div>
         </div>
 
         {/* Queues List */}
@@ -284,6 +296,12 @@ export default function QueuesList() {
         description="Are you sure you want to delete this queue? This action cannot be undone."
         confirmText="Delete"
         variant="danger"
+      />
+
+      <PrintQRModal
+        open={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        queues={queues}
       />
     </AdminLayout>
   );

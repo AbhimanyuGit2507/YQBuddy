@@ -180,11 +180,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <header className="h-16 flex items-center justify-between px-4 lg:px-8 border-b border-gray-200 dark:border-white/10 bg-white/80 dark:bg-black/50 backdrop-blur-md z-[100] shrink-0 transition-colors">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => setSidebarOpen(true)}
+              onClick={() => setSidebarOpen(!sidebarOpen)}
               className="lg:hidden p-2 rounded-xl bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
-              aria-label="Open sidebar"
+              aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
             >
-              <Menu className="w-5 h-5" />
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
           <div className="flex items-center gap-4">

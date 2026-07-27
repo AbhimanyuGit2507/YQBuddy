@@ -109,9 +109,9 @@ export class WhatsappService {
       'GET',
     );
     const cleanupState = cleanupStateRes.data?.instance?.state || 'close';
-    if (cleanupState === 'connecting') {
+    if (cleanupState === 'connecting' || cleanupState === 'close') {
       this.logger.warn(
-        `Instance ${instanceName} stuck in connecting, deleting`,
+        `Instance ${instanceName} in state ${cleanupState}, deleting for fresh connect`,
       );
       await this.fetchEvo(`/instance/delete/${instanceName}`, 'DELETE').catch(
         () => {},
@@ -156,6 +156,20 @@ export class WhatsappService {
       qr = connectRes.data.qrcode.base64;
     } else if (connectRes.data?.base64) {
       qr = connectRes.data.base64;
+    } else if (stateRes.data?.instance?.qrcode?.base64) {
+      qr = stateRes.data.instance.qrcode.base64;
+    } else if (stateRes.data?.qrcode?.base64) {
+      qr = stateRes.data.qrcode.base64;
+    }
+
+    this.logger.log(
+      `WhatsApp connect result for ${instanceName}: state=${state}, qr=${qr ? 'present' : 'missing'}`,
+    );
+
+    if (!qr && state === 'connecting') {
+      this.logger.warn(
+        `QR code not returned for ${instanceName} in state=${state}, check Evolution API logs`,
+      );
     }
 
     return {
@@ -196,6 +210,7 @@ export class WhatsappService {
         instanceName: workspace.whatsappInstanceId,
         state,
         whatsappConnected: state === 'open',
+        qr: stateRes.data?.instance?.qrcode?.base64 || stateRes.data?.qrcode?.base64 || null,
       };
     } catch (error) {
       const status = error instanceof HttpException ? error.getStatus() : 500;
