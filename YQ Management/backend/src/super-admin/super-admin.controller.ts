@@ -1,50 +1,34 @@
-import {
-  Controller,
-  Get,
-  UseGuards,
-  UnauthorizedException,
-  Req,
-} from '@nestjs/common';
+import { Controller, Get, UseGuards, UnauthorizedException, Req } from '@nestjs/common';
 import { SuperAdminService } from './super-admin.service';
 import { AuthGuard } from '@nestjs/passport';
-import { ConfigService } from '@nestjs/config';
-import type { AuthenticatedRequest } from '../auth/types/auth.types';
+// Assuming we have a Roles guard, otherwise we manually check in the controller
+// For simplicity, we'll manually check req.user.role if a global RolesGuard isn't set up.
 
 @Controller('super-admin')
 @UseGuards(AuthGuard('jwt'))
 export class SuperAdminController {
-  constructor(
-    private readonly superAdminService: SuperAdminService,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly superAdminService: SuperAdminService) {}
 
   private checkSuperAdmin(req: any) {
-    const superAdminEmail = this.configService.get<string>('SUPER_ADMIN_EMAIL');
-    if (req.user?.email !== superAdminEmail) {
+    if (req.user?.role !== 'SUPER_ADMIN') {
       throw new UnauthorizedException('Access denied. Super Admin only.');
     }
   }
 
   @Get('metrics')
-  async getMetrics(@Req() req: AuthenticatedRequest) {
+  async getMetrics(@Req() req: any) {
     this.checkSuperAdmin(req);
     return this.superAdminService.getGlobalMetrics();
   }
 
-  @Get('workspaces')
-  async getWorkspaces(@Req() req: AuthenticatedRequest) {
-    this.checkSuperAdmin(req);
-    return this.superAdminService.getAllWorkspaces();
-  }
-
   @Get('tenants')
-  async getTenants(@Req() req: AuthenticatedRequest) {
+  async getTenants(@Req() req: any) {
     this.checkSuperAdmin(req);
-    return this.superAdminService.getAllWorkspaces();
+    return this.superAdminService.getAllTenants();
   }
 
   @Get('transactions')
-  async getTransactions(@Req() req: AuthenticatedRequest) {
+  async getTransactions(@Req() req: any) {
     this.checkSuperAdmin(req);
     return this.superAdminService.getRecentTransactions();
   }

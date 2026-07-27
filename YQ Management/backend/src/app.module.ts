@@ -6,10 +6,9 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { WorkspaceModule } from './workspace/workspace.module';
+import { TenantModule } from './tenant/tenant.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { WorkspaceContextMiddleware } from './workspace/middlewares/workspace-context/workspace-context.middleware';
-import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { TenantContextMiddleware } from './tenant/middlewares/tenant-context/tenant-context.middleware';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { QueueModule } from './queue/queue.module';
@@ -17,42 +16,28 @@ import { TokenModule } from './token/token.module';
 import { RedisModule } from './redis/redis.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { PaymentsModule } from './payments/payments.module';
 import { SuperAdminModule } from './super-admin/super-admin.module';
 import { EmailModule } from './email/email.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { MessagesModule } from './messages/messages.module';
-import { PermissionsModule } from './permissions/permissions.module';
-import { InvitationModule } from './invitation/invitation.module';
-import { PlansModule } from './plans/plans.module';
-import { SubscriptionModule } from './subscription/subscription.module';
-import { InvoiceModule } from './invoice/invoice.module';
-import { UsageModule } from './usage/usage.module';
-import { CommunicationModule } from './communication/communication.module';
-import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule.forRoot({
       pinoHttp: {
-        genReqId: () =>
-          `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
         transport: {
           target: 'pino-pretty',
-          options: {
-            singleLine: true,
-            colorize: true,
-            levelFirst: true,
-          },
+          options: { singleLine: true },
         },
       },
     }),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000,
-        limit: 100,
-      },
-    ]),
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 100,
+    }]),
     BullModule.forRoot({
       connection: {
         host: process.env.REDIS_HOST || 'localhost',
@@ -60,36 +45,15 @@ import { HealthModule } from './health/health.module';
       },
     }),
     ScheduleModule.forRoot(),
-    WorkspaceModule,
-    PrismaModule,
-    UsersModule,
-    AuthModule,
-    QueueModule,
-    TokenModule,
-    RedisModule,
-    NotificationsModule,
-    WhatsappModule,
-    SuperAdminModule,
-    EmailModule,
-    AnalyticsModule,
-    MessagesModule,
-    PermissionsModule,
-    InvitationModule,
-    PlansModule,
-    SubscriptionModule,
-    InvoiceModule,
-    UsageModule,
-    CommunicationModule,
-    HealthModule,
+    TenantModule, PrismaModule, UsersModule, AuthModule, QueueModule, TokenModule, RedisModule, NotificationsModule, WhatsappModule, PaymentsModule, SuperAdminModule, EmailModule, WebhooksModule, AnalyticsModule, MessagesModule
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestIdMiddleware).forRoutes('*');
     consumer
-      .apply(WorkspaceContextMiddleware)
+      .apply(TenantContextMiddleware)
       .exclude('/health', '/auth/(.*)')
       .forRoutes('*');
   }

@@ -1,103 +1,54 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Body,
-  Param,
-  UseGuards,
-  Req,
-} from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { TokenService } from './token.service';
 import { AuthGuard } from '@nestjs/passport';
-import { Role } from '@prisma/client';
-import { Permission } from '../permissions/permissions.enum';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
-import { WorkspaceGuard } from '../auth/workspace.guard';
-import { RequirePermissions } from '../permissions/permissions.guard';
-import { PermissionsGuard } from '../permissions/permissions.guard';
-import { RateLimitGuard } from '../auth/rate-limit.guard';
-import { UuidPipe, PhonePipe } from '../common/pipes/validation.pipes';
-import {
-  RequestOtpDto,
-  JoinQueueDto,
-  CancelTokenDto,
-  CheckInTokenDto,
-  ValidateTokenDto,
-  TransferTokenDto,
-} from './dto/token.dto';
 
 @Controller('token')
 export class TokenController {
   constructor(private readonly tokenService: TokenService) {}
 
-  @UseGuards(RateLimitGuard)
   @Post('request-otp')
-  async requestOtp(@Body() body: RequestOtpDto) {
+  async requestOtp(@Body() body: { phone: string }) {
     return this.tokenService.requestOtp(body.phone);
   }
 
-  // Customer facing - no auth required
-  @UseGuards(RateLimitGuard)
+  // Customer facing - no auth required (or could use tenant-based rate limiting)
   @Post('join')
-  async joinQueue(@Body() body: JoinQueueDto) {
-    return this.tokenService.joinQueue(
-      body.queueId,
-      body.customerName,
-      body.phone,
-      body.otp,
-      body.formResponses,
-      body.language,
-      body.scheduledFor,
-    );
+  async joinQueue(@Body() body: { queueId: string; customerName: string; phone?: string; otp?: string; formResponses?: any; language?: string; scheduledFor?: string }) {
+    return this.tokenService.joinQueue(body.queueId, body.customerName, body.phone, body.otp, body.formResponses, body.language, body.scheduledFor);
   }
 
-  @UseGuards(RateLimitGuard)
   @Get(':id/status')
-  async getTokenStatus(@Param('id', UuidPipe) id: string) {
+  async getTokenStatus(@Param('id') id: string) {
     return this.tokenService.getTokenStatus(id);
   }
 
-  @UseGuards(RateLimitGuard)
   @Post(':id/cancel')
-  async cancelToken(@Param('id', UuidPipe) id: string) {
+  async cancelToken(@Param('id') id: string) {
     return this.tokenService.cancelToken(id);
   }
 
-  @UseGuards(RateLimitGuard)
   @Post(':id/checkin')
-  async checkInToken(@Param('id', UuidPipe) id: string) {
+  async checkInToken(@Param('id') id: string) {
     return this.tokenService.checkIn(id);
   }
 
-  @UseGuards(AuthGuard('jwt'), WorkspaceGuard, RolesGuard, PermissionsGuard)
-  @Roles(Role.ADMIN)
-  @RequirePermissions(Permission.QUEUE_OPERATE)
+  // Admin facing - requires JWT
+  @UseGuards(AuthGuard('jwt'))
   @Post('advance/:queueId')
-  async advanceQueue(
-    @Req() req: any,
-    @Param('queueId', UuidPipe) queueId: string,
-  ) {
+  async advanceQueue(@Param('queueId') queueId: string) {
     return this.tokenService.advanceQueue(queueId);
   }
 
-  @UseGuards(AuthGuard('jwt'), WorkspaceGuard, RolesGuard, PermissionsGuard)
-  @Roles(Role.ADMIN)
-  @RequirePermissions(Permission.QUEUE_OPERATE)
+  @UseGuards(AuthGuard('jwt'))
   @Post('validate')
-  async validateToken(@Req() req: any, @Body() body: ValidateTokenDto) {
+  async validateToken(@Body() body: { tokenId: string }) {
     return this.tokenService.validateToken(body.tokenId);
   }
 
-  @UseGuards(AuthGuard('jwt'), WorkspaceGuard, RolesGuard, PermissionsGuard)
-  @Roles(Role.ADMIN)
-  @RequirePermissions(Permission.QUEUE_OPERATE)
+  @UseGuards(AuthGuard('jwt'))
   @Post(':id/transfer')
-  async transferToken(
-    @Req() req: any,
-    @Param('id', UuidPipe) id: string,
-    @Body() body: TransferTokenDto,
-  ) {
+  async transferToken(@Param('id') id: string, @Body() body: { nextQueueId: string }) {
     return this.tokenService.transferToken(id, body.nextQueueId);
   }
 }
+

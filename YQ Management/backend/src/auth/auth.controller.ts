@@ -1,272 +1,131 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UnauthorizedException,
-  Get,
-  UseGuards,
-  Req,
-  Res,
-  Patch,
-} from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, Req, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
+import { Prisma } from '@prisma/client';
 import { AuthGuard } from '@nestjs/passport';
 import { EmailService } from '../email/email.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { WorkspaceGuard } from '../auth/workspace.guard';
-import { RateLimitGuard } from './rate-limit.guard';
-import {
-  LoginDto,
-  VerifyOtpDto,
-  RegisterDto,
-  CreateWorkspaceDto,
-  JoinWorkspaceDto,
-  UpdatePersonalSettingsDto,
-} from './dto/auth.dto';
-import type { AuthenticatedRequest } from './types/auth.types';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
-    private readonly emailService: EmailService,
+    private readonly emailService: EmailService
   ) {}
 
-  @UseGuards(RateLimitGuard)
   @Post('login')
-  async login(@Body() body: LoginDto, @Res({ passthrough: true }) res: any) {
+  async login(@Body() body: any, @Res({ passthrough: true }) res: any) {
     const user = await this.authService.validateUser(body.email, body.password);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
-
+    
+    // Instead of logging in, generate and send OTP
     await this.authService.generateAndSendOTP(body.email, 'login');
     return { success: true, requiresOtp: true, email: body.email };
   }
 
-  @UseGuards(RateLimitGuard)
   @Post('verify-login')
-  async verifyLogin(
-    @Body() body: VerifyOtpDto,
-    @Res({ passthrough: true }) res: any,
-  ) {
+  async verifyLogin(@Body() body: { email: string; otp: string }, @Res({ passthrough: true }) res: any) {
     const user = await this.authService.verifyOTP(body.email, body.otp);
-
-    const { access_token, refresh_token } = await this.authService.login(user);
-
-    res.cookie('access_token', access_token, {
+    
+    const { access_token } = await this.authService.login(user);
+    
+    res.cookie('token', access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 15 * 60 * 1000,
-    });
-    res.cookie('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
     return { success: true, user, access_token };
   }
 
   @Post('logout')
   async logout(@Res({ passthrough: true }) res: any) {
-    res.clearCookie('access_token', { path: '/' });
-    res.clearCookie('refresh_token', { path: '/' });
+    res.clearCookie('token', { path: '/' });
     return { success: true, message: 'Logged out successfully' };
   }
 
-  @Post('refresh')
-  async refresh(
-    @Req() req: AuthenticatedRequest,
-    @Res({ passthrough: true }) res: any,
-  ) {
-    const refreshToken = req.cookies?.refresh_token;
-    if (!refreshToken) throw new UnauthorizedException('No refresh token');
-    const { access_token, refresh_token } =
-      await this.authService.refreshTokens(refreshToken);
-    res.cookie('access_token', access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 15 * 60 * 1000,
-    });
-    res.cookie('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-    return { success: true, access_token };
-  }
-
-  @UseGuards(RateLimitGuard)
   @Post('register')
-  async register(@Body() body: RegisterDto) {
+  async register(@Body() body: any) {
+    // Check if email already in use
     const existingUser = await this.usersService.findOneByEmail(body.email);
     if (existingUser) {
       throw new UnauthorizedException('Email already in use');
     }
 
+    // Create placeholder tenant for new signups
+    const tenant = await this.usersService['prisma'].tenant.create({
+      data: {
+        name: 'My Company',
+        subdomain: `temp-${Date.now()}`,
+      }
+    });
+
     const newUser = await this.usersService.create({
       email: body.email,
       password: body.password,
-      role: 'ADMIN',
+      role: 'TENANT_ADMIN',
+      tenantId: tenant.id
     });
 
+    // Generate and send OTP for verification
     await this.authService.generateAndSendOTP(newUser.email, 'signup');
-
+    
     return { success: true, requiresOtp: true, email: newUser.email };
   }
 
-  @UseGuards(RateLimitGuard)
   @Post('verify-signup')
-  async verifySignup(
-    @Body() body: VerifyOtpDto,
-    @Res({ passthrough: true }) res: any,
-  ) {
+  async verifySignup(@Body() body: { email: string; otp: string }, @Res({ passthrough: true }) res: any) {
     const user = await this.authService.verifyOTP(body.email, body.otp);
+    
+    // Add to Brevo marketing list
+    this.emailService.addContactToMarketingList(user.email).catch(console.error);
 
-    this.emailService
-      .addContactToMarketingList(user.email)
-      .catch(console.error);
-
-    const { access_token, refresh_token } = await this.authService.login(user);
-
-    res.cookie('access_token', access_token, {
+    const { access_token } = await this.authService.login(user);
+    
+    res.cookie('token', access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 15 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
-    res.cookie('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
+    
     return { success: true, user };
   }
 
-  @UseGuards(AuthGuard('google'))
   @Get('google')
-  async googleAuth(@Req() req: AuthenticatedRequest) {
+  @UseGuards(AuthGuard('google'))
+  async googleAuth(@Req() req: any) {
     // Initiates the Google OAuth2 login flow
   }
 
-  @UseGuards(AuthGuard('google'))
   @Get('google/callback')
-  async googleAuthRedirect(@Req() req: AuthenticatedRequest, @Res() res: any) {
-    const { access_token, refresh_token } = await this.authService.login(
-      req.user,
-    );
-
-    res.cookie('access_token', access_token, {
+  @UseGuards(AuthGuard('google'))
+  async googleAuthRedirect(@Req() req: any, @Res() res: any) {
+    const { access_token } = await this.authService.login(req.user);
+    
+    res.cookie('token', access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 15 * 60 * 1000,
-    });
-    res.cookie('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     const isNewUser = req.user.isNewUser;
     if (isNewUser) {
-      res.redirect(`${frontendUrl}/onboarding`);
+      res.redirect(`http://localhost:3001/onboarding`);
     } else {
-      res.redirect(`${frontendUrl}/dashboard`);
+      res.redirect(`http://localhost:3001/dashboard`);
     }
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('workspace')
-  async createWorkspace(
-    @Req() req: AuthenticatedRequest,
-    @Body() body: CreateWorkspaceDto,
-  ) {
-    const workspace = await this.authService.createWorkspaceForUser(
-      req.user.userId,
-      body,
-    );
-    const updatedUser = await this.usersService['prisma'].user.findUnique({
-      where: { id: req.user.userId },
-      include: { workspace: true, personalSettings: true },
-    });
-    return { success: true, workspace, user: updatedUser };
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('join')
-  async joinWorkspace(
-    @Req() req: AuthenticatedRequest,
-    @Body() body: JoinWorkspaceDto,
-  ) {
-    const workspace = await this.authService.joinWorkspace(
-      req.user.userId,
-      body.code,
-    );
-    const updatedUser = await this.usersService['prisma'].user.findUnique({
-      where: { id: req.user.userId },
-      include: { workspace: true, personalSettings: true },
-    });
-    return { success: true, workspace, user: updatedUser };
   }
 
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
-  getProfile(@Req() req: AuthenticatedRequest) {
+  getProfile(@Req() req: any) {
     return req.user;
-  }
-
-  @UseGuards(AuthGuard('jwt'), WorkspaceGuard)
-  @Patch('personal-settings')
-  async updatePersonalSettings(
-    @Req() req: AuthenticatedRequest,
-    @Body() body: UpdatePersonalSettingsDto,
-  ) {
-    const user = await this.usersService['prisma'].user.findUnique({
-      where: { id: req.user.userId },
-      include: { personalSettings: true },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    if (user.personalSettings) {
-      const updated = await this.usersService['prisma'].personalSettings.update(
-        {
-          where: { userId: req.user.userId },
-          data: body,
-        },
-      );
-      return { success: true, settings: updated };
-    }
-
-    const created = await this.usersService['prisma'].personalSettings.create({
-      data: {
-        userId: req.user.userId,
-        theme: body.theme || 'light',
-        language: body.language || 'en',
-        notificationsEnabled: body.notificationsEnabled ?? true,
-      },
-    });
-    return { success: true, settings: created };
   }
 }

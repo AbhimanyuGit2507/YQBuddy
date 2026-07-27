@@ -16,9 +16,9 @@ async function main() {
   const email = `admin-${Date.now()}@example.com`;
   const password = await bcrypt.hash('password123', 10);
 
-  const workspace = await prisma.workspace.create({
+  const tenant = await prisma.tenant.create({
     data: {
-      name: 'E2E Test Workspace',
+      name: 'E2E Test Tenant',
       subdomain: `e2e-${Date.now()}`,
       whatsappInstanceId: 'mock_instance_id',
       whatsappConnected: true,
@@ -30,8 +30,8 @@ async function main() {
     data: {
       email,
       password,
-      role: 'ADMIN',
-      workspaceId: workspace.id
+      role: 'TENANT_ADMIN',
+      tenantId: tenant.id
     }
   });
 
@@ -40,13 +40,14 @@ async function main() {
   for (let i = 1; i <= 4; i++) {
     const queue = await prisma.queue.create({
       data: {
-        workspaceId: workspace.id,
+        tenantId: tenant.id,
         name: `Load Test Queue ${i}`,
         status: 'ACTIVE'
       }
     });
     queueIds.push(queue.id);
 
+    // Inject 20 tokens per queue
     for (let j = 1; j <= 20; j++) {
       const token = await prisma.token.create({
         data: {
@@ -60,6 +61,7 @@ async function main() {
     }
   }
 
+  // We output JSON at the very end so Playwright can parse it
   console.log(JSON.stringify({ email, password: 'password123', queueIds }));
 }
 

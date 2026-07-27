@@ -1,85 +1,57 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Patch,
-  Body,
-  Param,
-  UseGuards,
-  Req,
-} from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { QueueService } from './queue.service';
 import { AuthGuard } from '@nestjs/passport';
-import { Role } from '@prisma/client';
-import { Permission } from '../permissions/permissions.enum';
+import { QueueStatus, Role } from '@prisma/client';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RequirePermissions } from '../permissions/permissions.guard';
-import { PermissionsGuard } from '../permissions/permissions.guard';
-import { WorkspaceGuard } from '../auth/workspace.guard';
-import { UuidPipe } from '../common/pipes/validation.pipes';
-import { CreateQueueDto, UpdateQueueDto, UpdateStatusDto } from './dto/queue.dto';
 
 @Controller('queue')
-@UseGuards(AuthGuard('jwt'), WorkspaceGuard)
 export class QueueController {
   constructor(private readonly queueService: QueueService) {}
 
-  @Roles(Role.ADMIN)
-  @RequirePermissions(Permission.QUEUE_CREATE)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.TENANT_ADMIN)
   @Post()
-  async createQueue(@Req() req: any, @Body() body: CreateQueueDto) {
-    return this.queueService.createQueue(
-      req.user.workspaceId,
-      body.name,
-      body.formConfig,
-    );
+  async createQueue(@Req() req: any, @Body() body: { name: string, formConfig?: any }) {
+    return this.queueService.createQueue(req.user.tenantId, body.name, body.formConfig);
   }
 
-  @UseGuards(RolesGuard, PermissionsGuard)
-  @RequirePermissions(Permission.QUEUE_READ)
+  @UseGuards(AuthGuard('jwt'))
   @Get()
   async getQueues(@Req() req: any) {
-    return this.queueService.getQueuesForTenant(req.user.workspaceId);
+    return this.queueService.getQueuesForTenant(req.user.tenantId);
   }
 
-  @UseGuards(RolesGuard, PermissionsGuard)
-  @RequirePermissions(Permission.QUEUE_READ)
+  @UseGuards(AuthGuard('jwt'))
   @Get('history')
   async getHistory(@Req() req: any) {
-    return this.queueService.getHistory(req.user.workspaceId);
+    return this.queueService.getHistory(req.user.tenantId);
   }
 
   @Get(':id')
-  async getQueue(@Param('id', UuidPipe) id: string) {
+  async getQueue(@Param('id') id: string) {
     return this.queueService.getQueueById(id);
   }
 
-  @Roles(Role.ADMIN)
-  @RequirePermissions(Permission.QUEUE_UPDATE)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.TENANT_ADMIN)
   @Patch(':id')
-  async updateQueue(
-    @Param('id', UuidPipe) id: string,
-    @Body() body: UpdateQueueDto,
-  ) {
+  async updateQueue(@Param('id') id: string, @Body() body: { name?: string, formConfig?: any, nextQueueId?: string | null, allowAppointments?: boolean, requireManualCheckIn?: boolean, appointmentGranularityMins?: number }) {
     return this.queueService.updateQueue(id, body);
   }
 
-  @UseGuards(RolesGuard, PermissionsGuard)
-  @RequirePermissions(Permission.QUEUE_READ)
+
+
+  @UseGuards(AuthGuard('jwt'))
   @Get(':id/tokens')
-  async getQueueTokens(@Param('id', UuidPipe) id: string) {
+  async getQueueTokens(@Param('id') id: string) {
     return this.queueService.getQueueTokens(id);
   }
 
-  @Roles(Role.ADMIN)
-  @RequirePermissions(Permission.QUEUE_OPERATE)
+  @UseGuards(AuthGuard('jwt'))
   @Patch(':id/status')
-  async updateStatus(
-    @Param('id', UuidPipe) id: string,
-    @Body() body: UpdateStatusDto,
-  ) {
+  async updateStatus(@Param('id') id: string, @Body() body: { status: QueueStatus }) {
     return this.queueService.updateQueueStatus(id, body.status);
   }
 }
+

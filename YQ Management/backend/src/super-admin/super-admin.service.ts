@@ -1,43 +1,42 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { TransactionStatus } from '@prisma/client';
 
 @Injectable()
 export class SuperAdminService {
   constructor(private prisma: PrismaService) {}
 
   async getGlobalMetrics() {
-    const totalWorkspaces = await this.prisma.workspace.count();
-
+    const totalTenants = await this.prisma.tenant.count();
+    
     const totalRevenueResult = await this.prisma.transaction.aggregate({
       _sum: { amount: true },
-      where: { status: TransactionStatus.SUCCESS },
+      where: { status: 'COMPLETE' }
     });
-
+    
     const totalCustomersResult = await this.prisma.token.count({
-      where: { status: 'COMPLETED' },
+      where: { status: 'COMPLETED' }
     });
 
     const activeQueues = await this.prisma.queue.count({
-      where: { status: 'ACTIVE' },
+      where: { status: 'ACTIVE' }
     });
 
     return {
-      totalWorkspaces,
-      totalRevenue: totalRevenueResult._sum?.amount || 0,
+      totalTenants,
+      totalRevenue: totalRevenueResult._sum.amount || 0,
       totalCustomersServed: totalCustomersResult,
-      activeQueues,
+      activeQueues
     };
   }
 
-  async getAllWorkspaces() {
-    return this.prisma.workspace.findMany({
+  async getAllTenants() {
+    return this.prisma.tenant.findMany({
       include: {
         _count: {
-          select: { users: true, queues: true },
-        },
+          select: { users: true, queues: true }
+        }
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'desc' }
     });
   }
 
@@ -45,7 +44,7 @@ export class SuperAdminService {
     return this.prisma.transaction.findMany({
       take: 50,
       orderBy: { createdAt: 'desc' },
-      include: { workspace: { select: { name: true } } },
+      include: { tenant: { select: { name: true } } }
     });
   }
 }

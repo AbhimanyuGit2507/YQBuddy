@@ -1,53 +1,5 @@
 node_modules
 # Keep environment variables out of version control
 .env
-.env.local
-.env.production.local
-.env.development.local
-.env.test.local
 
 /generated/prisma
-
-# Build outputs
-dist
-build
-.next
-out
-
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# IDE
-.vscode
-.idea
-*.swp
-*.swo
-
-# Test coverage
-coverage
-
-# Docker
-docker-compose.override.yml
-
-# PM2
-pm2.log
-ecosystem.config.js
-
-# Backups
-backups
-*.sql.gz
-
-# SSL certificates
-ssl
-*.pem
-*.key

@@ -3,7 +3,6 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { QRCodeSVG } from 'qrcode.react';
 import { io } from 'socket.io-client';
-import { toast } from 'sonner';
 
 export default function CustomerWaitScreen() {
   const router = useRouter();
@@ -47,7 +46,7 @@ export default function CustomerWaitScreen() {
       <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center p-6 text-center">
         <h1 className="text-4xl font-bold text-green-700 mb-4">Service Complete!</h1>
         <p className="text-xl text-green-600 mb-8">Thank you for visiting. Please leave us a review.</p>
-        <button onClick={() => toast.success('Feedback submitted! Thank you.')} className="bg-green-600 text-white px-8 py-4 rounded-xl font-bold text-lg">Leave Feedback</button>
+        <button className="bg-green-600 text-white px-8 py-4 rounded-xl font-bold text-lg">Leave Feedback</button>
       </div>
     );
   }

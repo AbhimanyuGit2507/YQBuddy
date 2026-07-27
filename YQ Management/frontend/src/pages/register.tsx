@@ -15,8 +15,6 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const redirect = router.query.redirect as string || '/onboarding';
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -35,7 +33,7 @@ export default function Register() {
       if (data.requiresOtp) {
         setStep('otp');
       } else {
-        router.push(redirect);
+        router.push('/onboarding');
       }
     } catch (err: any) {
       setError(err.message);
@@ -59,7 +57,7 @@ export default function Register() {
 
       if (!res.ok) throw new Error(data.message || 'Invalid OTP');
 
-      router.push(redirect);
+      router.push('/onboarding');
     } catch (err: any) {
       setError(err.message);
     } finally {

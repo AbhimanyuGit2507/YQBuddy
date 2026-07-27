@@ -1,139 +1,90 @@
-import {
-  Injectable,
-  Logger,
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BillingConfigService } from '../billing/config/billing-config.service';
-import { ProviderRegistry } from '../billing/providers/provider-registry.service';
-import { PaymentProviderName } from '@prisma/client';
-import { TransactionStatus } from '@prisma/client';
-import { CreateCheckoutInput } from '../billing/interfaces/payment-provider.interface';
-import { CreatePaymentDto } from './dto/payment.dto';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
+  
+  // These should ideally come from ConfigService / Environment variables
+  private readonly siteCode = process.env.OZOW_SITE_CODE || 'MOCK_SITE_CODE';
+  private readonly privateKey = process.env.OZOW_PRIVATE_KEY || 'MOCK_PRIVATE_KEY';
+  private readonly apiKey = process.env.OZOW_API_KEY || 'MOCK_API_KEY';
+  private readonly baseUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+  private readonly frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
 
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly configService: BillingConfigService,
-    private readonly providerRegistry: ProviderRegistry,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
-  async createCheckout(dto: CreatePaymentDto, workspaceId: string) {
-    const plan = await this.prisma.plan.findUnique({
-      where: { id: dto.planId },
+  async generatePaymentLink(tenantId: string) {
+    // 1. Create a pending transaction
+    const transaction = await this.prisma.transaction.create({
+      data: {
+        tenantId,
+        transactionRef: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        amount: 299.00, // Monthly Subscription Fee (ZAR)
+        currency: 'ZAR',
+      }
     });
 
-    if (!plan) {
-      throw new NotFoundException(`Plan with id ${dto.planId} not found`);
-    }
-
-    if (plan.status !== 'ACTIVE') {
-      throw new BadRequestException(`Plan ${plan.name} is not active`);
-    }
-
-    const amount = dto.amount ?? plan.price;
-    const currency = dto.currency || plan.currency || 'ZAR';
-    const billingInterval =
-      dto.billingInterval || plan.billingInterval || 'MONTHLY';
-
-    if (dto.amount !== undefined && dto.amount !== plan.price) {
-      throw new BadRequestException(
-        `Amount ${dto.amount} does not match plan price ${plan.price}`,
-      );
-    }
-
-    if (dto.currency && dto.currency !== plan.currency) {
-      throw new BadRequestException(
-        `Currency ${dto.currency} does not match plan currency ${plan.currency}`,
-      );
-    }
-
-    if (dto.billingInterval && dto.billingInterval !== plan.billingInterval) {
-      throw new BadRequestException(
-        `Billing interval ${dto.billingInterval} does not match plan interval ${plan.billingInterval}`,
-      );
-    }
-
-    const provider = this.providerRegistry.getProvider(
-      PaymentProviderName.OZOW,
-    );
-
-    const checkoutInput: CreateCheckoutInput = {
-      workspaceId,
-      subscriptionId: '',
-      planId: dto.planId,
-      amount,
-      currency,
-      billingInterval,
-      returnUrl: `${this.configService.getFrontendUrl()}/dashboard/settings/billing?status=success`,
-      cancelUrl: `${this.configService.getFrontendUrl()}/dashboard/settings/billing?status=cancelled`,
-      notifyUrl: `${this.configService.getBackendUrl()}/billing/payments/webhooks/ozow`,
+    // 2. Build the Ozow Payload
+    const payload = {
+      siteCode: this.siteCode,
+      countryCode: 'ZA',
+      currencyCode: 'ZAR',
+      amount: '299.00',
+      transactionReference: transaction.transactionRef,
+      bankReference: `QMOVER-${transaction.transactionRef.substring(4, 12)}`,
+      cancelUrl: `${this.frontendUrl}/dashboard/settings/billing?status=cancelled`,
+      errorUrl: `${this.frontendUrl}/dashboard/settings/billing?status=error`,
+      successUrl: `${this.frontendUrl}/dashboard/settings/billing?status=success`,
+      notifyUrl: `${this.baseUrl}/payments/webhook`,
+      isTest: 'true'
     };
 
-    const result = await provider.createCheckout(checkoutInput);
-
-    await this.prisma.transaction.create({
-      data: {
-        workspaceId,
-        transactionRef: result.providerTransactionId,
-        internalRef: result.paymentReference,
-        amount,
-        currency,
-        status: TransactionStatus.PENDING,
-        providerTransactionId: result.providerTransactionId,
-        paymentProvider: PaymentProviderName.OZOW,
-      },
-    });
-
-    return result;
-  }
-
-  async getPaymentStatus(transactionRef: string) {
-    const transaction = await this.prisma.transaction.findUnique({
-      where: { transactionRef },
-      include: { workspace: { select: { name: true } } },
-    });
-
-    if (!transaction) {
-      throw new NotFoundException(`Transaction ${transactionRef} not found`);
-    }
+    // 3. Generate SHA512 Hash
+    const stringToHash = `${payload.siteCode}${payload.countryCode}${payload.currencyCode}${payload.amount}${payload.transactionReference}${payload.bankReference}${payload.cancelUrl}${payload.errorUrl}${payload.successUrl}${payload.notifyUrl}${payload.isTest}${this.privateKey}`.toLowerCase();
+    const hashCheck = crypto.createHash('sha512').update(stringToHash).digest('hex');
 
     return {
-      id: transaction.id,
-      transactionRef: transaction.transactionRef,
-      internalRef: transaction.internalRef,
-      amount: transaction.amount,
-      currency: transaction.currency,
-      status: transaction.status,
-      paymentProvider: transaction.paymentProvider,
-      providerTransactionId: transaction.providerTransactionId,
-      workspaceId: transaction.workspaceId,
-      workspace: transaction.workspace,
-      createdAt: transaction.createdAt,
-      updatedAt: transaction.updatedAt,
+      ...payload,
+      hashCheck,
+      paymentUrl: 'https://pay.ozow.com/'
     };
   }
 
-  async getTransactionHistory(workspaceId: string, offset = 0, limit = 50) {
-    return this.prisma.transaction.findMany({
-      where: { workspaceId },
-      skip: offset,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  async getTransactionById(id: string) {
-    const transaction = await this.prisma.transaction.findUnique({
-      where: { id },
-    });
-    if (!transaction) {
-      throw new NotFoundException(`Transaction ${id} not found`);
+  async handleWebhook(body: any, headers: any) {
+    // Note: In production, validate the HashCheck header to ensure it came from Ozow
+    
+    const { TransactionReference, Status } = body;
+    
+    if (!TransactionReference) {
+      throw new BadRequestException('Missing TransactionReference');
     }
-    return transaction;
+
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { transactionRef: TransactionReference }
+    });
+
+    if (!transaction) {
+      this.logger.error(`Transaction not found: ${TransactionReference}`);
+      return { success: false };
+    }
+
+    const newStatus = Status === 'Complete' ? 'COMPLETE' : Status === 'Cancelled' ? 'CANCELLED' : 'ERROR';
+
+    await this.prisma.transaction.update({
+      where: { id: transaction.id },
+      data: { status: newStatus }
+    });
+
+    if (newStatus === 'COMPLETE') {
+      await this.prisma.tenant.update({
+        where: { id: transaction.tenantId },
+        data: { subscriptionStatus: 'ACTIVE' }
+      });
+      this.logger.log(`Subscription activated for Tenant ${transaction.tenantId}`);
+    }
+
+    return { success: true };
   }
 }

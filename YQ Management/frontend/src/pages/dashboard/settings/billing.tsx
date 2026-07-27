@@ -4,7 +4,6 @@ import AdminLayout from '../../../components/AdminLayout';
 import { CreditCard, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { fetchApi } from '../../../lib/api';
 import { useRouter } from 'next/router';
-import { toast } from 'sonner';
 
 export default function BillingSettings() {
   const router = useRouter();
@@ -28,8 +27,8 @@ export default function BillingSettings() {
     try {
       const data = await fetchApi('/payments/generate-link');
       setPaymentData(data);
-    } catch {
-      toast.error('Error generating payment link');
+    } catch (e) {
+      alert('Error generating payment link');
       setLoading(false);
     }
   };

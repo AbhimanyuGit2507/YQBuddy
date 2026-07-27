@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { ArrowRight, Lock, Mail, CheckCircle } from 'lucide-react';
-import { fetchApi } from '../lib/api';
 
 export default function Login() {
   const router = useRouter();
@@ -14,14 +13,6 @@ export default function Login() {
   const [step, setStep] = useState<'credentials' | 'otp'>('credentials');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const redirect = router.query.redirect as string || '/dashboard';
-
-  useEffect(() => {
-    document.cookie = 'token=; Max-Age=0; path=/';
-    document.cookie = 'access_token=; Max-Age=0; path=/';
-    document.cookie = 'refresh_token=; Max-Age=0; path=/';
-  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,11 +32,8 @@ export default function Login() {
       if (data.requiresOtp) {
         setStep('otp');
       } else {
-        if (data.user && !data.user.workspaceId) {
-          router.push('/onboarding');
-        } else {
-          router.push(redirect);
-        }
+        // Fallback if no OTP required for some reason
+        router.push('/dashboard');
       }
     } catch (err: any) {
       setError(err.message);
@@ -70,13 +58,10 @@ export default function Login() {
       if (!res.ok) throw new Error(data.message || 'Invalid OTP');
 
       if (data.access_token) {
+        document.cookie = `token=${data.access_token}; path=/; max-age=604800`;
       }
 
-      if (data.user && !data.user.workspaceId) {
-        router.push('/onboarding');
-      } else {
-        router.push(redirect);
-      }
+      router.push('/dashboard');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -136,7 +121,6 @@ export default function Login() {
                   <input 
                     type="email" 
                     required
-                    data-testid="login-email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-zinc-900 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
@@ -152,7 +136,6 @@ export default function Login() {
                   <input 
                     type="password" 
                     required
-                    data-testid="login-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-zinc-900 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
@@ -167,7 +150,6 @@ export default function Login() {
 
               <button 
                 type="submit" 
-                data-testid="login-submit"
                 disabled={loading}
                 className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white text-black rounded-xl font-semibold hover:bg-zinc-200 transition-colors disabled:opacity-70"
               >

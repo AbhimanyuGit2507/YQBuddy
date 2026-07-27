@@ -31,14 +31,18 @@ export default function Dashboard() {
             <p className="text-gray-500 dark:text-zinc-400">Here is what is happening in your queues right now.</p>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/dashboard/scanner" className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors shadow-[0_0_15px_rgba(79,70,229,0.3)] border border-indigo-500/50">
+            <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors shadow-[0_0_15px_rgba(79,70,229,0.3)] border border-indigo-500/50">
               <ScanLine className="w-4 h-4" />
               Open Scanner
-            </Link>
-            <Link href="/dashboard/display-picker" className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300 rounded-lg font-medium transition-colors border border-gray-200 dark:border-white/10 shadow-sm">
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300 rounded-lg font-medium transition-colors border border-gray-200 dark:border-white/10 shadow-sm">
               <Printer className="w-4 h-4" />
               Print QRs
-            </Link>
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300 rounded-lg font-medium transition-colors border border-gray-200 dark:border-white/10 shadow-sm">
+              <Settings className="w-4 h-4" />
+              Settings
+            </button>
           </div>
         </div>
 

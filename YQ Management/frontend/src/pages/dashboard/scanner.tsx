@@ -60,6 +60,113 @@ const SCANNER_CONFIG = {
   rememberLastUsedCamera: true,
 };
 
+const SCANNER_STATUS_CONFIG: Record<string, {
+  icon: React.ReactNode;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  shadowColor: string;
+}> = {
+  'Entry Approved': {
+    icon: <CheckCircle2 className="w-10 h-10 text-emerald-400" />,
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+    shadowColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  'Green': {
+    icon: <CheckCircle2 className="w-10 h-10 text-emerald-400" />,
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+    shadowColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  'Invalid QR Code': {
+    icon: <XCircle className="w-10 h-10 text-red-400" />,
+    color: 'text-red-400',
+    bgColor: 'bg-red-500/10',
+    borderColor: 'border-red-500/20',
+    shadowColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  'QR Expired': {
+    icon: <Clock className="w-10 h-10 text-orange-400" />,
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-500/10',
+    borderColor: 'border-orange-500/20',
+    shadowColor: 'rgba(251, 146, 60, 0.2)',
+  },
+  'Already Used': {
+    icon: <UserX className="w-10 h-10 text-purple-400" />,
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-500/10',
+    borderColor: 'border-purple-500/20',
+    shadowColor: 'rgba(168, 85, 247, 0.2)',
+  },
+  'Wrong Queue': {
+    icon: <AlertTriangle className="w-10 h-10 text-amber-400" />,
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/10',
+    borderColor: 'border-amber-500/20',
+    shadowColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  'Wrong Branch/Location': {
+    icon: <MapPinOff className="w-10 h-10 text-rose-400" />,
+    color: 'text-rose-400',
+    bgColor: 'bg-rose-500/10',
+    borderColor: 'border-rose-500/20',
+    shadowColor: 'rgba(244, 63, 94, 0.2)',
+  },
+  'Wrong Tenant/Organization': {
+    icon: <Building2 className="w-10 h-10 text-cyan-400" />,
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-500/10',
+    borderColor: 'border-cyan-500/20',
+    shadowColor: 'rgba(6, 182, 212, 0.2)',
+  },
+  'Queue Closed': {
+    icon: <DoorClosed className="w-10 h-10 text-gray-400" />,
+    color: 'text-gray-400',
+    bgColor: 'bg-gray-500/10',
+    borderColor: 'border-gray-500/20',
+    shadowColor: 'rgba(107, 114, 128, 0.2)',
+  },
+  'Queue Not Started Yet': {
+    icon: <Clock className="w-10 h-10 text-blue-400" />,
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-500/10',
+    borderColor: 'border-blue-500/20',
+    shadowColor: 'rgba(59, 130, 246, 0.2)',
+  },
+  'Person Already Checked In': {
+    icon: <Check className="w-10 h-10 text-green-400" />,
+    color: 'text-green-400',
+    bgColor: 'bg-green-500/10',
+    borderColor: 'border-green-500/20',
+    shadowColor: 'rgba(34, 197, 94, 0.2)',
+  },
+  'Token Revoked/Cancelled': {
+    icon: <Lock className="w-10 h-10 text-yellow-400" />,
+    color: 'text-yellow-400',
+    bgColor: 'bg-yellow-500/10',
+    borderColor: 'border-yellow-500/20',
+    shadowColor: 'rgba(250, 204, 21, 0.2)',
+  },
+  'Server/Network Error': {
+    icon: <WifiOff className="w-10 h-10 text-pink-400" />,
+    color: 'text-pink-400',
+    bgColor: 'bg-pink-500/10',
+    borderColor: 'border-pink-500/20',
+    shadowColor: 'rgba(236, 72, 153, 0.2)',
+  },
+  'Red': {
+    icon: <XCircle className="w-10 h-10 text-red-400" />,
+    color: 'text-red-400',
+    bgColor: 'bg-red-500/10',
+    borderColor: 'border-red-500/20',
+    shadowColor: 'rgba(239, 68, 68, 0.2)',
+  },
+};
+
 export default function AdminScanner() {
   const [scannerStatus, setScannerStatus] = useState<ScannerStatus>('idle');
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
@@ -68,6 +175,7 @@ export default function AdminScanner() {
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [useFrontCamera, setUseFrontCamera] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastScanTimeRef = useRef<number>(0);
@@ -153,6 +261,9 @@ export default function AdminScanner() {
   const initializeScanner = useCallback(async () => {
     if (!selectedCamera || scannerRef.current) return;
 
+    setIsInitializing(true);
+    setError(null);
+
     try {
       const html5QrCode = new Html5Qrcode('reader');
 
@@ -208,7 +319,7 @@ export default function AdminScanner() {
 
             setTimeout(() => {
               setScannerStatus('scanning');
-              html5QrCode.resume();
+              try { html5QrCode.resume(); } catch (e) { console.error(e); }
               resetIdleTimer();
             }, 2000);
 
@@ -252,7 +363,7 @@ export default function AdminScanner() {
 
             setTimeout(() => {
               setScannerStatus('scanning');
-              html5QrCode.resume();
+              try { html5QrCode.resume(); } catch (e) { console.error(e); }
               resetIdleTimer();
             }, 2000);
 
@@ -272,6 +383,8 @@ export default function AdminScanner() {
     } catch {
       setError('Failed to initialize scanner. Please try again.');
       setScannerStatus('error');
+    } finally {
+      setIsInitializing(false);
     }
   }, [selectedCamera, isProcessing]);
 
@@ -311,6 +424,7 @@ export default function AdminScanner() {
   }, [selectedCamera, initializeScanner]);
 
   const stopScanning = useCallback(async () => {
+    setIsInitializing(false);
     manualStopRef.current = true;
     if (idleTimerRef.current) {
       clearTimeout(idleTimerRef.current);
@@ -358,116 +472,7 @@ export default function AdminScanner() {
     }
   }, [useFrontCamera, availableCameras, selectedCamera]);
 
-  const getStatusConfig = (status: string) => {
-    const configs: Record<string, {
-      icon: React.ReactNode;
-      color: string;
-      bgColor: string;
-      borderColor: string;
-      shadowColor: string;
-    }> = {
-      'Entry Approved': {
-        icon: <CheckCircle2 className="w-10 h-10 text-emerald-400" />,
-        color: 'text-emerald-400',
-        bgColor: 'bg-emerald-500/10',
-        borderColor: 'border-emerald-500/20',
-        shadowColor: 'rgba(16, 185, 129, 0.2)',
-      },
-      'Green': {
-        icon: <CheckCircle2 className="w-10 h-10 text-emerald-400" />,
-        color: 'text-emerald-400',
-        bgColor: 'bg-emerald-500/10',
-        borderColor: 'border-emerald-500/20',
-        shadowColor: 'rgba(16, 185, 129, 0.2)',
-      },
-      'Invalid QR Code': {
-        icon: <XCircle className="w-10 h-10 text-red-400" />,
-        color: 'text-red-400',
-        bgColor: 'bg-red-500/10',
-        borderColor: 'border-red-500/20',
-        shadowColor: 'rgba(239, 68, 68, 0.2)',
-      },
-      'QR Expired': {
-        icon: <Clock className="w-10 h-10 text-orange-400" />,
-        color: 'text-orange-400',
-        bgColor: 'bg-orange-500/10',
-        borderColor: 'border-orange-500/20',
-        shadowColor: 'rgba(251, 146, 60, 0.2)',
-      },
-      'Already Used': {
-        icon: <UserX className="w-10 h-10 text-purple-400" />,
-        color: 'text-purple-400',
-        bgColor: 'bg-purple-500/10',
-        borderColor: 'border-purple-500/20',
-        shadowColor: 'rgba(168, 85, 247, 0.2)',
-      },
-      'Wrong Queue': {
-        icon: <AlertTriangle className="w-10 h-10 text-amber-400" />,
-        color: 'text-amber-400',
-        bgColor: 'bg-amber-500/10',
-        borderColor: 'border-amber-500/20',
-        shadowColor: 'rgba(245, 158, 11, 0.2)',
-      },
-      'Wrong Branch/Location': {
-        icon: <MapPinOff className="w-10 h-10 text-rose-400" />,
-        color: 'text-rose-400',
-        bgColor: 'bg-rose-500/10',
-        borderColor: 'border-rose-500/20',
-        shadowColor: 'rgba(244, 63, 94, 0.2)',
-      },
-      'Wrong Tenant/Organization': {
-        icon: <Building2 className="w-10 h-10 text-cyan-400" />,
-        color: 'text-cyan-400',
-        bgColor: 'bg-cyan-500/10',
-        borderColor: 'border-cyan-500/20',
-        shadowColor: 'rgba(6, 182, 212, 0.2)',
-      },
-      'Queue Closed': {
-        icon: <DoorClosed className="w-10 h-10 text-gray-400" />,
-        color: 'text-gray-400',
-        bgColor: 'bg-gray-500/10',
-        borderColor: 'border-gray-500/20',
-        shadowColor: 'rgba(107, 114, 128, 0.2)',
-      },
-      'Queue Not Started Yet': {
-        icon: <Clock className="w-10 h-10 text-blue-400" />,
-        color: 'text-blue-400',
-        bgColor: 'bg-blue-500/10',
-        borderColor: 'border-blue-500/20',
-        shadowColor: 'rgba(59, 130, 246, 0.2)',
-      },
-      'Person Already Checked In': {
-        icon: <Check className="w-10 h-10 text-green-400" />,
-        color: 'text-green-400',
-        bgColor: 'bg-green-500/10',
-        borderColor: 'border-green-500/20',
-        shadowColor: 'rgba(34, 197, 94, 0.2)',
-      },
-      'Token Revoked/Cancelled': {
-        icon: <Lock className="w-10 h-10 text-yellow-400" />,
-        color: 'text-yellow-400',
-        bgColor: 'bg-yellow-500/10',
-        borderColor: 'border-yellow-500/20',
-        shadowColor: 'rgba(250, 204, 21, 0.2)',
-      },
-      'Server/Network Error': {
-        icon: <WifiOff className="w-10 h-10 text-pink-400" />,
-        color: 'text-pink-400',
-        bgColor: 'bg-pink-500/10',
-        borderColor: 'border-pink-500/20',
-        shadowColor: 'rgba(236, 72, 153, 0.2)',
-      },
-      'Red': {
-        icon: <XCircle className="w-10 h-10 text-red-400" />,
-        color: 'text-red-400',
-        bgColor: 'bg-red-500/10',
-        borderColor: 'border-red-500/20',
-        shadowColor: 'rgba(239, 68, 68, 0.2)',
-      },
-    };
-
-    return configs[status] || configs['Invalid QR Code'];
-  };
+  const getStatusConfig = (status: string) => SCANNER_STATUS_CONFIG[status] || SCANNER_STATUS_CONFIG['Invalid QR Code'];
 
   return (
     <AdminLayout>
@@ -493,11 +498,12 @@ export default function AdminScanner() {
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">Live Scanner</h2>
-                  <p className="text-sm text-gray-500 dark:text-zinc-400">
-                    {scannerStatus === 'scanning' && 'Scanning...'}
-                    {scannerStatus === 'processing' && 'Validating...'}
-                    {scannerStatus === 'idle' && 'Ready to scan'}
-                  </p>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">
+                  {scannerStatus === 'scanning' && 'Scanning...'}
+                  {scannerStatus === 'processing' && 'Validating...'}
+                  {scannerStatus === 'idle' && 'Ready to scan'}
+                  {isInitializing && 'Loading scanner...'}
+                </p>
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
@@ -539,6 +545,13 @@ export default function AdminScanner() {
 
             <div className="min-h-[450px] sm:min-h-[500px] bg-black relative">
               <div id="reader" className="w-full h-full"></div>
+              {isInitializing && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6 z-10">
+                  <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4"></div>
+                  <p className="text-lg font-medium">Loading Scanner...</p>
+                  <p className="text-sm text-gray-400 mt-2">Initializing camera and QR detection</p>
+                </div>
+              )}
               {scannerStatus === 'error' && error && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-red-400 p-6">
                   <AlertTriangle className="w-12 h-12 mb-4" />

@@ -23,47 +23,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const fetchUser = async () => {
-    try {
-      const data = await fetchApi('/auth/me');
-      setUser(data);
-      setLoading(false);
-    } catch {
-      setUser(null);
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchUser();
-  }, []);
-
-  useEffect(() => {
-    if (!router.isReady || loading) return;
+    // Quick escape for public pages
+    const publicPages = ['/login', '/register', '/'];
+    // We want to try to fetch me on the landing page too if we want to show Dashboard,
+    // so we shouldn't immediately return if it's the landing page.
     
-    if (!user) {
-      if (router.pathname.startsWith('/dashboard') || router.pathname.startsWith('/onboarding') || router.pathname.startsWith('/join')) {
-        router.push('/login');
-      }
-    } else if (!user.workspaceId) {
-      if (!router.pathname.startsWith('/onboarding') && !router.pathname.startsWith('/join')) {
-        router.push('/onboarding');
-      }
-    }
-  }, [user, loading, router.pathname, router.isReady]);
+    fetchApi('/auth/me')
+      .then((data) => {
+        setUser(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setUser(null);
+        if (router.pathname.startsWith('/dashboard') || router.pathname.startsWith('/onboarding')) {
+          router.push('/login');
+        } else {
+          setLoading(false);
+        }
+      });
+  }, [router.pathname]);
 
   const logout = async () => {
     try {
       await fetchApi('/auth/logout', { method: 'POST' });
-    } catch {
-      // logout locally even if API fails
+    } catch (e) {
+      console.error('Logout error', e);
     }
     setUser(null);
     router.push('/login');
   };
 
   const refetch = async () => {
-    await fetchUser();
+    try {
+      const data = await fetchApi('/auth/me');
+      setUser(data);
+    } catch {
+      setUser(null);
+    }
   };
 
   return (

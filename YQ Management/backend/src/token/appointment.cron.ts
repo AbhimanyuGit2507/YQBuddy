@@ -9,7 +9,7 @@ export class AppointmentCron {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly tokenService: TokenService,
+    private readonly tokenService: TokenService
   ) {}
 
   @Cron(CronExpression.EVERY_MINUTE)
@@ -24,9 +24,9 @@ export class AppointmentCron {
         status: 'WAITING',
         scheduledFor: { lte: fifteenMinsFromNow },
         queue: {
-          requireManualCheckIn: false,
-        },
-      },
+          requireManualCheckIn: false
+        }
+      }
     });
 
     for (const token of appointmentsToAutoCheckIn) {

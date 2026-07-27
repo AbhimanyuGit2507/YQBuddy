@@ -2,14 +2,12 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import AdminLayout from '../../../../components/AdminLayout';
-import { ExternalLink, Scan, Settings, QrCode, Play, SkipForward, PauseCircle, Plus, Trash2, GripVertical, Save, Loader2, MessageSquare, X, Send, CheckCircle } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Scan, Settings, QrCode, Play, SkipForward, PauseCircle, CheckCircle, Plus, Trash2, GripVertical, Save, Loader2, MessageSquare, X, Send } from 'lucide-react';
 import Link from 'next/link';
 import { io } from 'socket.io-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchApi } from '../../../../lib/api';
 import { useAuth } from '../../../../components/AuthContext';
-import Modal from '../../../../components/Modal';
-import { toast } from 'sonner';
 
 export default function QueueWorkspace() {
   const router = useRouter();
@@ -29,7 +27,6 @@ export default function QueueWorkspace() {
   const [allowAppointments, setAllowAppointments] = useState(false);
   const [requireManualCheckIn, setRequireManualCheckIn] = useState(false);
   const [appointmentGranularityMins, setAppointmentGranularityMins] = useState(15);
-  const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
 
   const { data: allQueues = [] } = useQuery({
     queryKey: ['queues'],
@@ -93,8 +90,8 @@ export default function QueueWorkspace() {
     try {
       await fetchApi(`/token/advance/${id}`, { method: 'POST' });
       refetch();
-    } catch {
-      toast.error('Error advancing queue');
+    } catch (e) {
+      alert('Error advancing queue');
     }
   };
 
@@ -102,8 +99,8 @@ export default function QueueWorkspace() {
     try {
       await fetchApi('/token/validate', { method: 'POST', body: JSON.stringify({ tokenId }) });
       refetch();
-    } catch {
-      toast.error('Error completing token');
+    } catch (e) {
+      alert('Error completing token');
     }
   };
 
@@ -114,8 +111,8 @@ export default function QueueWorkspace() {
         body: JSON.stringify({ nextQueueId: targetQueueId }) 
       });
       refetch();
-    } catch {
-      toast.error('Error transferring token');
+    } catch (e) {
+      alert('Error transferring token');
     }
   };
 
@@ -131,36 +128,9 @@ export default function QueueWorkspace() {
         body: JSON.stringify({ text: msg })
       });
       queryClient.invalidateQueries({ queryKey: ['messages', chatToken.id] });
-    } catch {
-      toast.error('Error sending message');
+    } catch (e) {
+      alert('Error sending message');
     }
-  };
-
-  const [editingOptions, setEditingOptions] = useState<Record<string, string>>({});
-
-  const handleOptionsFocus = (fieldId: string, options: string[]) => {
-    if (!(fieldId in editingOptions)) {
-      setEditingOptions(prev => ({ ...prev, [fieldId]: (options || []).join(', ') }));
-    }
-  };
-
-  const handleOptionsChange = (fieldId: string, raw: string) => {
-    setEditingOptions(prev => ({ ...prev, [fieldId]: raw }));
-  };
-
-  const handleOptionsBlur = (index: number, fieldId: string) => {
-    const raw = editingOptions[fieldId] ?? (formConfig[index]?.options || []).join(', ');
-    setEditingOptions(prev => {
-      const next = { ...prev };
-      delete next[fieldId];
-      return next;
-    });
-    const options = raw.split(',').map(s => s.trim()).filter(Boolean);
-    handleUpdateField(index, { options });
-  };
-
-  const getOptionsValue = (field: any, fieldId: string) => {
-    return fieldId in editingOptions ? editingOptions[fieldId] : (field.options || []).join(', ');
   };
 
   const handleAddField = () => {
@@ -197,9 +167,9 @@ export default function QueueWorkspace() {
         })
       });
       refetchQueue();
-      toast.success('Settings saved successfully!');
-    } catch {
-      toast.error('Error saving settings');
+      alert('Settings saved successfully!');
+    } catch (e) {
+      alert('Error saving settings');
     }
     setSavingSettings(false);
   };
@@ -232,17 +202,8 @@ export default function QueueWorkspace() {
             >
               <ExternalLink className="w-4 h-4" /> Customer View
             </Link>
-            <Link 
-              href="/dashboard/scanner"
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 text-gray-700 dark:text-white rounded-lg text-sm font-medium transition-colors border border-gray-200 dark:border-white/5 shadow-sm dark:shadow-none"
-            >
+            <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 text-gray-700 dark:text-white rounded-lg text-sm font-medium transition-colors border border-gray-200 dark:border-white/5 shadow-sm dark:shadow-none">
               <Scan className="w-4 h-4" /> Scan
-            </Link>
-            <button 
-              onClick={() => setIsQuestionModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 text-gray-700 dark:text-white rounded-lg text-sm font-medium transition-colors border border-gray-200 dark:border-white/5 shadow-sm dark:shadow-none"
-            >
-              <Settings className="w-4 h-4" /> Manage Questions
             </button>
             {user?.role === 'TENANT_ADMIN' && (
               <button 
@@ -485,10 +446,8 @@ export default function QueueWorkspace() {
                           <label className="block text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Options (comma separated)</label>
                           <input 
                             type="text" 
-                            value={getOptionsValue(field, field.id)}
-                            onChange={(e) => handleOptionsChange(field.id, e.target.value)}
-                            onFocus={() => handleOptionsFocus(field.id, field.options)}
-                            onBlur={() => handleOptionsBlur(index, field.id)}
+                            value={(field.options || []).join(', ')}
+                            onChange={(e) => handleUpdateField(index, { options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
                             placeholder="Option 1, Option 2, Option 3"
                             className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 shadow-sm dark:shadow-none"
                           />
@@ -524,101 +483,10 @@ export default function QueueWorkspace() {
 
       </div>
 
-      {/* Question Management Modal */}
-      <Modal open={isQuestionModalOpen} onClose={() => setIsQuestionModalOpen(false)} title="Manage Questions">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-gray-500 dark:text-zinc-400">Customize the questions asked during virtual check-in.</p>
-            <button onClick={handleAddField} className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 text-gray-700 dark:text-white rounded-lg text-sm font-medium transition-colors border border-gray-200 dark:border-white/5">
-              <Plus className="w-4 h-4" /> Add Field
-            </button>
-          </div>
-          <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
-            {formConfig.map((field, index) => (
-              <div key={index} className="flex gap-3 items-start bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/5 rounded-xl p-4">
-                <div className="pt-3 text-gray-400 dark:text-zinc-600 cursor-grab active:cursor-grabbing">
-                  <GripVertical className="w-5 h-5" />
-                </div>
-                <div className="flex-1 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Field Label</label>
-                      <input 
-                        type="text" 
-                        value={field.label}
-                        onChange={(e) => handleUpdateField(index, { label: e.target.value })}
-                        className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Field Type</label>
-                      <select 
-                        value={field.type}
-                        onChange={(e) => handleUpdateField(index, { type: e.target.value })}
-                        className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 text-sm appearance-none"
-                      >
-                        <option value="text">Short Text</option>
-                        <option value="textarea">Long Text</option>
-                        <option value="dropdown">Dropdown (Select)</option>
-                        <option value="phone">Phone Number</option>
-                        <option value="checkbox">Checkbox</option>
-                      </select>
-                    </div>
-                  </div>
-                  {field.type === 'dropdown' && (
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1">Options (comma separated)</label>
-                      <input 
-                        type="text" 
-                        value={getOptionsValue(field, field.id)}
-                        onChange={(e) => handleOptionsChange(field.id, e.target.value)}
-                        onFocus={() => handleOptionsFocus(field.id, field.options)}
-                        onBlur={() => handleOptionsBlur(index, field.id)}
-                        placeholder="Option 1, Option 2, Option 3"
-                        className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 text-sm"
-                      />
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={field.required}
-                        onChange={(e) => handleUpdateField(index, { required: e.target.checked })}
-                        className="accent-indigo-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700 dark:text-zinc-400">Required</span>
-                    </label>
-                    {!field.system && (
-                      <button 
-                        onClick={() => handleRemoveField(index)}
-                        className="p-1.5 text-gray-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-            {formConfig.length === 0 && (
-              <p className="text-center text-sm text-gray-500 dark:text-zinc-500 py-4">No questions added yet.</p>
-            )}
-          </div>
-          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-white/10">
-            <button onClick={() => setIsQuestionModalOpen(false)} className="px-4 py-2 text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-sm font-medium transition-colors">Cancel</button>
-            <button onClick={handleSaveSettings} disabled={savingSettings} className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
-              {savingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Save Questions
-            </button>
-          </div>
-        </div>
-      </Modal>
-
       {/* Chat Drawer */}
       {chatToken && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/20 dark:bg-black/40 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full sm:w-[400px] h-full bg-white dark:bg-zinc-900 border-l border-gray-200 dark:border-white/10 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 max-w-full">
+          <div className="w-[400px] h-full bg-white dark:bg-zinc-900 border-l border-gray-200 dark:border-white/10 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
             {/* Chat Header */}
             <div className="p-4 border-b border-gray-200 dark:border-white/10 flex items-center justify-between bg-gray-50 dark:bg-zinc-900">
               <div>

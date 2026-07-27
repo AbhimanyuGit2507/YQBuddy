@@ -68,7 +68,9 @@ export default function QueueDisplay() {
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen();
@@ -88,7 +90,15 @@ export default function QueueDisplay() {
           <Home className="w-5 h-5 text-zinc-400" />
         </Link>
         <button 
-          onClick={() => setAudioEnabled(!audioEnabled)}
+          onClick={() => {
+            if (!audioEnabled) {
+              // Unlock audio context on user interaction by speaking an empty string
+              const u = new SpeechSynthesisUtterance('');
+              u.volume = 0;
+              window.speechSynthesis.speak(u);
+            }
+            setAudioEnabled(!audioEnabled);
+          }}
           className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md border transition-colors ${audioEnabled ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-400'}`}
         >
           {audioEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}

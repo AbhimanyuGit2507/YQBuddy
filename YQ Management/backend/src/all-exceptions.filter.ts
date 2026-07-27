@@ -1,16 +1,9 @@
-import {
-  ExceptionFilter,
-  Catch,
-  ArgumentsHost,
-  HttpException,
-  HttpStatus,
-  Logger,
-} from '@nestjs/common';
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-  private readonly logger = new Logger(AllExceptionsFilter.name);
-
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse();
@@ -20,53 +13,30 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const requestId = request.requestId || 'unknown';
-    const errorMessage =
-      exception instanceof Error ? exception.message : 'Internal server error';
-
-    const logData: any = {
-      requestId,
-      method: request.method,
+    const errorLog = {
+      timestamp: new Date().toISOString(),
       path: request.url,
+      method: request.method,
       status,
-      message: errorMessage,
+      error: exception instanceof Error ? {
+        message: exception.message,
+        stack: exception.stack,
+        name: exception.name,
+      } : exception,
     };
 
-    if (exception instanceof Error) {
-      logData.stack = exception.stack;
-      logData.errorName = exception.name;
-    }
+    console.error('CRITICAL UNHANDLED EXCEPTION:', errorLog);
+    
+    fs.appendFileSync(
+      path.join(process.cwd(), 'error.log'),
+      JSON.stringify(errorLog, null, 2) + '\n\n'
+    );
 
-    if (status >= 500) {
-      this.logger.error(logData, `Unhandled exception`);
-    } else {
-      this.logger.warn(logData, `Client error`);
-    }
-
-    const isInputError = status === 400 || status === 422;
-    const responseBody: any = {
+    response.status(status).json({
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
-      requestId,
-    };
-
-    if (isInputError && exception instanceof HttpException) {
-      const responsePayload = exception.getResponse();
-      if (typeof responsePayload === 'object' && responsePayload !== null) {
-        responseBody.message = responsePayload;
-        if ((responsePayload as any).details) {
-          responseBody.details = (responsePayload as any).details;
-        }
-      } else {
-        responseBody.message = errorMessage;
-      }
-    } else if (status >= 500) {
-      responseBody.message = 'Internal server error';
-    } else {
-      responseBody.message = errorMessage;
-    }
-
-    response.status(status).json(responseBody);
+      message: exception instanceof Error ? exception.message : 'Internal server error',
+    });
   }
 }
