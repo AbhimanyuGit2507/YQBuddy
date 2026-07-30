@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { fetchApi } from '../lib/api';
+import { fetchApi, AuthStorage } from '../lib/api';
 
 interface AuthContextType {
   user: any;
@@ -24,12 +24,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    // Quick escape for public pages
-    const publicPages = ['/login', '/register', '/'];
-    // We want to try to fetch me on the landing page too if we want to show Dashboard,
-    // so we shouldn't immediately return if it's the landing page.
-    
-    fetchApi('/auth/me')
+    const cookieMatch = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+    if (!cookieMatch) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    fetchApi('/auth/me', { signal: controller.signal })
       .then((data) => {
         setUser(data);
         setLoading(false);
@@ -41,8 +46,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else {
           setLoading(false);
         }
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
       });
+
+    return () => clearTimeout(timeoutId);
   }, [router.pathname]);
+
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'qmover_auth_token' && e.newValue === null) {
+        setUser(null);
+        router.push('/login');
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [router]);
 
   const logout = async () => {
     try {
@@ -51,6 +72,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('Logout error', e);
     }
     setUser(null);
+    AuthStorage.clear();
     router.push('/login');
   };
 
