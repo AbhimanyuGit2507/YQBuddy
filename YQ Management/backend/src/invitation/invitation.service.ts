@@ -17,7 +17,6 @@ export class InvitationService {
 
   async createInvitation(
     workspaceId: string,
-    createdBy: string,
     data: {
       email?: string;
       role?: string;
@@ -33,22 +32,17 @@ export class InvitationService {
       data: {
         workspaceId,
         code,
-        email: data.email,
-        role: (data.role as Role) || 'OPERATOR',
+        email: data.email ?? null,
+        role: (data.role as Role) || Role.OPERATOR,
         maxUses: data.maxUses || 5,
         expiresAt,
-        createdBy,
       },
     });
 
     return invitation;
   }
 
-  async createJoinCode(
-    workspaceId: string,
-    createdBy: string,
-    role: Role = Role.OPERATOR,
-  ) {
+  async createJoinCode(workspaceId: string, role: Role = Role.OPERATOR) {
     const code = this.generateCode();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
@@ -61,7 +55,6 @@ export class InvitationService {
         role,
         maxUses: 100,
         expiresAt,
-        createdBy,
       },
     });
 
@@ -72,18 +65,12 @@ export class InvitationService {
     return this.prisma.invitation.findMany({
       where: { workspaceId },
       orderBy: { createdAt: 'desc' },
-      include: {
-        workspace: { select: { id: true, name: true, subdomain: true } },
-      },
     });
   }
 
   async getInvitationByCode(code: string) {
     return this.prisma.invitation.findFirst({
       where: { code: code.toUpperCase() },
-      include: {
-        workspace: { select: { id: true, name: true, subdomain: true } },
-      },
     });
   }
 
@@ -98,7 +85,7 @@ export class InvitationService {
 
     return this.prisma.invitation.update({
       where: { id },
-      data: { revoked: true },
+      data: { used: true, usedAt: new Date() },
     });
   }
 
@@ -106,14 +93,14 @@ export class InvitationService {
     code: string,
   ): Promise<{ workspaceId: string; role: string }> {
     const invitation = await this.prisma.invitation.findFirst({
-      where: { code: code.toUpperCase(), revoked: false },
+      where: { code: code.toUpperCase(), used: false },
     });
 
     if (!invitation) {
       throw new BadRequestException('Invalid invitation code');
     }
 
-    if (invitation.expiresAt < new Date()) {
+    if (invitation.expiresAt && invitation.expiresAt < new Date()) {
       throw new BadRequestException('Invitation code has expired');
     }
 
@@ -121,9 +108,85 @@ export class InvitationService {
       throw new BadRequestException('Invitation code has reached maximum uses');
     }
 
+    await this.prisma.invitation.update({
+      where: { id: invitation.id },
+      data: {
+        usedCount: { increment: 1 },
+        used: invitation.usedCount + 1 >= invitation.maxUses,
+        usedAt:
+          invitation.usedCount + 1 >= invitation.maxUses
+            ? new Date()
+            : undefined,
+      },
+    });
+
     return {
       workspaceId: invitation.workspaceId,
       role: invitation.role,
     };
+  }
+
+  async ensureWorkspaceHasAdmin(workspaceId: string) {
+    const adminCount = await this.prisma.user.count({
+      where: {
+        workspaceId,
+        role: { in: ['TENANT_ADMIN', 'SUPER_ADMIN'] },
+      },
+    });
+
+    if (adminCount === 0) {
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        include: { tenant: true },
+      });
+
+      if (!workspace) {
+        throw new NotFoundException('Workspace not found');
+      }
+
+      const tenantAdmin = await this.prisma.user.findFirst({
+        where: {
+          tenantId: workspace.tenantId,
+          role: 'TENANT_ADMIN',
+        },
+        orderBy: { id: 'asc' },
+      });
+
+      if (tenantAdmin) {
+        await this.prisma.user.update({
+          where: { id: tenantAdmin.id },
+          data: { workspaceId },
+        });
+      }
+    }
+  }
+
+  async getUserWorkspaceRole(userId: string, workspaceId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { workspaceId: true, role: true, tenantId: true, email: true },
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    if (user.workspaceId === workspaceId) {
+      return user.role;
+    }
+
+    const invitation = await this.prisma.invitation.findFirst({
+      where: {
+        workspaceId,
+        email: user.email,
+        used: false,
+      },
+    });
+
+    if (invitation) {
+      return invitation.role;
+    }
+
+    return null;
   }
 }

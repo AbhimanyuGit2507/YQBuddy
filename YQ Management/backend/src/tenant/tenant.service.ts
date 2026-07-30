@@ -9,15 +9,21 @@ export class TenantService {
     const tenant = await this.prisma.tenant.findUnique({
       where: { subdomain },
     });
-    
+
     if (!tenant) {
-      throw new NotFoundException(`Tenant with subdomain ${subdomain} not found`);
+      throw new NotFoundException(
+        `Tenant with subdomain ${subdomain} not found`,
+      );
     }
 
     return tenant;
   }
 
-  async createTenant(data: { name: string; subdomain: string; branding?: any }) {
+  async createTenant(data: {
+    name: string;
+    subdomain: string;
+    branding?: any;
+  }) {
     return this.prisma.tenant.create({
       data,
     });

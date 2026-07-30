@@ -7,6 +7,7 @@ import { WebhooksModule } from '../webhooks/webhooks.module';
 @Module({
   imports: [WebhooksModule],
   providers: [QueueService, QueueGateway],
-  controllers: [QueueController]
+  controllers: [QueueController],
+  exports: [QueueService],
 })
 export class QueueModule {}

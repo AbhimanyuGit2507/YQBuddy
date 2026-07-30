@@ -110,9 +110,8 @@ export class UsageService {
           whatsappMessages:
             (usage.whatsappMessages || 0) + (data.whatsappMessages ?? 0),
           aiRequests: (usage.aiRequests || 0) + (data.aiRequests ?? 0),
-          storageBytes: BigInt(
-            Number(usage.storageBytes) + (data.storageBytes ?? 0),
-          ),
+          storageBytes:
+            Number(usage.storageBytes) + Number(data.storageBytes ?? 0),
           apiCalls: (usage.apiCalls || 0) + (data.apiCalls ?? 0),
           updatedAt: now,
         },
@@ -129,7 +128,7 @@ export class UsageService {
           branches: data.branches ?? 0,
           whatsappMessages: data.whatsappMessages ?? 0,
           aiRequests: data.aiRequests ?? 0,
-          storageBytes: BigInt(data.storageBytes ?? 0),
+          storageBytes: Number(data.storageBytes ?? 0),
           apiCalls: data.apiCalls ?? 0,
         },
       });

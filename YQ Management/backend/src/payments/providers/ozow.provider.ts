@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PaymentProvider } from '../../billing/interfaces/payment-provider.interface';
 import {
@@ -21,11 +21,11 @@ export class OzowProvider implements PaymentProvider {
 
   async createCheckout(input: CreateCheckoutInput): Promise<CheckoutResult> {
     const provider = await this.prisma.paymentProvider.findFirst({
-      where: { name: PaymentProviderName.OZOW, isActive: true },
+      where: { name: PaymentProviderName.OZOW, active: true },
     });
 
     if (!provider) {
-      throw new Error('Ozow payment provider not configured');
+      throw new BadRequestException('Ozow payment provider not configured');
     }
 
     const internalRef = `INR-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
@@ -187,7 +187,7 @@ export class OzowProvider implements PaymentProvider {
     paidAt?: Date;
   }> {
     const transaction = await this.prisma.transaction.findFirst({
-      where: { internalRef: input.paymentReference },
+      where: { transactionRef: input.paymentReference },
     });
 
     if (!transaction) {

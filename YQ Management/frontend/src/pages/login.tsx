@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { ArrowRight, Lock, Mail, CheckCircle } from 'lucide-react';
+import { fetchApi } from '../lib/api';
 
 export default function Login() {
   const router = useRouter();
@@ -20,23 +21,19 @@ export default function Login() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:3000/auth/login', {
+      const data = await fetchApi('/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-      const data = await res.json();
 
-      if (!res.ok) throw new Error(data.message || 'Login failed');
-
-      if (data.requiresOtp) {
+      if (data?.requiresOtp) {
         setStep('otp');
       } else {
         // Fallback if no OTP required for some reason
         router.push('/dashboard');
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -48,22 +45,17 @@ export default function Login() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:3000/auth/verify-login', {
+      const data = await fetchApi('/auth/verify-login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp })
       });
-      const data = await res.json();
 
-      if (!res.ok) throw new Error(data.message || 'Invalid OTP');
-
-      if (data.access_token) {
-        document.cookie = `token=${data.access_token}; path=/; max-age=604800`;
+      if (data?.access_token) {
+        // Token is stored as httpOnly cookie by the backend
       }
-
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Invalid OTP');
     } finally {
       setLoading(false);
     }
@@ -144,7 +136,7 @@ export default function Login() {
                 </div>
               </div>
 
-              <button type="button" className="text-sm text-indigo-400 hover:text-indigo-300 font-medium text-right w-full">
+              <button type="button" onClick={() => router.push('/auth/forgot-password')} className="text-sm text-indigo-400 hover:text-indigo-300 font-medium text-right w-full">
                 Forgot password?
               </button>
 
@@ -206,7 +198,7 @@ export default function Login() {
 
               <div className="mt-8">
                 <a 
-                  href="http://localhost:3000/auth/google" 
+                  href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/auth/google`}
                   className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-zinc-900 border border-white/10 rounded-xl hover:bg-zinc-800 transition-colors font-medium text-zinc-300"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">

@@ -17,7 +17,7 @@ export class PlansService {
   ): Promise<Plan[]> {
     const where: Record<string, unknown> = {};
     if (statusFilter) {
-      where.status = statusFilter;
+      where.active = statusFilter === 'ACTIVE';
     }
     return this.prisma.plan.findMany({
       where,
@@ -40,9 +40,9 @@ export class PlansService {
       data: {
         name: dto.name,
         description: dto.description,
-        type: dto.type || 'STANDARD',
-        status: (dto.status || 'ACTIVE') as any,
-        billingInterval: dto.billingInterval || 'MONTHLY',
+        type: dto.type || 'standard',
+        active: (dto.status || 'ACTIVE') === 'ACTIVE',
+        billingInterval: dto.billingInterval || 'monthly',
         price: dto.price ?? 0,
         currency: dto.currency || 'ZAR',
         trialDays: dto.trialDays ?? 0,
@@ -81,7 +81,7 @@ export class PlansService {
     const existing = await this.getPlan(id);
     const updated = await this.prisma.plan.update({
       where: { id },
-      data: { status: status as any },
+      data: { active: status === 'ACTIVE' },
     });
     this.logger.log(`Plan ${id} status changed to ${status}`);
     return updated;
@@ -100,7 +100,7 @@ export class PlansService {
         trialDays: existing.trialDays,
         features: existing.features ?? undefined,
         limits: existing.limits ?? undefined,
-        status: 'ACTIVE',
+        active: true,
         sortOrder: existing.sortOrder,
       },
     });
@@ -112,7 +112,7 @@ export class PlansService {
     const existing = await this.getPlan(id);
     const archived = await this.prisma.plan.update({
       where: { id },
-      data: { status: 'ARCHIVED' },
+      data: { active: false },
     });
     this.logger.log(`Plan archived: ${archived.name} (${archived.id})`);
     return archived;

@@ -45,8 +45,7 @@ export class CommunicationLogService {
           status: entry.status,
           provider: entry.provider,
           providerId: entry.providerId,
-          errorMessage: entry.errorMessage,
-          metadata: entry.metadata,
+          error: entry.errorMessage,
           sentAt:
             entry.status === CommunicationStatus.SENT ? new Date() : undefined,
           deliveredAt:

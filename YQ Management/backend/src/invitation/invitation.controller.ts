@@ -29,14 +29,14 @@ import type { AuthenticatedRequest } from '../auth/types/auth.types';
 export class InvitationController {
   constructor(private readonly invitationService: InvitationService) {}
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   @RequirePermissions(Permission.INVITATION_CREATE, Permission.INVITATION_READ)
   @Get()
   async getInvitations(@Req() req: AuthenticatedRequest) {
     return this.invitationService.getInvitations(req.user.workspaceId);
   }
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   @RequirePermissions(Permission.INVITATION_CREATE)
   @Post()
   async createInvitation(
@@ -45,13 +45,12 @@ export class InvitationController {
   ) {
     const invitation = await this.invitationService.createInvitation(
       req.user.workspaceId,
-      req.user.userId,
       body,
     );
     return { success: true, invitation };
   }
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   @RequirePermissions(Permission.INVITATION_CREATE)
   @Post('join-code')
   async createJoinCode(
@@ -61,13 +60,12 @@ export class InvitationController {
     const role = (body.role as Role) || Role.OPERATOR;
     const invitation = await this.invitationService.createJoinCode(
       req.user.workspaceId,
-      req.user.userId,
       role,
     );
     return { success: true, invitation };
   }
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   @RequirePermissions(Permission.INVITATION_REVOKE)
   @Delete(':id')
   async revokeInvitation(
@@ -75,6 +73,13 @@ export class InvitationController {
     @Param('id', UuidPipe) id: string,
   ) {
     await this.invitationService.revokeInvitation(id, req.user.workspaceId);
+    return { success: true };
+  }
+
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
+  @Post('ensure-admin')
+  async ensureWorkspaceAdmin(@Req() req: AuthenticatedRequest) {
+    await this.invitationService.ensureWorkspaceHasAdmin(req.user.workspaceId);
     return { success: true };
   }
 }

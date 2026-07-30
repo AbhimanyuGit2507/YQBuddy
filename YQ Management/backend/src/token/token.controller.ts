@@ -1,20 +1,51 @@
-import { Controller, Post, Get, Body, Param, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { TokenService } from './token.service';
 import { AuthGuard } from '@nestjs/passport';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import { WorkspaceGuard } from '../auth/workspace.guard';
+import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('token')
 export class TokenController {
   constructor(private readonly tokenService: TokenService) {}
 
+  @UseGuards(ThrottlerGuard)
   @Post('request-otp')
   async requestOtp(@Body() body: { phone: string }) {
     return this.tokenService.requestOtp(body.phone);
   }
 
-  // Customer facing - no auth required (or could use tenant-based rate limiting)
+  @UseGuards(ThrottlerGuard)
   @Post('join')
-  async joinQueue(@Body() body: { queueId: string; customerName: string; phone?: string; otp?: string; formResponses?: any; language?: string; scheduledFor?: string }) {
-    return this.tokenService.joinQueue(body.queueId, body.customerName, body.phone, body.otp, body.formResponses, body.language, body.scheduledFor);
+  async joinQueue(
+    @Body()
+    body: {
+      queueId: string;
+      customerName: string;
+      phone?: string;
+      otp?: string;
+      formResponses?: any;
+      language?: string;
+      scheduledFor?: string;
+    },
+  ) {
+    return this.tokenService.joinQueue(
+      body.queueId,
+      body.customerName,
+      body.phone,
+      body.otp,
+      body.formResponses,
+      body.language,
+      body.scheduledFor,
+    );
   }
 
   @Get(':id/status')
@@ -23,32 +54,42 @@ export class TokenController {
   }
 
   @Post(':id/cancel')
+  @UseGuards(ThrottlerGuard)
   async cancelToken(@Param('id') id: string) {
     return this.tokenService.cancelToken(id);
   }
 
   @Post(':id/checkin')
-  async checkInToken(@Param('id') id: string) {
-    return this.tokenService.checkIn(id);
+  @UseGuards(ThrottlerGuard, AuthGuard('jwt'), WorkspaceGuard)
+  async checkInToken(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return this.tokenService.checkIn(id, req.user.tenantId);
   }
 
-  // Admin facing - requires JWT
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(ThrottlerGuard, AuthGuard('jwt'), WorkspaceGuard)
+  @Post(':id/complete')
+  async completeToken(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return this.tokenService.completeToken(id);
+  }
+
+  @UseGuards(ThrottlerGuard, AuthGuard('jwt'), WorkspaceGuard)
   @Post('advance/:queueId')
-  async advanceQueue(@Param('queueId') queueId: string) {
+  async advanceQueue(@Req() req: AuthenticatedRequest, @Param('queueId') queueId: string) {
     return this.tokenService.advanceQueue(queueId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(ThrottlerGuard, AuthGuard('jwt'), WorkspaceGuard)
   @Post('validate')
-  async validateToken(@Body() body: { tokenId: string }) {
+  async validateToken(@Req() req: AuthenticatedRequest, @Body() body: { tokenId: string }) {
     return this.tokenService.validateToken(body.tokenId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(ThrottlerGuard, AuthGuard('jwt'), WorkspaceGuard)
   @Post(':id/transfer')
-  async transferToken(@Param('id') id: string, @Body() body: { nextQueueId: string }) {
+  async transferToken(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: { nextQueueId: string },
+  ) {
     return this.tokenService.transferToken(id, body.nextQueueId);
   }
 }
-

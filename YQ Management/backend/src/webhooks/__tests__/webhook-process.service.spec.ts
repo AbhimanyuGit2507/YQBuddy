@@ -13,6 +13,9 @@ describe('WebhookProcessService', () => {
 
   beforeEach(async () => {
     prisma = {
+      $transaction: jest.fn().mockImplementation(async (cb) => {
+        return cb(prisma);
+      }),
       webhookEvent: {
         findFirst: jest.fn(),
         create: jest.fn(),
@@ -21,6 +24,7 @@ describe('WebhookProcessService', () => {
       transaction: {
         findFirst: jest.fn(),
         update: jest.fn(),
+        $transaction: jest.fn(),
       },
       workspace: {
         update: jest.fn(),

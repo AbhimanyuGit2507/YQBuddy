@@ -7,6 +7,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [PrismaModule],
   providers: [WhatsappService],
   controllers: [WhatsappController],
-  exports: [WhatsappService]
+  exports: [WhatsappService],
 })
 export class WhatsappModule {}

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -10,7 +10,7 @@ export class InvoiceService {
   async getInvoice(invoiceId: string) {
     return this.prisma.invoice.findUnique({
       where: { id: invoiceId },
-      include: { workspace: { select: { name: true } }, subscription: true },
+      include: { workspace: { select: { name: true } } },
     });
   }
 
@@ -23,41 +23,22 @@ export class InvoiceService {
     });
   }
 
-  async generateInvoice(
-    workspaceId: string,
-    subscriptionId?: string,
-    transactionId?: string,
-  ) {
+  async generateInvoice(workspaceId: string) {
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { name: true, subdomain: true },
     });
 
     if (!workspace) {
-      throw new Error('Workspace not found');
+      throw new InternalServerErrorException('Workspace not found');
     }
 
-    const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
-    let amount = 0;
-    let currency = 'ZAR';
-
-    if (transactionId) {
-      const transaction = await this.prisma.transaction.findUnique({
-        where: { id: transactionId },
-      });
-      if (transaction) {
-        amount = transaction.amount;
-        currency = transaction.currency;
-      }
-    }
+    const amount = 0;
+    const currency = 'ZAR';
 
     const invoice = await this.prisma.invoice.create({
       data: {
         workspaceId,
-        subscriptionId,
-        transactionId,
-        invoiceNumber,
         amount,
         currency,
         status: 'DRAFT',
@@ -65,7 +46,7 @@ export class InvoiceService {
     });
 
     this.logger.log(
-      `Invoice generated: ${invoiceNumber} for workspace ${workspaceId}`,
+      `Invoice generated: ${invoice.id} for workspace ${workspaceId}`,
     );
     return invoice;
   }

@@ -47,7 +47,7 @@ describe('PlansService', () => {
 
       const result = await service.listPlans('ACTIVE');
       expect(prisma.plan.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { status: 'ACTIVE' } }),
+        expect.objectContaining({ where: { active: true } }),
       );
     });
   });

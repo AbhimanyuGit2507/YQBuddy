@@ -9,7 +9,6 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TransactionStatus } from '@prisma/client';
 import { SubscriptionStatus } from '@prisma/client';
 
 export class CreatePaymentDto {

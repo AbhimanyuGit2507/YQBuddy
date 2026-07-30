@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -7,9 +7,14 @@ export class WebhooksService {
 
   constructor(private prisma: PrismaService) {}
 
-  async createWebhook(tenantId: string, url: string, secret: string | null, events: string[]) {
+  async createWebhook(
+    tenantId: string,
+    url: string,
+    secret: string | null,
+    events: string[],
+  ) {
     return this.prisma.webhookEndpoint.create({
-      data: { tenantId, url, secret, events }
+      data: { tenantId, url, secret, events },
     });
   }
 
@@ -17,7 +22,15 @@ export class WebhooksService {
     return this.prisma.webhookEndpoint.findMany({ where: { tenantId } });
   }
 
-  async deleteWebhook(id: string) {
+  async deleteWebhook(id: string, tenantId: string) {
+    const endpoint = await this.prisma.webhookEndpoint.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!endpoint) {
+      throw new NotFoundException('Webhook not found');
+    }
+
     return this.prisma.webhookEndpoint.delete({ where: { id } });
   }
 
@@ -26,21 +39,37 @@ export class WebhooksService {
       where: {
         tenantId,
         active: true,
-        events: { has: eventName }
-      }
+        events: { has: eventName },
+      },
     });
 
     for (const endpoint of endpoints) {
       try {
-        await fetch(endpoint.url, {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+
+        const res = await fetch(endpoint.url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'x-yq-event': eventName,
           },
-          body: JSON.stringify({ event: eventName, data: payload, timestamp: new Date() })
+          body: JSON.stringify({
+            event: eventName,
+            data: payload,
+            timestamp: new Date(),
+          }),
+          signal: controller.signal,
         });
-        this.logger.log(`Triggered webhook ${eventName} for tenant ${tenantId} at ${endpoint.url}`);
+
+        clearTimeout(timeout);
+
+        if (!res.ok) {
+          throw new BadRequestException(`Webhook responded with ${res.status}`);
+        }
+        this.logger.log(
+          `Triggered webhook ${eventName} for tenant ${tenantId} at ${endpoint.url}`,
+        );
       } catch (error) {
         this.logger.error(`Failed to trigger webhook ${endpoint.url}`, error);
       }

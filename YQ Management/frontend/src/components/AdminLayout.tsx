@@ -25,7 +25,7 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const navItems = [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -128,7 +128,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               )}
             </button>
             <span className="text-sm font-medium text-gray-600 dark:text-zinc-300">Operator</span>
-            <button className="w-8 h-8 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors">
+            <button onClick={logout} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors">
               <LogOut className="w-4 h-4 text-gray-500 dark:text-zinc-400" />
             </button>
           </div>

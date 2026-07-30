@@ -26,7 +26,7 @@ import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('billing/subscriptions')
 @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
-@Roles(Role.ADMIN, Role.OPERATOR)
+@Roles(Role.TENANT_ADMIN)
 export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
 
@@ -36,7 +36,7 @@ export class SubscriptionController {
   }
 
   @Post('')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async createSubscription(
     @Req() req: AuthenticatedRequest,
     @Body() dto: CreateSubscriptionDto,
@@ -48,7 +48,7 @@ export class SubscriptionController {
   }
 
   @Post('trial')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async startTrial(
     @Req() req: AuthenticatedRequest,
     @Body() body: CreateSubscriptionDto,
@@ -61,7 +61,7 @@ export class SubscriptionController {
   }
 
   @Put('upgrade')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async upgradeSubscription(
     @Req() req: AuthenticatedRequest,
     @Body() dto: UpgradeSubscriptionDto,
@@ -73,7 +73,7 @@ export class SubscriptionController {
   }
 
   @Put('downgrade')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async downgradeSubscription(
     @Req() req: AuthenticatedRequest,
     @Body() dto: DowngradeSubscriptionDto,
@@ -85,7 +85,7 @@ export class SubscriptionController {
   }
 
   @Post('cancel')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async cancelSubscription(
     @Req() req: AuthenticatedRequest,
     @Body() dto: CancelSubscriptionDto,
@@ -97,7 +97,7 @@ export class SubscriptionController {
   }
 
   @Post('resume')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async resumeSubscription(
     @Req() req: AuthenticatedRequest,
     @Body() dto: ResumeSubscriptionDto,
@@ -122,13 +122,13 @@ export class SubscriptionController {
   }
 
   @Post('expire-trial')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async expireTrial(@Req() req: AuthenticatedRequest) {
     return this.subscriptionService.expireTrial(req.user.workspaceId);
   }
 
   @Post('renew')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async renewSubscription(@Req() req: AuthenticatedRequest) {
     return this.subscriptionService.renewSubscription(req.user.workspaceId);
   }

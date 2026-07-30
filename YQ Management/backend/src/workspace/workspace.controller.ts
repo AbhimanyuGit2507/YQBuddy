@@ -6,6 +6,7 @@ import {
   UseGuards,
   Req,
   Patch,
+  ForbiddenException,
 } from '@nestjs/common';
 import { WorkspaceService } from './workspace.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -16,19 +17,32 @@ import type { AuthenticatedRequest } from '../auth/types/auth.types';
 export class WorkspaceController {
   constructor(private readonly workspaceService: WorkspaceService) {}
 
+  @UseGuards(AuthGuard('jwt'))
   @Post()
   async createWorkspace(
+    @Req() req: AuthenticatedRequest,
     @Body('name') name: string,
     @Body('subdomain', SubdomainPipe) subdomain: string,
     @Body('branding') branding?: any,
   ) {
-    return this.workspaceService.createWorkspace({ name, subdomain, branding });
+    const tenantId = req.user.tenantId;
+    const ownerId = req.user.userId;
+    return this.workspaceService.createWorkspace({
+      name,
+      subdomain,
+      branding,
+      ownerId,
+      tenantId,
+    });
   }
 
   @UseGuards(AuthGuard('jwt'))
   @Get()
-  async getAllWorkspaces() {
-    return this.workspaceService.getAllWorkspaces();
+  async getAllWorkspaces(@Req() req: AuthenticatedRequest) {
+    if (req.user.role === 'SUPER_ADMIN') {
+      return this.workspaceService.getAllWorkspaces();
+    }
+    throw new ForbiddenException('Forbidden');
   }
 
   @UseGuards(AuthGuard('jwt'))

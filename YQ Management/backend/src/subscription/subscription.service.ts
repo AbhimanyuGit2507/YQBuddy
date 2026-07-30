@@ -20,7 +20,6 @@ export class SubscriptionService {
       where: { workspaceId },
       include: {
         plan: true,
-        transactions: { orderBy: { createdAt: 'desc' }, take: 10 },
       },
     });
   }
@@ -36,7 +35,7 @@ export class SubscriptionService {
       throw new NotFoundException(`Plan with id ${dto.planId} not found`);
     }
 
-    if (plan.status !== 'ACTIVE') {
+    if (!plan.active) {
       throw new BillingException(`Plan ${plan.name} is not active`);
     }
 
@@ -51,7 +50,7 @@ export class SubscriptionService {
     }
 
     const billingInterval =
-      dto.billingInterval || plan.billingInterval || 'MONTHLY';
+      dto.billingInterval || plan.billingInterval || 'monthly';
     const trialDays = dto.trialDays ?? plan.trialDays;
     const now = new Date();
 
@@ -86,14 +85,12 @@ export class SubscriptionService {
         planId: dto.planId,
         status,
         billingInterval,
-        trialDays,
         trialStartDate,
         trialEndDate,
-        currentPeriodStart,
-        currentPeriodEnd,
+        currentPeriodStart: currentPeriodStart || now,
+        currentPeriodEnd: currentPeriodEnd || now,
         nextBillingDate,
-        startedAt: now,
-        metadata: (dto.metadata ?? null) as any,
+        metadata: dto.metadata as any,
       },
       include: { plan: true },
     });
@@ -125,7 +122,7 @@ export class SubscriptionService {
       throw new NotFoundException(`Plan with id ${dto.planId} not found`);
     }
 
-    if (plan.status !== 'ACTIVE') {
+    if (!plan.active) {
       throw new BillingException(`Plan ${plan.name} is not active`);
     }
 
@@ -172,7 +169,7 @@ export class SubscriptionService {
       throw new NotFoundException(`Plan with id ${dto.planId} not found`);
     }
 
-    if (plan.status !== 'ACTIVE') {
+    if (!plan.active) {
       throw new BillingException(`Plan ${plan.name} is not active`);
     }
 
@@ -336,13 +333,11 @@ export class SubscriptionService {
         workspaceId,
         planId,
         status: SubscriptionStatus.TRIAL,
-        billingInterval: plan.billingInterval || 'MONTHLY',
-        trialDays,
+        billingInterval: plan.billingInterval || 'monthly',
         trialStartDate: now,
         trialEndDate,
         currentPeriodStart: now,
         currentPeriodEnd: trialEndDate,
-        startedAt: now,
       },
       include: { plan: true },
     });

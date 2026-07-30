@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 
 @Injectable()
 export class EmailService {
@@ -12,31 +12,40 @@ export class EmailService {
   async sendOTP(email: string, otpCode: string, purpose: 'signup' | 'login') {
     try {
       if (!this.apiKey) {
-        this.logger.warn(`BREVO_API_KEY missing. Mock sent ${purpose} OTP to ${email}: ${otpCode}`);
+        this.logger.warn(
+          `BREVO_API_KEY missing. Mock sent ${purpose} OTP to ${email}: ${otpCode}`,
+        );
         return;
       }
 
-      const subject = purpose === 'signup' ? 'Verify your QMover Account' : 'Your QMover Login Code';
+      const subject =
+        purpose === 'signup'
+          ? 'Verify your QMover Account'
+          : 'Your QMover Login Code';
       const htmlContent = `<html><body><h2>Your OTP Code is: <strong>${otpCode}</strong></h2><p>This code will expire in 10 minutes.</p></body></html>`;
 
       const res = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
-          'accept': 'application/json',
+          accept: 'application/json',
           'api-key': this.apiKey,
-          'content-type': 'application/json'
+          'content-type': 'application/json',
         },
         body: JSON.stringify({
-          sender: { name: 'QMover Authentication', email: 'no-reply@qmover.com' },
+          sender: {
+            name: 'QMover Authentication',
+            email: 'no-reply@qmover.com',
+          },
           to: [{ email }],
           subject,
-          htmlContent
-        })
+          htmlContent,
+        }),
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!res.ok) {
         const error = await res.text();
-        throw new Error(`Brevo API error: ${error}`);
+        throw new InternalServerErrorException(`Brevo API error: ${error}`);
       }
 
       this.logger.log(`Sent ${purpose} OTP to ${email}`);
@@ -52,21 +61,22 @@ export class EmailService {
       const res = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
-          'accept': 'application/json',
+          accept: 'application/json',
           'api-key': this.apiKey,
-          'content-type': 'application/json'
+          'content-type': 'application/json',
         },
         body: JSON.stringify({
           sender: { name: 'QMover Security', email: 'security@qmover.com' },
           to: [{ email }],
           subject: 'New login to your QMover Account',
-          htmlContent: `<html><body><p>We detected a new login to your QMover account at ${new Date().toLocaleString()}.</p></body></html>`
-        })
+          htmlContent: `<html><body><p>We detected a new login to your QMover account at ${new Date().toLocaleString()}.</p></body></html>`,
+        }),
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!res.ok) {
         const error = await res.text();
-        throw new Error(`Brevo API error: ${error}`);
+        throw new InternalServerErrorException(`Brevo API error: ${error}`);
       }
     } catch (error) {
       this.logger.error(`Failed to send login notification to ${email}`, error);
@@ -76,38 +86,47 @@ export class EmailService {
   async addContactToMarketingList(email: string) {
     try {
       if (!this.apiKey) {
-        this.logger.warn(`BREVO_API_KEY missing. Skipped adding ${email} to marketing list.`);
+        this.logger.warn(
+          `BREVO_API_KEY missing. Skipped adding ${email} to marketing list.`,
+        );
         return;
       }
 
       const listId = Number(process.env.BREVO_LIST_ID) || 2;
-      
+
       const res = await fetch('https://api.brevo.com/v3/contacts', {
         method: 'POST',
         headers: {
-          'accept': 'application/json',
+          accept: 'application/json',
           'api-key': this.apiKey,
-          'content-type': 'application/json'
+          'content-type': 'application/json',
         },
         body: JSON.stringify({
           email,
           listIds: [listId],
-          updateEnabled: true
-        })
+          updateEnabled: true,
+        }),
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!res.ok) {
         const errorText = await res.text();
         // Ignore duplicate contact error
-        if (errorText.includes('duplicate_parameter') || errorText.includes('Contact already exist')) {
+        if (
+          errorText.includes('duplicate_parameter') ||
+          errorText.includes('Contact already exist')
+        ) {
           return;
         }
-        throw new Error(`Brevo API error: ${errorText}`);
+        throw new InternalServerErrorException(`Brevo API error: ${errorText}`);
       }
 
       this.logger.log(`Added ${email} to Brevo marketing list`);
     } catch (error: any) {
-      this.logger.error(`Failed to add contact to marketing list: ${email}`, error);
+      this.logger.error(
+        `Failed to add contact to marketing list: ${email}`,
+        error,
+      );
     }
   }
 }

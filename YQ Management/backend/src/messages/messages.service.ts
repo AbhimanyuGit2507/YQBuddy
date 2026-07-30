@@ -8,26 +8,37 @@ export class MessagesService {
   constructor(
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
-    private redisService: RedisService
+    private redisService: RedisService,
   ) {}
 
-  async getMessages(tokenId: string) {
+  async getMessages(tokenId: string, tenantId: string) {
+    const token = await this.prisma.token.findFirst({
+      where: { id: tokenId, queue: { tenantId } },
+    });
+    if (!token) throw new NotFoundException('Token not found');
+
     return this.prisma.message.findMany({
       where: { tokenId },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
     });
   }
 
-  async sendMessageFromOperator(tokenId: string, text: string) {
-    const token = await this.prisma.token.findUnique({ where: { id: tokenId } });
+  async sendMessageFromOperator(
+    tokenId: string,
+    text: string,
+    tenantId: string,
+  ) {
+    const token = await this.prisma.token.findFirst({
+      where: { id: tokenId, queue: { tenantId } },
+    });
     if (!token) throw new NotFoundException('Token not found');
 
     const message = await this.prisma.message.create({
       data: {
         tokenId,
         body: text,
-        sender: 'OPERATOR'
-      }
+        sender: 'OPERATOR',
+      },
     });
 
     // Notify customer via WhatsApp
@@ -36,7 +47,10 @@ export class MessagesService {
     }
 
     // Broadcast message to Dashboard & Live Status
-    this.redisService.client.publish('queue_events', JSON.stringify({ type: 'NEW_MESSAGE', queueId: token.queueId, message }));
+    this.redisService.client.publish(
+      'queue_events',
+      JSON.stringify({ type: 'NEW_MESSAGE', queueId: token.queueId, message }),
+    );
 
     return message;
   }

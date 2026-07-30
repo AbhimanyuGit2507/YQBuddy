@@ -4,15 +4,17 @@ import { NotificationsController } from './notifications.controller';
 
 import { BullModule } from '@nestjs/bullmq';
 import { WhatsappProcessor } from './whatsapp.processor';
+import { WhatsappModule } from '../whatsapp/whatsapp.module';
 
 @Module({
   imports: [
     BullModule.registerQueue({
       name: 'whatsapp',
     }),
+    WhatsappModule,
   ],
   providers: [NotificationsService, WhatsappProcessor],
   controllers: [NotificationsController],
-  exports: [NotificationsService]
+  exports: [NotificationsService],
 })
 export class NotificationsModule {}

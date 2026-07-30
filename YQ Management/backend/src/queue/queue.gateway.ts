@@ -1,16 +1,23 @@
-import { 
-  WebSocketGateway, 
-  WebSocketServer, 
-  OnGatewayConnection, 
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  OnGatewayConnection,
   OnGatewayDisconnect,
   SubscribeMessage,
   MessageBody,
-  ConnectedSocket
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 
-@WebSocketGateway({ cors: { origin: '*' } })
+@WebSocketGateway({
+  cors: {
+    origin:
+      (process.env.FRONTEND_URL || 'http://localhost:3001')
+        .split(',')
+        .map((o) => o.trim()),
+  },
+})
 export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   private logger: Logger = new Logger(QueueGateway.name);
@@ -24,14 +31,20 @@ export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('joinQueueRoom')
-  handleJoinQueueRoom(@MessageBody() queueId: string, @ConnectedSocket() client: Socket) {
+  handleJoinQueueRoom(
+    @MessageBody() queueId: string,
+    @ConnectedSocket() client: Socket,
+  ) {
     client.join(`queue_${queueId}`);
     this.logger.log(`Client ${client.id} joined room queue_${queueId}`);
     return { event: 'joinedRoom', data: `queue_${queueId}` };
   }
 
   @SubscribeMessage('joinTenantRoom')
-  handleJoinTenantRoom(@MessageBody() tenantId: string, @ConnectedSocket() client: Socket) {
+  handleJoinTenantRoom(
+    @MessageBody() tenantId: string,
+    @ConnectedSocket() client: Socket,
+  ) {
     client.join(`tenant_${tenantId}`);
     this.logger.log(`Client ${client.id} joined room tenant_${tenantId}`);
     return { event: 'joinedRoom', data: `tenant_${tenantId}` };

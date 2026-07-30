@@ -28,30 +28,28 @@ export class WebhookProcessService {
   ): Promise<{ success: boolean }> {
     const providerEventId =
       headers['x-ozow-event-id'] || body.id || body.eventId;
-    const idempotencyKey = `ozow-${providerEventId}`;
 
     const existing = await this.prisma.webhookEvent.findFirst({
-      where: { idempotencyKey },
+      where: {
+        eventType: this.mapEventType(body.Status),
+        transactionId: body.TransactionReference,
+      },
     });
 
     if (existing) {
       this.logger.log(
-        `Duplicate webhook detected: ${idempotencyKey}, returning 200`,
+        `Duplicate webhook detected for transaction ${body.TransactionReference}, returning 200`,
       );
       return { success: true };
     }
 
     const webhookEvent = await this.prisma.webhookEvent.create({
       data: {
-        providerEventId: providerEventId || undefined,
-        provider: PaymentProviderName.OZOW,
+        tenantId: body.tenantId || body.workspaceId || 'unknown',
         eventType: this.mapEventType(body.Status),
         workspaceId: body.workspaceId || undefined,
         transactionId: body.TransactionReference || undefined,
         payload: body,
-        headers: Object.fromEntries(Object.entries(headers)) as any,
-        signature: headers['x-ozow-signature'] || body.signature || undefined,
-        idempotencyKey,
         processingStatus: WebhookProcessingStatus.PROCESSING,
       },
     });
@@ -67,116 +65,120 @@ export class WebhookProcessService {
         signature: sig,
       });
 
-      await this.prisma.webhookEvent.update({
-        where: { id: webhookEvent.id },
-        data: {
-          signatureValid: verification.valid,
-          workspaceValid: !!verification.workspaceId,
-          transactionValid: !!verification.transactionId,
-          amountValid: !!verification.amount,
-          currencyValid: !!verification.currency,
-        },
-      });
-
-      if (!verification.valid) {
-        await this.prisma.webhookEvent.update({
+      await this.prisma.$transaction(async (tx) => {
+        await tx.webhookEvent.update({
           where: { id: webhookEvent.id },
           data: {
-            processingStatus: WebhookProcessingStatus.FAILED,
-            processingResult: 'Signature verification failed',
+            signatureValid: verification.valid,
+            processingResult: JSON.stringify({
+              workspaceValid: !!verification.workspaceId,
+              transactionValid: !!verification.transactionId,
+              amountValid: !!verification.amount,
+              currencyValid: !!verification.currency,
+            }),
           },
         });
-        throw new BillingException('Webhook signature verification failed');
-      }
 
-      const TransactionReference = body.TransactionReference;
-      const Status = body.Status;
-
-      if (!TransactionReference) {
-        await this.prisma.webhookEvent.update({
-          where: { id: webhookEvent.id },
-          data: {
-            processingStatus: WebhookProcessingStatus.FAILED,
-            processingResult: 'Missing TransactionReference',
-          },
-        });
-        throw new BillingException('Missing TransactionReference');
-      }
-
-      if (TransactionReference) {
-        const transaction = await this.prisma.transaction.findFirst({
-          where: { transactionRef: TransactionReference },
-        });
-
-        if (!transaction) {
-          await this.prisma.webhookEvent.update({
+        if (!verification.valid) {
+          await tx.webhookEvent.update({
             where: { id: webhookEvent.id },
             data: {
               processingStatus: WebhookProcessingStatus.FAILED,
-              processingResult: 'Transaction not found',
+              processingResult: 'Signature verification failed',
             },
           });
-          throw new BillingException(
-            `Transaction ${TransactionReference} not found`,
-          );
+          throw new BillingException('Webhook signature verification failed');
         }
 
-        await this.prisma.webhookEvent.update({
-          where: { id: webhookEvent.id },
-          data: { transactionId: transaction.id },
-        });
+        const TransactionReference = body.TransactionReference;
+        const Status = body.Status;
 
-        await this.prisma.transaction.update({
-          where: { id: transaction.id },
-          data: {
-            status:
-              Status === 'Complete'
-                ? 'SUCCESS'
-                : Status === 'Cancelled'
-                  ? 'CANCELLED'
-                  : 'FAILED',
-            rawProviderResponse: body,
-          },
-        });
+        if (!TransactionReference) {
+          await tx.webhookEvent.update({
+            where: { id: webhookEvent.id },
+            data: {
+              processingStatus: WebhookProcessingStatus.FAILED,
+              processingResult: 'Missing TransactionReference',
+            },
+          });
+          throw new BillingException('Missing TransactionReference');
+        }
 
-        if (Status === 'Complete' && transaction.workspaceId) {
-          await this.prisma.workspace.update({
-            where: { id: transaction.workspaceId },
-            data: { subscriptionStatus: 'ACTIVE' },
+        if (TransactionReference) {
+          const transaction = await tx.transaction.findFirst({
+            where: { transactionRef: TransactionReference },
           });
 
-          const subscription = await this.prisma.subscription.findUnique({
-            where: { workspaceId: transaction.workspaceId },
-          });
-
-          if (subscription) {
-            const periodDays =
-              subscription.billingInterval === 'YEARLY' ? 365 : 30;
-            await this.prisma.subscription.update({
-              where: { id: subscription.id },
+          if (!transaction) {
+            await tx.webhookEvent.update({
+              where: { id: webhookEvent.id },
               data: {
-                status: 'ACTIVE',
-                currentPeriodStart: new Date(),
-                currentPeriodEnd: new Date(
-                  Date.now() + periodDays * 24 * 60 * 60 * 1000,
-                ),
-                nextBillingDate: new Date(
-                  Date.now() + periodDays * 24 * 60 * 60 * 1000,
-                ),
-                renewalDate: new Date(),
+                processingStatus: WebhookProcessingStatus.FAILED,
+                processingResult: 'Transaction not found',
               },
             });
+            throw new BillingException(
+              `Transaction ${TransactionReference} not found`,
+            );
+          }
+
+          await tx.webhookEvent.update({
+            where: { id: webhookEvent.id },
+            data: { transactionId: transaction.id },
+          });
+
+          await tx.transaction.update({
+            where: { id: transaction.id },
+            data: {
+              status:
+                Status === 'Complete'
+                  ? 'SUCCESS'
+                  : Status === 'Cancelled'
+                    ? 'CANCELLED'
+                    : 'FAILED',
+              rawProviderResponse: body,
+            },
+          });
+
+          if (Status === 'Complete' && transaction.workspaceId) {
+            await tx.workspace.update({
+              where: { id: transaction.workspaceId },
+              data: { subscriptionStatus: 'ACTIVE' },
+            });
+
+            const subscription = await tx.subscription.findUnique({
+              where: { workspaceId: transaction.workspaceId },
+            });
+
+            if (subscription) {
+              const periodDays =
+                subscription.billingInterval === 'YEARLY' ? 365 : 30;
+              await tx.subscription.update({
+                where: { id: subscription.id },
+                data: {
+                  status: 'ACTIVE',
+                  currentPeriodStart: new Date(),
+                  currentPeriodEnd: new Date(
+                    Date.now() + periodDays * 24 * 60 * 60 * 1000,
+                  ),
+                  nextBillingDate: new Date(
+                    Date.now() + periodDays * 24 * 60 * 60 * 1000,
+                  ),
+                  renewalDate: new Date(),
+                },
+              });
+            }
           }
         }
-      }
 
-      await this.prisma.webhookEvent.update({
-        where: { id: webhookEvent.id },
-        data: {
-          processingStatus: WebhookProcessingStatus.SUCCESS,
-          processingResult: 'Processed successfully',
-          processedAt: new Date(),
-        },
+        await tx.webhookEvent.update({
+          where: { id: webhookEvent.id },
+          data: {
+            processingStatus: WebhookProcessingStatus.SUCCESS,
+            processingResult: 'Processed successfully',
+            processedAt: new Date(),
+          },
+        });
       });
 
       return { success: true };

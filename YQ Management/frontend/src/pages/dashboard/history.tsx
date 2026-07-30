@@ -6,6 +6,30 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchApi } from '../../lib/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
+const exportCsv = (data: any[]) => {
+  if (!data.length) return;
+  const rows: Record<string, any>[] = data.map(record => ({
+    'Token ID': record.id,
+    'Customer Name': record.customerName,
+    'Purpose': record.purpose || '-',
+    'Queue': record.queue?.name || 'Unknown',
+    'Status': record.status,
+    'Date': new Date(record.joinedAt).toLocaleString(),
+  }));
+  const headers = Object.keys(rows[0]);
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => headers.map(h => JSON.stringify(row[h] ?? '')).join(','))
+  ].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'queue-history.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 export default function HistoryPage() {
   const { data: history = [], isLoading } = useQuery({
     queryKey: ['history'],
@@ -59,7 +83,7 @@ export default function HistoryPage() {
               Analytics & Records
             </h1>
           </div>
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 text-gray-700 dark:text-white rounded-lg font-medium transition-colors border border-gray-200 dark:border-white/10 shadow-sm dark:shadow-none">
+          <button onClick={() => exportCsv(history)} className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 text-gray-700 dark:text-white rounded-lg font-medium transition-colors border border-gray-200 dark:border-white/10 shadow-sm dark:shadow-none">
             <Download className="w-4 h-4" />
             Export CSV
           </button>

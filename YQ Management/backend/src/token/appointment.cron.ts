@@ -9,12 +9,11 @@ export class AppointmentCron {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly tokenService: TokenService
+    private readonly tokenService: TokenService,
   ) {}
 
   @Cron(CronExpression.EVERY_MINUTE)
   async handleAutoCheckIn() {
-    // Find appointments that are <= 15 mins from now, not checked in, and belong to a queue that DOES NOT require manual check in
     const fifteenMinsFromNow = new Date(Date.now() + 15 * 60000);
 
     const appointmentsToAutoCheckIn = await this.prisma.token.findMany({
@@ -24,14 +23,15 @@ export class AppointmentCron {
         status: 'WAITING',
         scheduledFor: { lte: fifteenMinsFromNow },
         queue: {
-          requireManualCheckIn: false
-        }
-      }
+          requireManualCheckIn: false,
+        },
+      },
+      include: { queue: true },
     });
 
     for (const token of appointmentsToAutoCheckIn) {
       try {
-        await this.tokenService.checkIn(token.id);
+        await this.tokenService.checkIn(token.id, token.queue.tenantId);
         this.logger.log(`Auto-checked in appointment token: ${token.id}`);
       } catch (e) {
         this.logger.error(`Failed to auto-check in token: ${token.id}`, e);

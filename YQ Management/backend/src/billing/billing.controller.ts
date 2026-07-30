@@ -3,10 +3,7 @@ import {
   Get,
   Post,
   Put,
-  Patch,
-  Delete,
   Body,
-  Param,
   UseGuards,
   Request,
   Query,
@@ -16,28 +13,23 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
 import { WorkspaceGuard } from '../auth/workspace.guard';
-import { PlansService } from '../plans/plans.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { PaymentsService } from '../payments/payments.service';
 import { InvoiceService } from '../invoice/invoice.service';
 import { UsageService } from '../usage/usage.service';
-import { CreatePlanDto, UpdatePlanDto } from '../plans/dto/plan.dto';
 import { CreateSubscriptionDto } from '../subscription/dto/subscription.dto';
 import { UpgradeSubscriptionDto } from '../subscription/dto/subscription.dto';
 import { DowngradeSubscriptionDto } from '../subscription/dto/subscription.dto';
 import { CancelSubscriptionDto } from '../subscription/dto/subscription.dto';
 import { ResumeSubscriptionDto } from '../subscription/dto/subscription.dto';
-import { CreatePaymentDto } from '../payments/dto/payment.dto';
-import { UuidPipe } from '../common/pipes/validation.pipes';
 import { GenerateInvoiceDto } from './dto/billing.dto';
 import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('billing')
 @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
-@Roles(Role.ADMIN, Role.OPERATOR)
+@Roles(Role.TENANT_ADMIN, Role.OPERATOR)
 export class BillingController {
   constructor(
-    private readonly plansService: PlansService,
     private readonly subscriptionService: SubscriptionService,
     private readonly paymentsService: PaymentsService,
     private readonly invoiceService: InvoiceService,
@@ -78,7 +70,7 @@ export class BillingController {
   }
 
   @Post('workspace/subscription')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async createSubscription(
     @Request() req: AuthenticatedRequest,
     @Body() dto: CreateSubscriptionDto,
@@ -90,7 +82,7 @@ export class BillingController {
   }
 
   @Post('workspace/subscription/trial')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async startTrial(
     @Request() req: AuthenticatedRequest,
     @Body() body: CreateSubscriptionDto,
@@ -103,7 +95,7 @@ export class BillingController {
   }
 
   @Put('workspace/subscription/upgrade')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async upgradeSubscription(
     @Request() req: AuthenticatedRequest,
     @Body() dto: UpgradeSubscriptionDto,
@@ -115,7 +107,7 @@ export class BillingController {
   }
 
   @Put('workspace/subscription/downgrade')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async downgradeSubscription(
     @Request() req: AuthenticatedRequest,
     @Body() dto: DowngradeSubscriptionDto,
@@ -127,7 +119,7 @@ export class BillingController {
   }
 
   @Post('workspace/subscription/cancel')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async cancelSubscription(
     @Request() req: AuthenticatedRequest,
     @Body() dto: CancelSubscriptionDto,
@@ -139,7 +131,7 @@ export class BillingController {
   }
 
   @Post('workspace/subscription/resume')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async resumeSubscription(
     @Request() req: AuthenticatedRequest,
     @Body() dto: ResumeSubscriptionDto,
@@ -164,84 +156,21 @@ export class BillingController {
   }
 
   @Post('workspace/subscription/renew')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async renewSubscription(@Request() req: AuthenticatedRequest) {
     return this.subscriptionService.renewSubscription(req.user.workspaceId);
   }
 
   @Post('workspace/subscription/expire-trial')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async expireTrial(@Request() req: AuthenticatedRequest) {
     return this.subscriptionService.expireTrial(req.user.workspaceId);
   }
 }
 
-@Controller('billing/plans')
-export class BillingPlansController {
-  constructor(private readonly plansService: PlansService) {}
-
-  @Get()
-  async listPlans(
-    @Query('status') statusFilter?: string,
-    @Query('offset') offset?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.plansService.listPlans(statusFilter, offset ?? 0, limit ?? 50);
-  }
-
-  @Get(':id')
-  async getPlan(@Param('id', UuidPipe) id: string) {
-    return this.plansService.getPlan(id);
-  }
-
-  @Post()
-  @Roles(Role.ADMIN)
-  async createPlan(@Body() dto: CreatePlanDto) {
-    return this.plansService.createPlan(dto);
-  }
-
-  @Put(':id')
-  @Roles(Role.ADMIN)
-  async updatePlan(
-    @Param('id', UuidPipe) id: string,
-    @Body() dto: UpdatePlanDto,
-  ) {
-    return this.plansService.updatePlan(id, dto);
-  }
-}
-
-@Controller('billing/payments')
-export class BillingPaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) {}
-
-  @Post('checkout')
-  async createCheckout(
-    @Request() req: AuthenticatedRequest,
-    @Body() dto: CreatePaymentDto,
-  ) {
-    return this.paymentsService.createCheckout(dto, req.user.workspaceId);
-  }
-
-  @Get('status/:transactionRef')
-  async getPaymentStatus(@Param('transactionRef') transactionRef: string) {
-    return this.paymentsService.getPaymentStatus(transactionRef);
-  }
-
-  @Get('history')
-  async getTransactionHistory(
-    @Request() req: AuthenticatedRequest,
-    @Query('offset') offset?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.paymentsService.getTransactionHistory(
-      req.user.workspaceId,
-      offset ?? 0,
-      limit ?? 50,
-    );
-  }
-}
-
 @Controller('billing/invoices')
+@UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
+@Roles(Role.TENANT_ADMIN, Role.OPERATOR)
 export class BillingInvoicesController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
@@ -259,15 +188,11 @@ export class BillingInvoicesController {
   }
 
   @Post('generate')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async generateInvoice(
     @Request() req: AuthenticatedRequest,
     @Body() body: GenerateInvoiceDto,
   ) {
-    return this.invoiceService.generateInvoice(
-      req.user.workspaceId,
-      body.subscriptionId,
-      body.transactionId,
-    );
+    return this.invoiceService.generateInvoice(req.user.workspaceId);
   }
 }

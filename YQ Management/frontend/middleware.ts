@@ -15,7 +15,7 @@ export async function middleware(req: NextRequest) {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
       const res = await fetch(`${backendUrl}/auth/me`, {
         headers: {
-          cookie: `access_token=${token}`,
+          cookie: `token=${token}`,
         },
       });
 

@@ -2,96 +2,301 @@ import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 
+interface EvolutionError {
+  message: string;
+  status?: number;
+  raw: string;
+}
+
+interface FetchEvoResult {
+  status: number;
+  data: any;
+  error?: EvolutionError;
+}
+
+type InstanceState = 'connecting' | 'open' | 'close' | 'unconfigured';
+
 @Injectable()
 export class WhatsappService {
   private readonly logger = new Logger(WhatsappService.name);
-  private readonly evoUrl = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
-  private readonly evoApiKey = process.env.EVOLUTION_API_KEY || 'yq_secret_evolution_key_123';
-  private readonly appUrl = process.env.APP_URL || 'http://host.docker.internal:3000';
+  private readonly evoUrl =
+    process.env.EVOLUTION_API_URL || 'http://localhost:8080';
+  private readonly evoApiKey = process.env.EVOLUTION_API_KEY || '';
+  private readonly appUrl = process.env.APP_URL || 'http://localhost:3001';
 
-  constructor(private prisma: PrismaService, private redisService: RedisService) {}
+  constructor(
+    private prisma: PrismaService,
+    private redisService: RedisService,
+  ) {}
 
-  async fetchEvo(path: string, method: string = 'GET', body?: any) {
-    const res = await fetch(`${this.evoUrl}${path}`, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': this.evoApiKey
-      },
-      body: body ? JSON.stringify(body) : undefined
-    });
-    const text = await res.text();
-    if (!res.ok) {
-      this.logger.error(`Evolution API Error: ${res.status} ${text}`);
-    }
+  private buildEvolutionError(status: number, raw: string): EvolutionError {
+    let message = 'Evolution API request failed';
     try {
-      return { status: res.status, data: JSON.parse(text) };
+      const parsed = JSON.parse(raw);
+      const apiMessage =
+        parsed?.response?.message || parsed?.message || parsed?.error;
+      if (Array.isArray(apiMessage)) {
+        message = apiMessage.join(', ');
+      } else if (typeof apiMessage === 'string' && apiMessage.length > 0) {
+        message = apiMessage;
+      }
     } catch {
-      return { status: res.status, data: text };
+      if (raw.length > 0) message = raw;
+    }
+
+    this.logger.error(`Evolution API Error ${status}: ${message}`);
+    return { message, status, raw };
+  }
+
+  private classifyNetworkError(path: string, error: unknown): EvolutionError {
+    const message = error instanceof Error ? error.message : String(error);
+    if (
+      message.includes('aborted') ||
+      message.includes('timeout') ||
+      message.includes('ETIMEDOUT')
+    ) {
+      this.logger.error(`Evolution API timeout: ${path}`);
+      return {
+        message: `Evolution API request timed out for ${path}`,
+        status: 408,
+        raw: message,
+      };
+    }
+    if (
+      message.includes('ECONNREFUSED') ||
+      message.includes('NetworkError') ||
+      message.includes('fetch failed')
+    ) {
+      this.logger.error(`Evolution API unreachable: ${path}`);
+      return {
+        message:
+          'Evolution API is unreachable. Check the service and network connectivity.',
+        status: 503,
+        raw: message,
+      };
+    }
+    if (message.includes('ENOTFOUND') || message.includes('getaddrinfo')) {
+      this.logger.error(`Evolution API DNS failure: ${path}`);
+      return {
+        message: 'Cannot resolve Evolution API host. Check EVOLUTION_API_URL.',
+        status: 503,
+        raw: message,
+      };
+    }
+    this.logger.error(`Evolution API network error for ${path}: ${message}`);
+    return {
+      message: `Evolution API network error for ${path}: ${message}`,
+      status: 502,
+      raw: message,
+    };
+  }
+
+  async fetchEvo(
+    path: string,
+    method: string = 'GET',
+    body?: any,
+  ): Promise<FetchEvoResult> {
+    if (!this.evoUrl) {
+      this.logger.warn(
+        `Evolution API URL not configured. Skipping request to ${path}`,
+      );
+      return {
+        status: 0,
+        data: null,
+        error: { message: 'Evolution API URL is not configured.', raw: '' },
+      };
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    try {
+      const res = await fetch(`${this.evoUrl}${path}`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: this.evoApiKey,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+
+      const text = await res.text();
+      let parsed: any;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = text;
+      }
+
+      if (!res.ok) {
+        const evolutionError = this.buildEvolutionError(res.status, text);
+        return { status: res.status, data: parsed, error: evolutionError };
+      }
+
+      this.logger.debug(`Evolution API ${method} ${path} -> ${res.status}`);
+      return { status: res.status, data: parsed };
+    } catch (error) {
+      const evolutionError = this.classifyNetworkError(path, error);
+      return {
+        status: evolutionError.status ?? 502,
+        data: null,
+        error: evolutionError,
+      };
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
+  private extractQr(data: any): string | null {
+    if (!data) return null;
+    if (data?.qrcode?.base64) return data.qrcode.base64;
+    if (data?.base64) return data.base64;
+    if (data?.instance?.qrcode?.base64) return data.instance.qrcode.base64;
+    return null;
+  }
+
+  private extractState(data: any): InstanceState {
+    return data?.instance?.state || data?.state || 'close';
+  }
+
   async setWebhook(instanceName: string) {
+    if (!instanceName) {
+      this.logger.warn('setWebhook called with empty instanceName');
+      return;
+    }
+
     const webhookUrl = `${this.appUrl}/whatsapp/webhook/${instanceName}`;
-    await this.fetchEvo(`/webhook/set/${instanceName}`, 'POST', {
-      url: webhookUrl,
-      webhook_by_events: false,
-      webhook_base64: false,
-      events: [
-        "MESSAGES_UPSERT"
-      ]
+    this.logger.debug(`Setting webhook for ${instanceName} -> ${webhookUrl}`);
+
+    const result = await this.fetchEvo(`/webhook/set/${instanceName}`, 'POST', {
+      webhook: {
+        url: webhookUrl,
+        webhook_by_events: false,
+        webhook_base64: false,
+        events: ['MESSAGES_UPSERT'],
+      },
     });
+
+    if (result.error) {
+      this.logger.warn(
+        `Failed to set webhook for ${instanceName}: ${result.error.message}`,
+      );
+      throw new HttpException(result.error.message, HttpStatus.BAD_GATEWAY);
+    }
+
     this.logger.log(`Webhook set for ${instanceName} -> ${webhookUrl}`);
   }
 
   async connect(tenantId: string) {
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }});
-    if (!tenant) throw new HttpException('Tenant not found', HttpStatus.NOT_FOUND);
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
+    if (!tenant) {
+      throw new HttpException('Tenant not found', HttpStatus.NOT_FOUND);
+    }
 
-    const instanceName = tenant.whatsappInstanceId || `tenant_${tenantId.substring(0, 8)}`;
-    
+    const instanceName =
+      tenant.whatsappInstanceId || `tenant_${tenantId.substring(0, 8)}`;
+    this.logger.log(
+      `WhatsApp connect requested for tenant ${tenantId} -> instance ${instanceName}`,
+    );
+
     if (!tenant.whatsappInstanceId) {
       await this.prisma.tenant.update({
         where: { id: tenantId },
-        data: { whatsappInstanceId: instanceName }
+        data: { whatsappInstanceId: instanceName },
       });
     }
 
-    let connectRes = await this.fetchEvo('/instance/create', 'POST', {
+    let createResult = await this.fetchEvo('/instance/create', 'POST', {
       instanceName,
       qrcode: true,
-      integration: "WHATSAPP-BAILEYS"
+      integration: 'WHATSAPP-BAILEYS',
     });
 
-    if (connectRes.status === 403 || connectRes.status === 400 || connectRes.status === 409) {
-      connectRes = await this.fetchEvo(`/instance/connect/${instanceName}`, 'GET');
+    if (createResult.error) {
+      if (
+        createResult.status === 409 ||
+        createResult.status === 400 ||
+        createResult.status === 403
+      ) {
+        this.logger.warn(
+          `Instance ${instanceName} already exists or conflict, attempting connect...`,
+        );
+        createResult = await this.fetchEvo(
+          `/instance/connect/${instanceName}`,
+          'GET',
+        );
+      } else if (createResult.status === 401 || createResult.status === 403) {
+        this.logger.error(
+          `Evolution API auth failed during instance create. Check EVOLUTION_API_KEY.`,
+        );
+        throw new HttpException(
+          'Evolution API authentication failed. Check API key configuration.',
+          HttpStatus.BAD_GATEWAY,
+        );
+      }
     }
-    
-    this.setWebhook(instanceName).catch(() => {});
-    
-    const stateRes = await this.fetchEvo(`/instance/connectionState/${instanceName}`, 'GET');
-    const state = stateRes.data?.instance?.state || 'close';
-    
-    let qr = null;
-    if (connectRes.data?.qrcode?.base64) {
-      qr = connectRes.data.qrcode.base64;
-    } else if (connectRes.data?.base64) {
-      qr = connectRes.data.base64;
-    } else if (stateRes.data?.instance?.qrcode?.base64) {
-      qr = stateRes.data.instance.qrcode.base64;
-    } else if (stateRes.data?.qrcode?.base64) {
-      qr = stateRes.data.qrcode.base64;
+
+    if (createResult.error) {
+      const status =
+        createResult.status >= 500
+          ? HttpStatus.BAD_GATEWAY
+          : HttpStatus.BAD_REQUEST;
+      throw new HttpException(createResult.error.message, status);
+    }
+
+    try {
+      await this.setWebhook(instanceName);
+    } catch (webhookError) {
+      if (
+        webhookError instanceof HttpException &&
+        webhookError.getStatus() === HttpStatus.BAD_GATEWAY
+      ) {
+        this.logger.warn(
+          `Webhook setup failed for ${instanceName}, but continuing...`,
+        );
+      }
+    }
+
+    const stateResult = await this.fetchEvo(
+      `/instance/connectionState/${instanceName}`,
+      'GET',
+    );
+    if (stateResult.error) {
+      this.logger.error(
+        `Failed to fetch connection state for ${instanceName}: ${stateResult.error.message}`,
+      );
+      throw new HttpException(
+        `Failed to check WhatsApp instance state: ${stateResult.error.message}`,
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+
+    const state = this.extractState(stateResult.data);
+    const qr =
+      this.extractQr(createResult.data) || this.extractQr(stateResult.data);
+
+    if (state === 'connecting' && !qr) {
+      this.logger.warn(
+        `Instance ${instanceName} is connecting but QR code is not yet available. The user may need to retry.`,
+      );
+    }
+
+    if (
+      state === 'close' &&
+      createResult.status !== 409 &&
+      createResult.status !== 400
+    ) {
+      this.logger.warn(
+        `Instance ${instanceName} returned state=close immediately after connect request.`,
+      );
     }
 
     this.logger.log(
       `WhatsApp connect result for ${instanceName}: state=${state}, qr=${qr ? 'present' : 'missing'}`,
     );
-
-    if (!qr && state === 'connecting') {
-      this.logger.warn(
-        `QR code not returned for ${instanceName} in state=${state}, check Evolution API logs`,
-      );
-    }
 
     return {
       instanceName,
@@ -101,31 +306,67 @@ export class WhatsappService {
   }
 
   async status(tenantId: string) {
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }});
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
     if (!tenant || !tenant.whatsappInstanceId) {
-      return { state: 'unconfigured' };
+      return { state: 'unconfigured' as InstanceState };
     }
 
-    const stateRes = await this.fetchEvo(`/instance/connectionState/${tenant.whatsappInstanceId}`, 'GET');
-    const state = stateRes.data?.instance?.state || 'close';
+    const instanceName = tenant.whatsappInstanceId;
+    const stateResult = await this.fetchEvo(
+      `/instance/connectionState/${instanceName}`,
+      'GET',
+    );
 
-    if (state === 'open' && !tenant.whatsappConnected) {
+    if (stateResult.error) {
+      if (stateResult.status === 404) {
+        this.logger.warn(
+          `WhatsApp instance ${instanceName} not found in Evolution API.`,
+        );
+        await this.prisma.tenant.update({
+          where: { id: tenantId },
+          data: { whatsappConnected: false, whatsappInstanceId: null },
+        });
+        return {
+          instanceName,
+          state: 'unconfigured' as InstanceState,
+          whatsappConnected: false,
+          qr: null,
+        };
+      }
+      this.logger.error(
+        `Failed to fetch WhatsApp status for ${instanceName}: ${stateResult.error.message}`,
+      );
+      return {
+        instanceName,
+        state: 'close' as InstanceState,
+        whatsappConnected: false,
+        qr: null,
+      };
+    }
+
+    const state = this.extractState(stateResult.data);
+    const qr = this.extractQr(stateResult.data);
+    const isConnected = state === 'open';
+
+    if (isConnected && !tenant.whatsappConnected) {
       await this.prisma.tenant.update({
         where: { id: tenantId },
-        data: { whatsappConnected: true }
+        data: { whatsappConnected: true },
       });
-    } else if (state !== 'open' && tenant.whatsappConnected) {
+    } else if (!isConnected && tenant.whatsappConnected) {
       await this.prisma.tenant.update({
         where: { id: tenantId },
-        data: { whatsappConnected: false }
+        data: { whatsappConnected: false },
       });
     }
 
     return {
-      instanceName: tenant.whatsappInstanceId,
+      instanceName,
       state,
-      whatsappConnected: state === 'open',
-      qr: stateRes.data?.instance?.qrcode?.base64 || stateRes.data?.qrcode?.base64 || null,
+      whatsappConnected: isConnected,
+      qr,
     };
   }
 
@@ -135,200 +376,338 @@ export class WhatsappService {
       data: {
         chatbotEnabled: settings.enabled,
         chatbotConfig: settings.config,
-      }
+      },
     });
-    return { success: true, chatbotEnabled: tenant.chatbotEnabled, chatbotConfig: tenant.chatbotConfig };
+    return {
+      success: true,
+      chatbotEnabled: tenant.chatbotEnabled,
+      chatbotConfig: tenant.chatbotConfig,
+    };
   }
 
   async handleWebhook(instanceName: string, payload: any) {
-    // The payload format from Evolution API for MESSAGES_UPSERT
+    this.logger.debug(
+      `Webhook received for ${instanceName}: event=${payload?.event}`,
+    );
+
     try {
-      if (payload.event === 'messages.upsert' && payload.data) {
-        const message = payload.data.message;
-        const jid = payload.data.key.remoteJid;
-        const fromMe = payload.data.key.fromMe;
+      if (payload?.event !== 'messages.upsert' || !payload?.data) {
+        this.logger.debug(
+          `Ignoring unsupported webhook event: ${payload?.event}`,
+        );
+        return { ignored: true };
+      }
 
-        if (fromMe || !jid || jid.includes('@g.us')) return; // Ignore outgoing and groups
-        
-        // Extract phone number from JID (e.g. 5511999999999@s.whatsapp.net -> 5511999999999)
-        const phone = jid.split('@')[0];
-        
-        // Extract text
-        let text = '';
-        if (message?.conversation) text = message.conversation;
-        else if (message?.extendedTextMessage?.text) text = message.extendedTextMessage.text;
-        else if (message?.buttonsResponseMessage?.selectedButtonId) text = message.buttonsResponseMessage.selectedButtonId;
-        else if (message?.listResponseMessage?.title) text = message.listResponseMessage.title;
+      const message = payload.data.message;
+      const jid = payload.data.key?.remoteJid;
+      const fromMe = payload.data.key?.fromMe;
 
-        if (!text) return;
+      if (fromMe || !jid || jid.includes('@g.us')) {
+        this.logger.debug(`Ignoring outgoing or group message from ${jid}`);
+        return { ignored: true };
+      }
 
-        text = text.trim().toUpperCase();
-        this.logger.log(`Received message from ${phone} on instance ${instanceName}: ${text}`);
+      const phone = jid.split('@')[0];
+      if (!phone) {
+        this.logger.warn(`Could not extract phone from JID: ${jid}`);
+        return { ignored: true };
+      }
 
-        // Find tenant by instanceName
-        const tenant = await this.prisma.tenant.findFirst({
-          where: { whatsappInstanceId: instanceName }
-        });
+      let text = '';
+      if (message?.conversation) text = message.conversation;
+      else if (message?.extendedTextMessage?.text)
+        text = message.extendedTextMessage.text;
+      else if (message?.buttonsResponseMessage?.selectedButtonId)
+        text = message.buttonsResponseMessage.selectedButtonId;
+      else if (message?.listResponseMessage?.title)
+        text = message.listResponseMessage.title;
 
-        if (!tenant || !tenant.chatbotEnabled) return; // Chatbot disabled
+      if (!text || !text.trim()) {
+        this.logger.debug(`Empty message from ${phone}`);
+        return { ignored: true };
+      }
 
-        // Custom chatbot logic based on tenant.chatbotConfig
-        // Find if they have an active token
-        const activeToken = await this.prisma.token.findFirst({
+      text = text.trim().toUpperCase();
+      this.logger.log(
+        `Received message from ${phone} on instance ${instanceName}: ${text}`,
+      );
+
+      const tenant = await this.prisma.tenant.findFirst({
+        where: { whatsappInstanceId: instanceName },
+      });
+
+      if (!tenant) {
+        this.logger.warn(`No tenant found for instance ${instanceName}`);
+        return { ignored: true };
+      }
+
+      if (!tenant.chatbotEnabled) {
+        this.logger.debug(`Chatbot disabled for tenant ${tenant.id}`);
+        return { ignored: true };
+      }
+
+      const activeToken = await this.prisma.token.findFirst({
+        where: {
+          queue: { tenantId: tenant.id },
+          phone,
+          status: { in: ['WAITING', 'SERVING'] },
+        },
+        include: { queue: true },
+        orderBy: { joinedAt: 'desc' },
+      });
+
+      if (!activeToken) {
+        const completedToken = await this.prisma.token.findFirst({
           where: {
             queue: { tenantId: tenant.id },
-            phone: phone, // Assuming phone was saved exactly as JID format
-            status: { in: ['WAITING', 'SERVING'] } // Only respond to active tokens
+            phone,
+            status: 'COMPLETED',
+            completedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
           },
+          orderBy: { completedAt: 'desc' },
           include: { queue: true },
-          orderBy: { joinedAt: 'desc' }
         });
 
-        if (!activeToken) {
-          // Check for recently COMPLETED token missing feedback
-          const completedToken = await this.prisma.token.findFirst({
-            where: {
-              queue: { tenantId: tenant.id },
-              phone: phone,
-              status: 'COMPLETED',
-              completedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+        if (completedToken) {
+          const lang = completedToken.language || 'en';
+          const i18n = {
+            en: {
+              thanksRating:
+                'Thank you for your rating! Please tell us more about your experience (optional).',
+              thanksFeedback: 'Thank you for your feedback!',
             },
-            orderBy: { completedAt: 'desc' },
-            include: { queue: true }
-          });
+            es: {
+              thanksRating:
+                '¡Gracias por tu calificación! Por favor cuéntanos más sobre tu experiencia (opcional).',
+              thanksFeedback: '¡Gracias por tus comentarios!',
+            },
+            fr: {
+              thanksRating:
+                'Merci pour votre note ! Veuillez nous en dire plus sur votre expérience (facultatif).',
+              thanksFeedback: 'Merci pour vos commentaires !',
+            },
+          };
+          const t = i18n[lang as keyof typeof i18n] || i18n.en;
 
-          if (completedToken) {
-            const lang = completedToken.language || 'en';
-            const i18n = {
-              en: { thanksRating: "Thank you for your rating! Please tell us more about your experience (optional).", thanksFeedback: "Thank you for your feedback!" },
-              es: { thanksRating: "¡Gracias por tu calificación! Por favor cuéntanos más sobre tu experiencia (opcional).", thanksFeedback: "¡Gracias por tus comentarios!" },
-              fr: { thanksRating: "Merci pour votre note ! Veuillez nous en dire plus sur votre expérience (facultatif).", thanksFeedback: "Merci pour vos commentaires !" }
-            };
-            const t = i18n[lang as keyof typeof i18n] || i18n.en;
-
-            if (completedToken.rating === null && /^[1-5]$/.test(text)) {
-              await this.prisma.token.update({
-                where: { id: completedToken.id },
-                data: { rating: parseInt(text) }
-              });
-              await this.sendMessage(instanceName, jid, t.thanksRating);
-              return;
-            } else if (completedToken.rating !== null && completedToken.feedbackText === null) {
-              await this.prisma.token.update({
-                where: { id: completedToken.id },
-                data: { feedbackText: message?.conversation || message?.extendedTextMessage?.text || text }
-              });
-              await this.sendMessage(instanceName, jid, t.thanksFeedback);
-              return;
-            }
+          if (completedToken.rating === null && /^[1-5]$/.test(text)) {
+            await this.prisma.token.update({
+              where: { id: completedToken.id },
+              data: { rating: parseInt(text) },
+            });
+            await this.sendMessage(instanceName, jid, t.thanksRating);
+            return { handled: true, action: 'rating' };
+          } else if (
+            completedToken.rating !== null &&
+            completedToken.feedbackText === null
+          ) {
+            await this.prisma.token.update({
+              where: { id: completedToken.id },
+              data: {
+                feedbackText:
+                  message?.conversation ||
+                  message?.extendedTextMessage?.text ||
+                  text,
+              },
+            });
+            await this.sendMessage(instanceName, jid, t.thanksFeedback);
+            return { handled: true, action: 'feedback' };
           }
-
-          // If no active token and no pending feedback, maybe send a generic greeting or ignore
-          await this.sendMessage(instanceName, jid, "You don't have any active queues at the moment. Please scan a QR code to join a queue.");
-          return;
         }
 
-        const config = tenant.chatbotConfig as any;
-        const lang = activeToken.language || 'en';
-        
-        const i18n = {
-          en: { status: "You are number {position} in the {queueName} queue.", cancel: "Your token has been successfully cancelled.", menu: "Hello! How can we help you today?", btnStatus: "Check Status", btnCancel: "Cancel Turn", footer: "Powered by YQ" },
-          es: { status: "Eres el número {position} en la fila {queueName}.", cancel: "Tu turno ha sido cancelado con éxito.", menu: "¡Hola! ¿Cómo podemos ayudarte hoy?", btnStatus: "Ver Estado", btnCancel: "Cancelar Turno", footer: "Desarrollado por YQ" },
-          fr: { status: "Vous êtes numéro {position} dans la file {queueName}.", cancel: "Votre ticket a été annulé avec succès.", menu: "Bonjour ! Comment pouvons-nous vous aider aujourd'hui ?", btnStatus: "Voir le Statut", btnCancel: "Annuler le Ticket", footer: "Propulsé par YQ" }
-        };
+        await this.sendMessage(
+          instanceName,
+          jid,
+          "You don't have any active queues at the moment. Please scan a QR code to join a queue.",
+        );
+        return { handled: true, action: 'greeting' };
+      }
 
-        const t = i18n[lang as keyof typeof i18n] || i18n.en;
-        
-        if (text === 'STATUS' || text === t.btnStatus.toUpperCase()) {
-          // Calculate position
-          const position = await this.prisma.token.count({
-            where: {
+      const config = tenant.chatbotConfig as any;
+      const lang = activeToken.language || 'en';
+      const i18n = {
+        en: {
+          status: 'You are number {position} in the {queueName} queue.',
+          cancel: 'Your token has been successfully cancelled.',
+          menu: 'Hello! How can we help you today?',
+          btnStatus: 'Check Status',
+          btnCancel: 'Cancel Turn',
+          footer: 'Powered by YQ',
+        },
+        es: {
+          status: 'Eres el número {position} en la fila {queueName}.',
+          cancel: 'Tu turno ha sido cancelado con éxito.',
+          menu: '¡Hola! ¿Cómo podemos ayudarte hoy?',
+          btnStatus: 'Ver Estado',
+          btnCancel: 'Cancelar Turno',
+          footer: 'Desarrollado por YQ',
+        },
+        fr: {
+          status: 'Vous êtes numéro {position} dans la file {queueName}.',
+          cancel: 'Votre ticket a été annulé avec succès.',
+          menu: "Bonjour ! Comment pouvons-nous vous aider aujourd'hui ?",
+          btnStatus: 'Voir le Statut',
+          btnCancel: 'Annuler le Ticket',
+          footer: 'Propulsé par YQ',
+        },
+      };
+      const t = i18n[lang as keyof typeof i18n] || i18n.en;
+
+      if (text === 'STATUS' || text === t.btnStatus.toUpperCase()) {
+        const position = await this.prisma.token.count({
+          where: {
+            queueId: activeToken.queueId,
+            status: 'WAITING',
+            joinedAt: { lt: activeToken.joinedAt },
+          },
+        });
+        let responseText = config?.templates?.status || t.status;
+        responseText = responseText
+          .replace('{position}', (position + 1).toString())
+          .replace('{queueName}', activeToken.queue.name);
+        await this.sendMessage(instanceName, jid, responseText);
+        return { handled: true, action: 'status' };
+      } else if (text === 'CANCEL' || text === t.btnCancel.toUpperCase()) {
+        await this.prisma.token.update({
+          where: { id: activeToken.id },
+          data: { status: 'MISSED' },
+        });
+        const responseText = config?.templates?.cancel || t.cancel;
+        await this.sendMessage(instanceName, jid, responseText);
+        return { handled: true, action: 'cancel' };
+      } else {
+        const newMessage = await this.prisma.message.create({
+          data: {
+            tokenId: activeToken.id,
+            body:
+              message?.conversation ||
+              message?.extendedTextMessage?.text ||
+              text,
+            sender: 'CUSTOMER',
+          },
+        });
+
+        try {
+          this.redisService.client.publish(
+            'queue_events',
+            JSON.stringify({
+              type: 'NEW_MESSAGE',
               queueId: activeToken.queueId,
-              status: 'WAITING',
-              joinedAt: { lt: activeToken.joinedAt }
-            }
-          });
-          
-          let responseText = config?.templates?.status || t.status;
-          responseText = responseText.replace('{position}', (position + 1).toString()).replace('{queueName}', activeToken.queue.name);
-          
-          await this.sendMessage(instanceName, jid, responseText);
-        } 
-        else if (text === 'CANCEL' || text === t.btnCancel.toUpperCase()) {
-          await this.prisma.token.update({
-            where: { id: activeToken.id },
-            data: { status: 'MISSED' }
-          });
-          
-          let responseText = config?.templates?.cancel || t.cancel;
-          await this.sendMessage(instanceName, jid, responseText);
+              message: newMessage,
+            }),
+          );
+        } catch (redisError) {
+          this.logger.warn(
+            `Redis publish failed for queue ${activeToken.queueId}: ${redisError instanceof Error ? redisError.message : redisError}`,
+          );
         }
-        else {
-          // Normal chat message from customer
-          const newMessage = await this.prisma.message.create({
-            data: {
-              tokenId: activeToken.id,
-              body: message?.conversation || message?.extendedTextMessage?.text || text,
-              sender: 'CUSTOMER'
-            }
-          });
 
-          // Broadcast to dashboard
-          this.redisService.client.publish('queue_events', JSON.stringify({ 
-            type: 'NEW_MESSAGE', 
-            queueId: activeToken.queueId, 
-            message: newMessage 
-          }));
-        }
+        return { handled: true, action: 'message' };
       }
     } catch (e) {
-      this.logger.error('Error handling webhook', e);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      this.logger.error(
+        `Error handling webhook for instance ${instanceName}`,
+        e,
+      );
+      return { handled: false, error: errorMessage };
     }
   }
 
   async sendMessage(instanceName: string, number: string, text: string) {
-    await this.fetchEvo(`/message/sendText/${instanceName}`, 'POST', {
-      number,
-      options: {
-        delay: 1200,
-        presence: "composing"
+    if (!instanceName || !number || !text) {
+      this.logger.warn(
+        `sendMessage called with invalid params: instance=${instanceName}, number=${number}`,
+      );
+      return { success: false, error: 'Invalid parameters' };
+    }
+
+    const result = await this.fetchEvo(
+      `/message/sendText/${instanceName}`,
+      'POST',
+      {
+        number,
+        options: { delay: 1200, presence: 'composing' },
+        textMessage: { text },
       },
-      textMessage: {
-        text
-      }
-    });
+    );
+
+    if (result.error) {
+      this.logger.error(
+        `Failed to send WhatsApp message to ${number} on ${instanceName}: ${result.error.message}`,
+      );
+      return { success: false, error: result.error.message };
+    }
+
+    this.logger.log(`Sent WhatsApp message to ${number} on ${instanceName}`);
+    return { success: true, providerId: result.data?.key?.id };
   }
 
-  async sendButtons(instanceName: string, number: string, text: string, footer: string, buttons: any[]) {
-    await this.fetchEvo(`/message/sendButtons/${instanceName}`, 'POST', {
-      number,
-      options: {
-        delay: 1200,
-        presence: "composing"
+  async sendButtons(
+    instanceName: string,
+    number: string,
+    text: string,
+    footer: string,
+    buttons: any[],
+  ) {
+    if (
+      !instanceName ||
+      !number ||
+      !text ||
+      !footer ||
+      !Array.isArray(buttons) ||
+      buttons.length === 0
+    ) {
+      this.logger.warn(
+        `sendButtons called with invalid params: instance=${instanceName}, number=${number}`,
+      );
+      return { success: false, error: 'Invalid parameters' };
+    }
+
+    const result = await this.fetchEvo(
+      `/message/sendButtons/${instanceName}`,
+      'POST',
+      {
+        number,
+        options: { delay: 1200, presence: 'composing' },
+        buttonMessage: { text, footer, buttons },
       },
-      buttonMessage: {
-        text,
-        footer,
-        buttons
-      }
-    });
+    );
+
+    if (result.error) {
+      this.logger.error(
+        `Failed to send WhatsApp buttons to ${number} on ${instanceName}: ${result.error.message}`,
+      );
+      return { success: false, error: result.error.message };
+    }
+
+    this.logger.log(`Sent WhatsApp buttons to ${number} on ${instanceName}`);
+    return { success: true, providerId: result.data?.key?.id };
   }
 
   async requestFeedback(tenantId: string, phone: string, language: string) {
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
-    if (!tenant || !tenant.chatbotEnabled || !tenant.whatsappInstanceId) return;
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
+    if (!tenant || !tenant.chatbotEnabled || !tenant.whatsappInstanceId) {
+      this.logger.debug(
+        `Skipping feedback request for tenant ${tenantId}: not configured`,
+      );
+      return;
+    }
 
     const lang = language || 'en';
     const i18n = {
-      en: "Thanks for visiting! Please reply with a number from 1 to 5 to rate your experience (5 being excellent).",
-      es: "¡Gracias por visitarnos! Por favor responde con un número del 1 al 5 para calificar tu experiencia (5 siendo excelente).",
-      fr: "Merci de votre visite ! Veuillez répondre par un chiffre de 1 à 5 pour évaluer votre expérience (5 étant excellent)."
+      en: 'Thanks for visiting! Please reply with a number from 1 to 5 to rate your experience (5 being excellent).',
+      es: '¡Gracias por visitarnos! Por favor responde con un número del 1 al 5 para calificar tu experiencia (5 siendo excelente).',
+      fr: 'Merci de votre visite ! Veuillez répondre par un chiffre de 1 à 5 pour évaluer votre expérience (5 étant excellent).',
     };
     const t = i18n[lang as keyof typeof i18n] || i18n.en;
-    
-    // Evolution API expects standard numbers, or JIDs if needed. sendMessage accepts `number`
-    // Wait, sendMessage expects exactly what fetchEvo expects for `number`.
-    // In our `sendMessage` wrapper, we just pass `number`.
-    await this.sendMessage(tenant.whatsappInstanceId, phone, t);
+
+    const result = await this.sendMessage(tenant.whatsappInstanceId, phone, t);
+    if (!result.success) {
+      this.logger.error(
+        `Failed to send feedback request to ${phone} on ${tenant.whatsappInstanceId}: ${result.error}`,
+      );
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PaymentProviderName } from '@prisma/client';
 
@@ -58,18 +58,18 @@ export class BillingConfigService {
 
   async getActivePaymentProviders(): Promise<PaymentProviderName[]> {
     const providers = await this.prisma.paymentProvider.findMany({
-      where: { isActive: true },
+      where: { active: true },
     });
     return providers.map((p) => p.name);
   }
 
   async getDefaultPaymentProvider(): Promise<PaymentProviderName> {
     const provider = await this.prisma.paymentProvider.findFirst({
-      where: { isActive: true },
+      where: { active: true },
       orderBy: { createdAt: 'asc' },
     });
     if (!provider) {
-      throw new Error('No active payment provider configured');
+      throw new BadRequestException('No active payment provider configured');
     }
     return provider.name;
   }
@@ -83,10 +83,7 @@ export class BillingConfigService {
           sandboxEnabled: this.getOzowSandbox(),
           siteCode: this.getOzowSiteCode(),
           privateKey: this.getOzowPrivateKey(),
-          apiKey: this.getOzowApiKey(),
           baseUrl: this.getOzowBaseUrl(),
-          webhookSecret: this.getOzowWebhookSecret(),
-          isActive: true,
           config: {
             sandbox: this.getOzowSandbox(),
             countryCode: 'ZA',

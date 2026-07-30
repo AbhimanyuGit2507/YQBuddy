@@ -5,6 +5,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
+import { HealthController } from './health/health.controller';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AppService } from './app.service';
 import { TenantModule } from './tenant/tenant.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -22,6 +24,8 @@ import { EmailModule } from './email/email.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { MessagesModule } from './messages/messages.module';
+import { AuditInterceptor } from './audit/audit.interceptor';
+import { WorkspaceModule } from './workspace/workspace.module';
 
 @Module({
   imports: [
@@ -34,10 +38,12 @@ import { MessagesModule } from './messages/messages.module';
         },
       },
     }),
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100,
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
     BullModule.forRoot({
       connection: {
         host: process.env.REDIS_HOST || 'localhost',
@@ -45,16 +51,38 @@ import { MessagesModule } from './messages/messages.module';
       },
     }),
     ScheduleModule.forRoot(),
-    TenantModule, PrismaModule, UsersModule, AuthModule, QueueModule, TokenModule, RedisModule, NotificationsModule, WhatsappModule, PaymentsModule, SuperAdminModule, EmailModule, WebhooksModule, AnalyticsModule, MessagesModule
+    TenantModule,
+    PrismaModule,
+    UsersModule,
+    AuthModule,
+    QueueModule,
+    TokenModule,
+    RedisModule,
+    NotificationsModule,
+    WhatsappModule,
+    PaymentsModule,
+    SuperAdminModule,
+    EmailModule,
+    WebhooksModule,
+    AnalyticsModule,
+    MessagesModule,
+    WorkspaceModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController, HealthController],
+  providers: [
+    AppService,
+    {
+      provide: 'APP_INTERCEPTOR',
+      useClass: AuditInterceptor,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestIdMiddleware).forRoutes('*');
     consumer
       .apply(TenantContextMiddleware)
-      .exclude('/health', '/auth/(.*)')
+      .exclude('/health', '/auth/*path')
       .forRoutes('*');
   }
 }

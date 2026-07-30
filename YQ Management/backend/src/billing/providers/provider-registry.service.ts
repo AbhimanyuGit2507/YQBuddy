@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PaymentProviderName } from '@prisma/client';
 import { PaymentProvider } from '../interfaces/payment-provider.interface';
@@ -13,13 +13,16 @@ export class ProviderRegistry {
     prisma: PrismaService,
     private readonly configService: BillingConfigService,
   ) {
-    this.providers.set(PaymentProviderName.OZOW, new OzowProvider(prisma, configService));
+    this.providers.set(
+      PaymentProviderName.OZOW,
+      new OzowProvider(prisma, configService),
+    );
   }
 
   getProvider(name: PaymentProviderName): PaymentProvider {
     const provider = this.providers.get(name);
     if (!provider) {
-      throw new Error(`Payment provider "${name}" is not registered`);
+      throw new BadRequestException(`Payment provider "${name}" is not registered`);
     }
     return provider;
   }

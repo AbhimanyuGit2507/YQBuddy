@@ -20,10 +20,12 @@ import { UpdatePlanDto } from './dto/plan.dto';
 import { ChangePlanStatusDto } from './dto/plan.dto';
 import { DuplicatePlanDto } from './dto/plan.dto';
 import { UuidPipe } from '../common/pipes/validation.pipes';
+import { WorkspaceGuard } from '../auth/workspace.guard';
+import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('billing/plans')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(Role.ADMIN, Role.OPERATOR)
+@UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
+@Roles(Role.TENANT_ADMIN, Role.OPERATOR)
 export class PlansController {
   constructor(private readonly plansService: PlansService) {}
 
@@ -42,13 +44,13 @@ export class PlansController {
   }
 
   @Post()
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async createPlan(@Body() dto: CreatePlanDto) {
     return this.plansService.createPlan(dto);
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async updatePlan(
     @Param('id', UuidPipe) id: string,
     @Body() dto: UpdatePlanDto,
@@ -57,7 +59,7 @@ export class PlansController {
   }
 
   @Patch(':id/status')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async changePlanStatus(
     @Param('id', UuidPipe) id: string,
     @Body() dto: ChangePlanStatusDto,
@@ -66,7 +68,7 @@ export class PlansController {
   }
 
   @Post(':id/duplicate')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async duplicatePlan(
     @Param('id', UuidPipe) id: string,
     @Body() dto: DuplicatePlanDto,
@@ -75,7 +77,7 @@ export class PlansController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.TENANT_ADMIN)
   async archivePlan(@Param('id', UuidPipe) id: string) {
     return this.plansService.archivePlan(id);
   }

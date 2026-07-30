@@ -32,9 +32,17 @@ export class WorkspaceService {
     name: string;
     subdomain: string;
     branding?: any;
+    ownerId: string;
+    tenantId: string;
   }) {
     return this.prisma.workspace.create({
-      data,
+      data: {
+        name: data.name,
+        subdomain: data.subdomain,
+        branding: data.branding,
+        ownerId: data.ownerId,
+        tenantId: data.tenantId,
+      },
     });
   }
 
@@ -76,6 +84,32 @@ export class WorkspaceService {
       hasWorkspace: !!user.workspaceId,
       workspace: user.workspace,
       role: user.role,
+      isOwnWorkspace: user.workspace?.ownerId === user.id,
+    };
+  }
+
+  async getUserWorkspace(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { workspace: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.workspaceId) {
+      throw new BadRequestException('User has no workspace assigned');
+    }
+
+    if (!user.workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    return {
+      workspace: user.workspace,
+      role: user.role,
+      isOwner: user.workspace.ownerId === user.id,
     };
   }
 }

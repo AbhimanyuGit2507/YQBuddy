@@ -68,6 +68,7 @@ describe('SubscriptionService', () => {
         id: mockPlanId,
         name: 'Basic',
         status: 'ACTIVE',
+        active: true,
         billingInterval: 'MONTHLY',
         trialDays: 7,
         price: 29.99,
@@ -102,6 +103,7 @@ describe('SubscriptionService', () => {
         id: mockPlanId,
         name: 'Basic',
         status: 'ACTIVE',
+        active: true,
       } as any);
       prisma.subscription.findUnique.mockResolvedValue({
         id: 'existing',
