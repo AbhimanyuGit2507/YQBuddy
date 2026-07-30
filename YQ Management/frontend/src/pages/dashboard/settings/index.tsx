@@ -6,7 +6,7 @@ import { QrCode, CheckCircle2, AlertCircle, Copy, Trash2, Shield, CreditCard, Lo
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
 import { useAuth } from '../../../components/AuthContext';
-import { useTheme } from '../../../components/ThemeProvider';
+import { useTheme, type Theme } from '../../../components/ThemeProvider';
 import { toast } from 'sonner';
 
 type SettingsTab = 'General' | 'WhatsApp' | 'Billing' | 'Webhooks' | 'Invitations';
@@ -14,41 +14,28 @@ type SettingsTab = 'General' | 'WhatsApp' | 'Billing' | 'Webhooks' | 'Invitation
 export default function SettingsPage() {
   const router = useRouter();
   const { user, refetch } = useAuth();
-  const { theme: currentTheme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
   const { tab: urlTab } = router.query as { tab?: string };
   const validTabs: SettingsTab[] = ['General', 'WhatsApp', 'Billing', 'Webhooks', 'Invitations'];
   const initialTab = validTabs.includes(urlTab as SettingsTab) ? (urlTab as SettingsTab) : 'General';
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
 
-  // Personal settings
-  const [theme, setTheme] = useState(user?.personalSettings?.theme || 'light');
   const [language, setLanguage] = useState(user?.personalSettings?.language || 'en');
   const [notificationsEnabled, setNotificationsEnabled] = useState(user?.personalSettings?.notificationsEnabled ?? true);
   const [savingPersonal, setSavingPersonal] = useState(false);
 
   useEffect(() => {
-    if (user?.personalSettings?.theme) {
-      const t = user.personalSettings.theme;
-      const resolved = t === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t;
-      if (resolved === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-      localStorage.setItem('theme', resolved);
+    if (user?.personalSettings?.language) {
+      setLanguage(user.personalSettings.language);
     }
-  }, [user?.personalSettings?.theme]);
+  }, [user?.personalSettings?.language]);
 
   useEffect(() => {
-    const resolved = theme === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
-    if (resolved === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    if (user?.personalSettings?.notificationsEnabled !== undefined) {
+      setNotificationsEnabled(user.personalSettings.notificationsEnabled);
     }
-    localStorage.setItem('theme', resolved);
-  }, [theme]);
+  }, [user?.personalSettings?.notificationsEnabled]);
 
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
@@ -92,7 +79,7 @@ export default function SettingsPage() {
       if (data?.state === 'open' || data?.state === 'close' || data?.state === 'unconfigured') {
         return false;
       }
-      return 300;
+      return 2000;
     },
   });
 
@@ -199,12 +186,24 @@ export default function SettingsPage() {
   const handleConnectWhatsApp = async () => {
     setConnecting(true);
     setQrCode(null);
+    setStatusMessage(null);
     try {
       const res = await fetchApi('/whatsapp/connect', { method: 'POST' });
       if (res.qr) setQrCode(res.qr);
-      refetchWhatsAppStatus();
-    } catch (e) { setStatusMessage({ type: 'error', text: 'Error connecting to WhatsApp.' }); }
-    setConnecting(false);
+      queryClient.setQueryData(['whatsapp-status'], (old: any) => ({
+        ...(old || {}),
+        state: 'connecting',
+        instanceName: res.instanceName,
+        qr: res.qr || old?.qr || null,
+        whatsappConnected: false,
+      }));
+      setTimeout(() => refetchWhatsAppStatus(), 500);
+    } catch (e: any) {
+      const text = e?.message || 'Failed to connect WhatsApp. Please try again.';
+      setStatusMessage({ type: 'error', text });
+    } finally {
+      setConnecting(false);
+    }
   };
 
   const handleTestWhatsApp = async () => {
@@ -266,20 +265,13 @@ export default function SettingsPage() {
     setSavingPersonal(true); setStatusMessage(null);
     try {
       await fetchApi('/auth/personal-settings', { method: 'PATCH', body: JSON.stringify({ theme, language, notificationsEnabled }) });
-      const resolved = theme === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
-      if (resolved === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-      localStorage.setItem('theme', resolved);
       setStatusMessage({ type: 'success', text: 'Personal settings saved!' }); refetch(); queryClient.invalidateQueries({ queryKey: ['personalSettings'] });
     } catch (e: any) { setStatusMessage({ type: 'error', text: e.message || 'Error' }); }
     setSavingPersonal(false);
   };
 
   return (
-    <AdminLayout>
+    <AdminLayout pageTitle="Settings" pageSubtitle="Manage your account preferences">
       <Head><title>Settings | QMover</title></Head>
       <div className="max-w-4xl mx-auto space-y-8 pb-12">
         <div className="flex items-end justify-between border-b border-gray-200 dark:border-white/10 pb-6">
@@ -324,7 +316,7 @@ export default function SettingsPage() {
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Appearance</h3>
                   <div className="grid grid-cols-2 gap-6">
                     <div><label className="block text-sm font-medium text-zinc-400 mb-2">Theme</label>
-                      <select value={theme} onChange={(e) => setTheme(e.target.value)} className="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl py-3 px-4 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors appearance-none">
+                      <select value={theme} onChange={(e) => setTheme(e.target.value as Theme)} className="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl py-3 px-4 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors appearance-none">
                         <option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option>
                       </select></div>
                     <div><label className="block text-sm font-medium text-zinc-400 mb-2">Language</label>

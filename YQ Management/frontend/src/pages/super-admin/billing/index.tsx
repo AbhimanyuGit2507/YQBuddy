@@ -13,15 +13,15 @@ export default function SuperAdminBilling() {
   });
 
   return (
-    <SuperAdminLayout>
+    <SuperAdminLayout pageTitle="Billing" pageSubtitle="Manage subscriptions and billing">
       <Head>
         <title>Revenue & Transactions | Super Admin</title>
       </Head>
 
-      <div className="max-w-6xl mx-auto space-y-8 pb-12 animate-in fade-in duration-500">
+      <div className="max-w-6xl mx-auto space-y-8 pb-12">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white uppercase">Revenue & Transactions</h1>
-          <p className="text-gray-500 dark:text-rose-200/60 mt-2">Monitor Ozow payments and global revenue.</p>
+          <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white uppercase">Revenue &amp; Transactions</h1>
+          <p className="text-gray-500 dark:text-zinc-400 mt-2">Monitor Ozow payments and global revenue.</p>
         </div>
 
         <div className="bg-white dark:bg-[#120005] border border-gray-200 dark:border-rose-900/30 rounded-2xl overflow-hidden shadow-sm">

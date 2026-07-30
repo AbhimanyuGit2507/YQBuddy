@@ -475,7 +475,7 @@ export default function AdminScanner() {
   const getStatusConfig = (status: string) => SCANNER_STATUS_CONFIG[status] || SCANNER_STATUS_CONFIG['Invalid QR Code'];
 
   return (
-    <AdminLayout>
+    <AdminLayout pageTitle="Scanner" pageSubtitle="Scan and manage queues">
       <Head>
         <title>QR Scanner | QMover</title>
       </Head>

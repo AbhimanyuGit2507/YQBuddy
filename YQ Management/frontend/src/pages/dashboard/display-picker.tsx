@@ -13,7 +13,7 @@ export default function DisplayPicker() {
   });
 
   return (
-    <AdminLayout>
+    <AdminLayout pageTitle="QR Display" pageSubtitle="Manage your QR code displays">
       <Head>
         <title>QR Display Picker | QMover</title>
       </Head>

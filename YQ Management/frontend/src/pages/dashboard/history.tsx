@@ -67,7 +67,7 @@ export default function HistoryPage() {
   }, [history]);
 
   return (
-    <AdminLayout>
+    <AdminLayout pageTitle="Analytics & Records" pageSubtitle="Queue history and analytics">
       <Head>
         <title>Analytics & History | QMover</title>
       </Head>

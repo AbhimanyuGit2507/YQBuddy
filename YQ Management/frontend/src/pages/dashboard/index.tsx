@@ -19,7 +19,7 @@ export default function Dashboard() {
   const avgWaitTime = totalWaiting === 0 ? 0 : Math.ceil((totalWaiting * 5) / (activeQueues || 1));
 
   return (
-    <AdminLayout>
+    <AdminLayout pageTitle="Overview" pageSubtitle="Here is what is happening in your queues right now.">
       <Head>
         <title>Dashboard | QMover</title>
       </Head>
@@ -29,8 +29,7 @@ export default function Dashboard() {
         {/* Header Section */}
         <div className="flex items-end justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Overview</h1>
-            <p className="text-gray-500 dark:text-zinc-400">Here is what is happening in your queues right now.</p>
+<h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Overview</h1>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => router.push('/dashboard/scanner')} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors shadow-[0_0_15px_rgba(79,70,229,0.3)] border border-indigo-500/50">

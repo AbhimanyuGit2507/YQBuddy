@@ -29,7 +29,7 @@ export default function AnalyticsDashboard() {
   };
 
   return (
-    <AdminLayout>
+    <AdminLayout pageTitle="Analytics" pageSubtitle="Queue performance and insights">
       <Head>
         <title>Analytics | YQ Dashboard</title>
       </Head>

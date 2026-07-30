@@ -4,12 +4,23 @@ import AdminLayout from '../../../components/AdminLayout';
 import { CreditCard, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { fetchApi } from '../../../lib/api';
 import { useRouter } from 'next/router';
+import { toast } from 'sonner';
+import { useMutation } from '@tanstack/react-query';
 
 export default function BillingSettings() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
   const [paymentData, setPaymentData] = useState<any>(null);
   const [statusMessage, setStatusMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+
+  const subscribeMutation = useMutation({
+    mutationFn: () => fetchApi('/payments/generate-link'),
+    onSuccess: (data) => {
+      setPaymentData(data);
+    },
+    onError: () => {
+      toast.error('Error generating payment link');
+    },
+  });
 
   useEffect(() => {
     // Handle redirect status
@@ -22,15 +33,8 @@ export default function BillingSettings() {
     }
   }, [router.query.status]);
 
-  const handleSubscribe = async () => {
-    setLoading(true);
-    try {
-      const data = await fetchApi('/payments/generate-link');
-      setPaymentData(data);
-    } catch (e) {
-      alert('Error generating payment link');
-      setLoading(false);
-    }
+  const handleSubscribe = () => {
+    subscribeMutation.mutate();
   };
 
   useEffect(() => {
@@ -57,7 +61,7 @@ export default function BillingSettings() {
   }, [paymentData]);
 
   return (
-    <AdminLayout>
+    <AdminLayout pageTitle="Billing" pageSubtitle="Manage your subscription and payment methods">
       <Head>
         <title>Billing & Subscription | QMover</title>
       </Head>
@@ -110,11 +114,11 @@ export default function BillingSettings() {
 
             <button 
               onClick={handleSubscribe}
-              disabled={loading}
+              disabled={subscribeMutation.isPending}
               className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#000000] hover:bg-[#1a1a1a] dark:bg-white dark:hover:bg-gray-100 text-white dark:text-black rounded-xl font-bold transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed shadow-lg"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-              {loading ? 'Processing...' : 'Upgrade Now via Ozow'}
+              {subscribeMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+              {subscribeMutation.isPending ? 'Processing...' : 'Upgrade Now via Ozow'}
             </button>
           </div>
 

@@ -4,28 +4,65 @@ import Head from 'next/head';
 import AdminLayout from '../../../components/AdminLayout';
 import { Plus, QrCode, X, Check, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
+import { toast } from 'sonner';
 
 export default function QueuesList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
   const [newQueueName, setNewQueueName] = useState('');
   const [includeName, setIncludeName] = useState(true);
   const [includePhone, setIncludePhone] = useState(true);
   const [includePurpose, setIncludePurpose] = useState(true);
+
+  const queryClient = useQueryClient();
 
   const { data: queues = [], isLoading, refetch } = useQuery({
     queryKey: ['queues'],
     queryFn: () => fetchApi('/queue'),
   });
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const createQueueMutation = useMutation({
+    mutationFn: (data: { name: string; formConfig: any[] }) =>
+      fetchApi('/queue', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      setIsModalOpen(false);
+      setNewQueueName('');
+      setIncludeName(true);
+      setIncludePhone(true);
+      setIncludePurpose(true);
+      refetch();
+      toast.success('Queue created successfully');
+    },
+    onError: () => toast.error('Error creating queue'),
+  });
+
+  const deleteQueueMutation = useMutation({
+    mutationFn: (id: string) => fetchApi(`/queue/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      refetch();
+      toast.success('Queue deleted');
+    },
+    onError: () => toast.error('Error deleting queue'),
+  });
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: (id: string) =>
+      fetchApi(`/queue/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'PAUSED' }),
+      }),
+    onSuccess: () => {
+      refetch();
+      toast.success('Queue status updated');
+    },
+    onError: () => toast.error('Error updating status'),
+  });
+
+  const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newQueueName.trim()) return;
-    setCreating(true);
-    
-    // Default form config
+
     const formConfig = [];
     
     if (includeName) {
@@ -47,40 +84,19 @@ export default function QueuesList() {
       } as any);
     }
 
-    try {
-      await fetchApi('/queue', { 
-        method: 'POST', 
-        body: JSON.stringify({ 
-          name: newQueueName,
-          formConfig
-        }) 
-      });
-      setIsModalOpen(false);
-      setNewQueueName('');
-      setIncludeName(true);
-      setIncludePhone(true);
-      setIncludePurpose(true);
-      refetch();
-    } catch (e) {
-      alert('Error creating queue');
-    }
-    setCreating(false);
+    createQueueMutation.mutate({ name: newQueueName, formConfig });
   };
 
-  const handleToggleStatus = async (id: string, currentStatus: string) => {
-    try {
-      await fetchApi(`/queue/${id}/status`, { 
-        method: 'PATCH', 
-        body: JSON.stringify({ status: currentStatus === 'ACTIVE' ? 'PAUSED' : 'ACTIVE' }) 
-      });
-      refetch();
-    } catch (e) {
-      alert('Error updating status');
-    }
-  }
+  const handleDeleteQueue = (id: string) => {
+    deleteQueueMutation.mutate(id);
+  };
+
+  const handleToggleStatus = (id: string, currentStatus: string) => {
+    toggleStatusMutation.mutate(id);
+  };
 
   return (
-    <AdminLayout>
+    <AdminLayout pageTitle="Queues" pageSubtitle="Manage all your queues in one place">
       <Head>
         <title>Manage Queues | QMover</title>
       </Head>
@@ -144,7 +160,7 @@ export default function QueuesList() {
                   <button onClick={() => handleToggleStatus(queue.id, queue.status)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors border border-white/5">
                     {queue.status === 'ACTIVE' ? 'Pause' : 'Resume'}
                   </button>
-                  <button className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-sm font-medium transition-colors border border-red-500/20">
+                  <button onClick={() => { if (confirm('Are you sure you want to delete this queue?')) handleDeleteQueue(queue.id); }} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-sm font-medium transition-colors border border-red-500/20">
                     Delete
                   </button>
                 </div>
@@ -231,11 +247,11 @@ export default function QueuesList() {
                 </button>
                 <button 
                   type="submit"
-                  disabled={creating || !newQueueName.trim()}
+                  disabled={createQueueMutation.isPending || !newQueueName.trim()}
                   className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors shadow-[0_0_15px_rgba(79,70,229,0.3)] disabled:opacity-50"
                 >
-                  {creating && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {creating ? 'Creating...' : 'Create Queue'}
+                  {createQueueMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {createQueueMutation.isPending ? 'Creating...' : 'Create Queue'}
                 </button>
               </div>
             </form>
