@@ -24,18 +24,22 @@ export class UsersController {
 
   @Get()
   getUsers(@Req() req: AuthenticatedRequest) {
-    return this.usersService.getUsersByTenant(req.user.tenantId);
+    return this.usersService.getUsersByWorkspace(req.user.workspaceId);
   }
 
   @Post()
   createUser(@Req() req: AuthenticatedRequest, @Body() body: any) {
-    return this.usersService.createUser(req.user.tenantId, body);
+    return this.usersService.createUser(
+      req.user.tenantId,
+      req.user.workspaceId,
+      body,
+    );
   }
 
   @Delete(':id')
   async deleteUser(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     const result = await this.usersService.deleteUser(
-      req.user.tenantId,
+      req.user.workspaceId,
       id,
       req.user.userId,
     );

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Delete,
   Patch,
   Param,
@@ -11,13 +12,22 @@ import {
   Req,
   Query,
 } from '@nestjs/common';
-import { SuperAdminService } from './super-admin.service';
+import { Inject } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { SuperAdminService } from './super-admin.service';
+import type { EmailProvider } from '../communication/interfaces/email.provider';
+import { CommunicationLogService, CommunicationChannel, CommunicationStatus } from '../communication/logging/communication-log.service';
+import { TemplateService } from '../communication/templates/template.service';
 
 @Controller('super-admin')
 @UseGuards(AuthGuard('jwt'))
 export class SuperAdminController {
-  constructor(private readonly superAdminService: SuperAdminService) {}
+  constructor(
+    private readonly superAdminService: SuperAdminService,
+    @Inject('EmailProvider') private readonly emailProvider: EmailProvider,
+    private readonly communicationLogService: CommunicationLogService,
+    private readonly templateService: TemplateService,
+  ) {}
 
   private checkSuperAdmin(req: any) {
     if (req.user?.role !== 'SUPER_ADMIN') {
@@ -90,5 +100,100 @@ export class SuperAdminController {
   async getTransactions(@Req() req: any) {
     this.checkSuperAdmin(req);
     return this.superAdminService.getRecentTransactions();
+  }
+
+  @Get('plans')
+  async listPlans(@Req() req: any, @Query('status') statusFilter?: string, @Query('offset') offset?: number, @Query('limit') limit?: number) {
+    this.checkSuperAdmin(req);
+    return this.superAdminService.listPlans(statusFilter, offset ?? 0, limit ?? 50);
+  }
+
+  @Post('plans')
+  async createPlan(@Req() req: any, @Body() dto: any) {
+    this.checkSuperAdmin(req);
+    return this.superAdminService.createPlan(dto);
+  }
+
+  @Put('plans/:id')
+  async updatePlan(@Req() req: any, @Param('id') id: string, @Body() dto: any) {
+    this.checkSuperAdmin(req);
+    return this.superAdminService.updatePlan(id, dto);
+  }
+
+  @Delete('plans/:id')
+  async archivePlan(@Req() req: any, @Param('id') id: string) {
+    this.checkSuperAdmin(req);
+    return this.superAdminService.archivePlan(id);
+  }
+
+  @Patch('plans/:id/status')
+  async changePlanStatus(@Req() req: any, @Param('id') id: string, @Body() dto: { status: string }) {
+    this.checkSuperAdmin(req);
+    return this.superAdminService.changePlanStatus(id, dto.status);
+  }
+
+  @Post('plans/:id/duplicate')
+  async duplicatePlan(@Req() req: any, @Param('id') id: string, @Body() dto: { name: string }) {
+    this.checkSuperAdmin(req);
+    return this.superAdminService.duplicatePlan(id, dto.name);
+  }
+
+  @Get('communication/email/connection')
+  async testEmailConnection(@Req() req: any) {
+    this.checkSuperAdmin(req);
+    const connected = await this.emailProvider.testConnection();
+    return { connected, configured: !!process.env.BREVO_API_KEY };
+  }
+
+  @Post('communication/test-email')
+  async testEmail(@Req() req: any, @Body() body: { to: string; subject?: string }) {
+    this.checkSuperAdmin(req);
+    const result = await this.emailProvider.send({
+      to: body.to,
+      subject: body.subject || 'QMover Test Email',
+      htmlContent: '<h1>Test Email</h1><p>This is a test email from QMover.</p>',
+      textContent: 'Test Email - This is a test email from QMover.',
+    });
+    await this.communicationLogService.log({
+      channel: CommunicationChannel.EMAIL,
+      type: 'test',
+      recipient: body.to,
+      subject: body.subject || 'QMover Test Email',
+      body: 'Test Email - This is a test email from QMover.',
+      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      provider: 'brevo',
+      providerId: result.providerId,
+      errorMessage: result.error,
+    });
+    return { success: result.success, error: result.error };
+  }
+
+  @Get('communication/templates/email')
+  getEmailTemplates(@Req() req: any) {
+    this.checkSuperAdmin(req);
+    return this.templateService.getEmailTemplateKeys().map((key: string) => ({
+      key,
+      name: key.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+    }));
+  }
+
+  @Get('communication/templates/whatsapp')
+  getWhatsAppTemplates(@Req() req: any) {
+    this.checkSuperAdmin(req);
+    const defaultKeys = this.templateService.getWhatsAppTemplateKeys();
+    return defaultKeys.map((key: string) => ({
+      key,
+      name: key.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+    }));
+  }
+
+  @Get('communication/logs')
+  async getCommunicationLogs(
+    @Req() req: any,
+    @Query('offset') offset?: number,
+    @Query('limit') limit?: number,
+  ) {
+    this.checkSuperAdmin(req);
+    return this.communicationLogService.getFailedLogs();
   }
 }

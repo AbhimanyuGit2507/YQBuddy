@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import AdminLayout from '../../../components/AdminLayout';
-import { QrCode, CheckCircle2, AlertCircle, Copy, Trash2, Shield, CreditCard, Loader2, MessageSquare, Send, Save, UserCog } from 'lucide-react';
+import { QrCode, CheckCircle2, AlertCircle, Copy, Trash2, Shield, CreditCard, Loader2, MessageSquare, Send, Save, UserCog, Keyboard, Smartphone } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
 import { useAuth } from '../../../components/AuthContext';
@@ -40,6 +40,10 @@ export default function SettingsPage() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [instanceName, setInstanceName] = useState<string | null>(null);
+  const [connectionMode, setConnectionMode] = useState<'qr' | 'code'>('qr');
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [pairingPhoneNumber, setPairingPhoneNumber] = useState('');
+  const [generatingPairingCode, setGeneratingPairingCode] = useState(false);
 
   const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookError, setWebhookError] = useState<string | null>(null);
@@ -112,6 +116,8 @@ export default function SettingsPage() {
   useEffect(() => {
     if (whatsappStatus?.state === 'open') {
       setQrCode(null);
+      setPairingCode(null);
+      setPairingPhoneNumber('');
       setInstanceName(whatsappStatus.instanceName);
     } else if (whatsappStatus?.state === 'connecting') {
       setInstanceName(prev => prev || whatsappStatus.instanceName || null);
@@ -186,6 +192,7 @@ export default function SettingsPage() {
   const handleConnectWhatsApp = async () => {
     setConnecting(true);
     setQrCode(null);
+    setPairingCode(null);
     setStatusMessage(null);
     try {
       const res = await fetchApi('/whatsapp/connect', { method: 'POST' });
@@ -203,6 +210,36 @@ export default function SettingsPage() {
       setStatusMessage({ type: 'error', text });
     } finally {
       setConnecting(false);
+    }
+  };
+
+  const handleGeneratePairingCode = async () => {
+    if (!pairingPhoneNumber) {
+      setStatusMessage({ type: 'error', text: 'Please enter a phone number' });
+      return;
+    }
+
+    setGeneratingPairingCode(true);
+    setPairingCode(null);
+    setStatusMessage(null);
+    try {
+      const res = await fetchApi('/whatsapp/pairing-code', {
+        method: 'POST',
+        body: JSON.stringify({ phoneNumber: pairingPhoneNumber }),
+      });
+      if (res.pairingCode) setPairingCode(res.pairingCode);
+      queryClient.setQueryData(['whatsapp-status'], (old: any) => ({
+        ...(old || {}),
+        state: 'connecting',
+        instanceName: res.instanceName,
+        whatsappConnected: false,
+      }));
+      toast.success('Pairing code generated. Enter it in WhatsApp.');
+    } catch (e: any) {
+      const text = e?.message || 'Failed to generate pairing code. Please try again.';
+      setStatusMessage({ type: 'error', text });
+    } finally {
+      setGeneratingPairingCode(false);
     }
   };
 
@@ -360,69 +397,158 @@ export default function SettingsPage() {
         )}
 
         {activeTab === 'WhatsApp' && (
-          <div className="space-y-8 animate-in fade-in duration-300">
-            <div><h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">WhatsApp Integration</h2><p className="text-zinc-400">Connect your WhatsApp to send automated queue updates.</p></div>
-            {whatsappStatus?.state === 'connecting' ? (
-              <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-3xl p-12 text-center">
-                <div className="animate-in zoom-in duration-500">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Scan QR Code</h3>
-                  {qrCode ? (
-                    <div className="bg-white p-4 rounded-2xl inline-block shadow-lg mx-auto mb-6"><img src={qrCode} alt="QR" className="w-64 h-64" /></div>
-                  ) : (
-                    <div className="w-64 h-64 bg-gray-100 dark:bg-black/50 rounded-2xl inline-flex items-center justify-center mb-6">
-                      <Loader2 className="w-12 h-12 animate-spin text-emerald-500" />
-                    </div>
-                  )}
-                  <div className="flex items-center justify-center gap-3">
-                    <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
-                    <span className="text-zinc-500">Waiting for QR scan...</span>
-                  </div>
-                  <p className="text-xs text-zinc-400 mt-4">Open WhatsApp on your phone → Linked Devices → Link a Device</p>
-                </div>
-              </div>
-            ) : !isWhatsAppConnected ? (
-              <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-3xl p-12 text-center">
-                <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6"><QrCode className="w-10 h-10 text-emerald-500" /></div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Link Your WhatsApp Account</h3>
-                <p className="text-zinc-500 max-w-md mx-auto mb-8">Connect WhatsApp to automatically notify customers about queue updates.</p>
-                <button onClick={handleConnectWhatsApp} disabled={connecting} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center gap-2 mx-auto">
-                  {connecting ? <Loader2 className="w-5 h-5 animate-spin" /> : null}{connecting ? 'Generating...' : 'Connect WhatsApp'}
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-8 flex items-center gap-6 relative overflow-hidden">
-                  <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30"><svg className="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg></div>
-                  <div><h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Connected</h3><div className="space-y-1 text-sm font-mono text-emerald-600 dark:text-emerald-400/80"><p>Instance: {instanceName}</p><p>Status: Online & Ready</p></div></div>
-                </div>
-                <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-3xl p-8">
-                  <div className="mb-8 border-b border-gray-200 dark:border-white/10 pb-6"><h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Message Templates</h2><p className="text-zinc-500 dark:text-zinc-400 text-sm">Configure automated WhatsApp messages.</p></div>
-                  <div className="space-y-6">
-                    {whatsappTemplates.map((template: any) => (
-                      <div key={template.key} className="space-y-2">
-                        <label className="block font-bold text-gray-900 dark:text-white">{template.name}</label>
-                        <textarea rows={3} value={templateDrafts[template.key] || template.content || ''} onChange={(e) => handleTemplateChange(template.key, e.target.value)} className="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors resize-none" />
-                        <div className="flex justify-end"><button onClick={() => handleSaveTemplate(template.key)} disabled={savingTemplate === template.key} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-600 text-white rounded-xl font-medium transition-colors">{savingTemplate === template.key ? 'Saving...' : 'Save Template'}</button></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-3xl p-8">
-                  <div className="mb-8 border-b border-gray-200 dark:border-white/10 pb-6"><h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Test Message</h2><p className="text-zinc-500 dark:text-zinc-400 text-sm">Send a test WhatsApp message.</p></div>
-                  <div className="space-y-4">
-                    <div><label className="block text-sm font-medium text-zinc-400 mb-2">Phone Number</label>
-                      <input type="tel" placeholder="e.g. 27821234567" value={testPhone} onChange={(e) => setTestPhone(e.target.value)} className="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl py-3 px-4 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors" /></div>
-                    <div><label className="block text-sm font-medium text-zinc-400 mb-2">Message</label>
-                      <textarea rows={3} value={testMessage} onChange={(e) => setTestMessage(e.target.value)} className="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors resize-none" /></div>
-                    <button onClick={handleTestWhatsApp} disabled={testingWhatsApp || !testPhone} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-600 text-white rounded-xl font-medium transition-colors flex items-center gap-2">
-                      {testingWhatsApp ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}{testingWhatsApp ? 'Sending...' : 'Send Test Message'}
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        )}
+           <div className="space-y-8 animate-in fade-in duration-300">
+             <div><h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">WhatsApp Integration</h2><p className="text-zinc-400">Connect your WhatsApp to send automated queue updates.</p></div>
+             {!isWhatsAppConnected ? (
+               <>
+                 <div className="flex items-center justify-center gap-2 p-1 bg-gray-100 dark:bg-zinc-800/50 rounded-xl border border-gray-200 dark:border-white/10">
+                   <button
+                     onClick={() => { setConnectionMode('qr'); setPairingCode(null); setQrCode(null); setPairingPhoneNumber(''); }}
+                     className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${
+                       connectionMode === 'qr'
+                         ? 'bg-indigo-600 text-white shadow'
+                         : 'text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white'
+                     }`}
+                   >
+                     <QrCode className="w-4 h-4 inline mr-2" />
+                     QR Code
+                   </button>
+                   <button
+                     onClick={() => { setConnectionMode('code'); setQrCode(null); setPairingCode(null); setPairingPhoneNumber(''); }}
+                     className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${
+                       connectionMode === 'code'
+                         ? 'bg-indigo-600 text-white shadow'
+                         : 'text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white'
+                     }`}
+                   >
+                     <Smartphone className="w-4 h-4 inline mr-2" />
+                     Pairing Code
+                   </button>
+                 </div>
+
+                 {connectionMode === 'qr' ? (
+                   <>
+                     {whatsappStatus?.state === 'connecting' && qrCode ? (
+                       <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-3xl p-12 text-center">
+                         <div className="animate-in zoom-in duration-500">
+                           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Scan QR Code</h3>
+                           {qrCode ? (
+                             <div className="bg-white p-4 rounded-2xl inline-block shadow-lg mx-auto mb-6"><img src={qrCode} alt="QR" className="w-64 h-64" /></div>
+                           ) : (
+                             <div className="w-64 h-64 bg-gray-100 dark:bg-black/50 rounded-2xl inline-flex items-center justify-center mb-6">
+                               <Loader2 className="w-12 h-12 animate-spin text-emerald-500" />
+                             </div>
+                           )}
+                           <div className="flex items-center justify-center gap-3">
+                             <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
+                             <span className="text-zinc-500">Waiting for QR scan...</span>
+                           </div>
+                           <p className="text-xs text-zinc-400 mt-4">Open WhatsApp on your phone → Linked Devices → Link a Device</p>
+                         </div>
+                       </div>
+                     ) : (
+                       <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-3xl p-12 text-center">
+                         <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6"><QrCode className="w-10 h-10 text-emerald-500" /></div>
+                         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Link Your WhatsApp Account</h3>
+                         <p className="text-zinc-500 max-w-md mx-auto mb-8">Connect WhatsApp to automatically notify customers about queue updates.</p>
+                         <button onClick={handleConnectWhatsApp} disabled={connecting} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center gap-2 mx-auto">
+                           {connecting ? <Loader2 className="w-5 h-5 animate-spin" /> : null}{connecting ? 'Generating...' : 'Connect WhatsApp'}
+                         </button>
+                       </div>
+                     )}
+                   </>
+                 ) : (
+                   <>
+                     {pairingCode ? (
+                       <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-3xl p-12 text-center">
+                         <div className="animate-in zoom-in duration-500">
+                           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Enter This Code in WhatsApp</h3>
+                           <p className="text-gray-500 max-w-md mx-auto mb-6">
+                             Open WhatsApp on your phone → Settings → Linked Devices → <br/>Enter the pairing code below to connect without scanning a QR code.
+                           </p>
+                           <div className="bg-gray-50 dark:bg-zinc-800 rounded-2xl p-6 mb-6 border border-gray-200 dark:border-white/10 inline-block">
+                             <code className="text-4xl font-mono font-bold text-gray-900 dark:text-white tracking-[0.3em]">{pairingCode}</code>
+                           </div>
+                           <button
+                             onClick={() => { navigator.clipboard.writeText(pairingCode); toast.success('Pairing code copied to clipboard'); }}
+                             className="flex items-center justify-center gap-2 mx-auto text-sm text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                           >
+                             <Copy className="w-4 h-4" />
+                             Copy Code
+                           </button>
+                           <div className="flex items-center justify-center gap-3 mt-6">
+                             <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
+                             <span className="text-zinc-500">Waiting for WhatsApp to connect...</span>
+                           </div>
+                         </div>
+                       </div>
+                     ) : (
+                       <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-3xl p-12 text-center">
+                         <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-6"><Smartphone className="w-10 h-10 text-indigo-600 dark:text-indigo-400" /></div>
+                         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Connect with Pairing Code</h3>
+                         <p className="text-zinc-500 max-w-md mx-auto mb-8">
+                           Enter your WhatsApp phone number to receive a pairing code. No QR scanning required.
+                         </p>
+                         <div className="max-w-sm mx-auto space-y-4">
+                           <div>
+                             <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">WhatsApp Phone Number</label>
+                             <input
+                               type="tel"
+                               placeholder="e.g. 27821234567"
+                               value={pairingPhoneNumber}
+                               onChange={(e) => setPairingPhoneNumber(e.target.value)}
+                               className="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl py-3 px-4 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors font-mono text-center text-lg"
+                             />
+                           </div>
+                           <button
+                             onClick={handleGeneratePairingCode}
+                             disabled={generatingPairingCode || !pairingPhoneNumber}
+                             className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-colors disabled:opacity-50"
+                           >
+                             {generatingPairingCode ? <Loader2 className="w-5 h-5 animate-spin" /> : <Keyboard className="w-5 h-5" />}
+                             {generatingPairingCode ? 'Generating...' : 'Generate Pairing Code'}
+                           </button>
+                           <p className="text-xs text-gray-400">Include country code, no spaces or + sign (e.g. 5511999999999)</p>
+                         </div>
+                       </div>
+                     )}
+                   </>
+                 )}
+               </>
+             ) : (
+               <>
+                 <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-8 flex items-center gap-6 relative overflow-hidden">
+                   <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30"><svg className="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg></div>
+                   <div><h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Connected</h3><div className="space-y-1 text-sm font-mono text-emerald-600 dark:text-emerald-400/80"><p>Instance: {instanceName}</p><p>Status: Online & Ready</p></div></div>
+                 </div>
+                 <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-3xl p-8">
+                   <div className="mb-8 border-b border-gray-200 dark:border-white/10 pb-6"><h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Message Templates</h2><p className="text-zinc-500 dark:text-zinc-400 text-sm">Configure automated WhatsApp messages.</p></div>
+                   <div className="space-y-6">
+                     {whatsappTemplates.map((template: any) => (
+                       <div key={template.key} className="space-y-2">
+                         <label className="block font-bold text-gray-900 dark:text-white">{template.name}</label>
+                         <textarea rows={3} value={templateDrafts[template.key] || template.content || ''} onChange={(e) => handleTemplateChange(template.key, e.target.value)} className="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors resize-none" />
+                         <div className="flex justify-end"><button onClick={() => handleSaveTemplate(template.key)} disabled={savingTemplate === template.key} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-600 text-white rounded-xl font-medium transition-colors">{savingTemplate === template.key ? 'Saving...' : 'Save Template'}</button></div>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+                 <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-gray-200 dark:border-white/10 rounded-3xl p-8">
+                   <div className="mb-8 border-b border-gray-200 dark:border-white/10 pb-6"><h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Test Message</h2><p className="text-zinc-500 dark:text-zinc-400 text-sm">Send a test WhatsApp message.</p></div>
+                   <div className="space-y-4">
+                     <div><label className="block text-sm font-medium text-zinc-400 mb-2">Phone Number</label>
+                       <input type="tel" placeholder="e.g. 27821234567" value={testPhone} onChange={(e) => setTestPhone(e.target.value)} className="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl py-3 px-4 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors" /></div>
+                     <div><label className="block text-sm font-medium text-zinc-400 mb-2">Message</label>
+                       <textarea rows={3} value={testMessage} onChange={(e) => setTestMessage(e.target.value)} className="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors resize-none" /></div>
+                     <button onClick={handleTestWhatsApp} disabled={testingWhatsApp || !testPhone} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-600 text-white rounded-xl font-medium transition-colors flex items-center gap-2">
+                       {testingWhatsApp ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}{testingWhatsApp ? 'Sending...' : 'Send Test Message'}
+                     </button>
+                   </div>
+                 </div>
+               </>
+             )}
+           </div>
+         )}
 
         {activeTab === 'Billing' && (
           <div className="max-w-4xl mx-auto space-y-8 pb-12 animate-in fade-in duration-500">

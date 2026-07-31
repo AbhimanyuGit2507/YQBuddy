@@ -51,7 +51,7 @@ export class CommunicationController {
   ) {}
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.SETTINGS_WRITE)
   @Post('test-email')
   async testEmail(@Request() req: any, @Body() body: TestEmailDto) {
@@ -82,7 +82,7 @@ export class CommunicationController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.SETTINGS_READ)
   @Get('email/connection')
   async testEmailConnection() {
@@ -91,7 +91,7 @@ export class CommunicationController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.SETTINGS_WRITE)
   @Post('test-whatsapp')
   async testWhatsApp(
@@ -121,7 +121,7 @@ export class CommunicationController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.SETTINGS_READ)
   @Get('templates/email')
   getEmailTemplates() {
@@ -134,7 +134,7 @@ export class CommunicationController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.SETTINGS_READ)
   @Get('templates/email/:key')
   previewEmailTemplate(@Param('key') key: string, @Request() req: any) {
@@ -161,7 +161,7 @@ export class CommunicationController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.SETTINGS_READ)
   @Get('templates/whatsapp')
   async getWhatsAppTemplates(@Request() req: any) {
@@ -195,7 +195,7 @@ export class CommunicationController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.SETTINGS_WRITE)
   @Post('templates/whatsapp/:key')
   async saveWhatsAppTemplate(
@@ -216,7 +216,7 @@ export class CommunicationController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.SETTINGS_READ)
   @Get('templates/whatsapp/:key/preview')
   previewWhatsAppTemplate(@Param('key') key: string) {
@@ -232,7 +232,7 @@ export class CommunicationController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.SETTINGS_WRITE)
   @Delete('templates/whatsapp/:key')
   async resetWhatsAppTemplate(@Request() req: any, @Param('key') key: string) {
@@ -244,7 +244,7 @@ export class CommunicationController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.SETTINGS_READ)
   @Get('logs')
   getLogs(@Request() req: any, @Query() params: any) {
@@ -258,7 +258,7 @@ export class CommunicationController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.SETTINGS_READ)
   @Get('logs/failed')
   getFailedLogs(@Request() req: any) {

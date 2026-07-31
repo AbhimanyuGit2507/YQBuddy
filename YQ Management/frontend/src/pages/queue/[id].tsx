@@ -7,7 +7,7 @@ import { io } from 'socket.io-client';
 export default function CustomerWaitScreen() {
   const router = useRouter();
   const { id } = router.query;
-  const tokenId = "mock-token-id"; // Fetched from local storage or params in real scenario
+  const tokenId = (router.query.tokenId as string) || "";
 
   const [position, setPosition] = useState(5);
   const [ewt, setEwt] = useState(25);

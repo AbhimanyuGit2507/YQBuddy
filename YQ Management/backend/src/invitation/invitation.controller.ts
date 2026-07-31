@@ -7,12 +7,9 @@ import {
   Param,
   UseGuards,
   Req,
-  BadRequestException,
-  NotFoundException,
 } from '@nestjs/common';
 import { InvitationService } from './invitation.service';
 import { AuthGuard } from '@nestjs/passport';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
@@ -29,14 +26,14 @@ import type { AuthenticatedRequest } from '../auth/types/auth.types';
 export class InvitationController {
   constructor(private readonly invitationService: InvitationService) {}
 
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.INVITATION_CREATE, Permission.INVITATION_READ)
   @Get()
   async getInvitations(@Req() req: AuthenticatedRequest) {
     return this.invitationService.getInvitations(req.user.workspaceId);
   }
 
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.INVITATION_CREATE)
   @Post()
   async createInvitation(
@@ -50,7 +47,7 @@ export class InvitationController {
     return { success: true, invitation };
   }
 
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.INVITATION_CREATE)
   @Post('join-code')
   async createJoinCode(
@@ -65,7 +62,7 @@ export class InvitationController {
     return { success: true, invitation };
   }
 
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @RequirePermissions(Permission.INVITATION_REVOKE)
   @Delete(':id')
   async revokeInvitation(

@@ -15,18 +15,18 @@ export default function SuperAdminCommunication() {
 
   const { data: emailConnection, refetch: refetchConnection } = useQuery({
     queryKey: ['superadmin-email-connection'],
-    queryFn: () => fetchApi('/communication/email/connection'),
+    queryFn: () => fetchApi('/super-admin/communication/email/connection'),
   });
 
   const { data: templates } = useQuery({
     queryKey: ['superadmin-email-templates'],
-    queryFn: () => fetchApi('/communication/templates/email'),
+    queryFn: () => fetchApi('/super-admin/communication/templates/email'),
   });
 
   const handleCheckConnection = async () => {
     setCheckingConnection(true);
     try {
-      const res = await fetchApi('/communication/email/connection');
+      const res = await fetchApi('/super-admin/communication/email/connection');
       setEmailConnectionStatus(res.connected);
       toast.success(res.connected ? 'Brevo connected' : 'Brevo disconnected');
     } catch {
@@ -40,7 +40,7 @@ export default function SuperAdminCommunication() {
     if (!testEmailTo) return;
     setSendingTestEmail(true);
     try {
-      const res = await fetchApi('/communication/test-email', { method: 'POST', body: JSON.stringify({ to: testEmailTo, subject: testEmailSubject }) });
+      const res = await fetchApi('/super-admin/communication/test-email', { method: 'POST', body: JSON.stringify({ to: testEmailTo, subject: testEmailSubject }) });
       if (res.success) {
         toast.success('Test email sent successfully');
       } else {

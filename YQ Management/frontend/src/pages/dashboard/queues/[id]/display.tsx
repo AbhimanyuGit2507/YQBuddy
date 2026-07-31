@@ -21,7 +21,7 @@ export default function QueueDisplay() {
   });
 
   const queueName = queue?.name || 'Loading...';
-  const joinUrl = typeof window !== 'undefined' ? `${window.location.origin}/join/${id}` : '';
+  const joinUrl = typeof window !== 'undefined' ? `${window.location.origin}/customer/join/${id}` : '';
 
   const { data: tokens = [], refetch } = useQuery({
     queryKey: ['queueTokens', id],

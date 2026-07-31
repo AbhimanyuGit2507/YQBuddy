@@ -178,4 +178,86 @@ export class SuperAdminService {
       include: { tenant: { select: { name: true } } },
     });
   }
+
+  async listPlans(statusFilter?: string, offset = 0, limit = 50) {
+    const where: Record<string, unknown> = {};
+    if (statusFilter) {
+      where.active = statusFilter === 'ACTIVE';
+    }
+    return this.prisma.plan.findMany({
+      where,
+      skip: offset,
+      take: limit,
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+    });
+  }
+
+  async createPlan(dto: any) {
+    return this.prisma.plan.create({
+      data: {
+        name: dto.name,
+        description: dto.description || null,
+        type: dto.type || 'standard',
+        active: (dto.status || 'ACTIVE') === 'ACTIVE',
+        billingInterval: dto.billingInterval || 'monthly',
+        price: dto.price ?? 0,
+        currency: dto.currency || 'ZAR',
+        trialDays: dto.trialDays ?? 0,
+        features: (dto.features ?? null) as any,
+        limits: (dto.limits ?? null) as any,
+        sortOrder: dto.sortOrder ?? 0,
+      },
+    });
+  }
+
+  async updatePlan(id: string, dto: any) {
+    const data: Record<string, unknown> = {};
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.billingInterval !== undefined) data.billingInterval = dto.billingInterval;
+    if (dto.price !== undefined) data.price = dto.price;
+    if (dto.currency !== undefined) data.currency = dto.currency;
+    if (dto.trialDays !== undefined) data.trialDays = dto.trialDays;
+    if (dto.features !== undefined) data.features = dto.features;
+    if (dto.limits !== undefined) data.limits = dto.limits;
+    if (dto.sortOrder !== undefined) data.sortOrder = dto.sortOrder;
+
+    return this.prisma.plan.update({ where: { id }, data });
+  }
+
+  async archivePlan(id: string) {
+    return this.prisma.plan.update({
+      where: { id },
+      data: { active: false },
+    });
+  }
+
+  async changePlanStatus(id: string, status: string) {
+    return this.prisma.plan.update({
+      where: { id },
+      data: { active: status === 'ACTIVE' },
+    });
+  }
+
+  async duplicatePlan(id: string, newName: string) {
+    const existing = await this.prisma.plan.findUnique({ where: { id } });
+    if (!existing) {
+      throw new Error(`Plan with id ${id} not found`);
+    }
+    return this.prisma.plan.create({
+      data: {
+        name: newName,
+        description: existing.description ?? undefined,
+        type: existing.type,
+        billingInterval: existing.billingInterval,
+        price: existing.price,
+        currency: existing.currency,
+        trialDays: existing.trialDays,
+        features: existing.features ?? undefined,
+        limits: existing.limits ?? undefined,
+        active: true,
+        sortOrder: existing.sortOrder,
+      },
+    });
+  }
 }

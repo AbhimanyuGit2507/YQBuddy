@@ -24,13 +24,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const cookieMatch = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
-    if (!cookieMatch) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 

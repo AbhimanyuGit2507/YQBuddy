@@ -64,7 +64,7 @@ export default function SuperAdminLayout({
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0a0005] text-gray-900 dark:text-white flex overflow-hidden transition-colors font-sans">
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-gray-200 dark:border-white/10 bg-white dark:bg-zinc-950 flex flex-col transition-transform duration-200 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-gray-200 dark:border-white/10 bg-white dark:bg-zinc-950 flex flex-col transition-transform duration-200 lg:relative lg:z-auto lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

@@ -164,7 +164,10 @@ export class EvolutionProvider implements WhatsAppProvider {
       `/instance/connectionState/${instanceName}`,
       'GET',
     );
-    const state = stateRes.data?.instance?.state || 'close';
+    const state =
+      stateRes.data?.instance?.state ||
+      stateRes.data?.instance?.status ||
+      'close';
 
     let qr: string | undefined;
     if (connectRes.data?.qrcode?.base64) {
@@ -176,7 +179,7 @@ export class EvolutionProvider implements WhatsAppProvider {
     return { instanceName, state, qr };
   }
 
-  async status(instanceName: string): Promise<{ state: string }> {
+  async status(instanceName: string): Promise<{ state: string; qr?: string }> {
     if (!this.baseUrl || !this.apiKey || !this.defaultInstance) {
       return { state: 'close' };
     }
@@ -185,7 +188,26 @@ export class EvolutionProvider implements WhatsAppProvider {
       `/instance/connectionState/${instanceName}`,
       'GET',
     );
-    return { state: stateRes.data?.instance?.state || 'close' };
+
+    const state =
+      stateRes.data?.instance?.state ||
+      stateRes.data?.instance?.status ||
+      'close';
+
+    let qr: string | undefined;
+    if (state === 'connecting') {
+      const connectRes = await this.fetch(
+        `/instance/connect/${instanceName}`,
+        'GET',
+      );
+      if (connectRes.data?.base64) {
+        qr = connectRes.data.base64;
+      } else if (connectRes.data?.qrcode?.base64) {
+        qr = connectRes.data.qrcode.base64;
+      }
+    }
+
+    return { state, qr };
   }
 
   async disconnect(instanceName: string): Promise<void> {

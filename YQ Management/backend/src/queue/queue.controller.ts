@@ -7,7 +7,6 @@ import {
   Param,
   UseGuards,
   Req,
-  Query,
 } from '@nestjs/common';
 import { QueueService } from './queue.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -15,7 +14,6 @@ import { QueueStatus, Role } from '@prisma/client';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { WorkspaceGuard } from '../auth/workspace.guard';
-import { ThrottlerGuard } from '@nestjs/throttler';
 import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('queue')
@@ -23,7 +21,7 @@ export class QueueController {
   constructor(private readonly queueService: QueueService) {}
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @Post()
   async createQueue(
     @Req() req: AuthenticatedRequest,
@@ -56,7 +54,7 @@ export class QueueController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @Patch(':id')
   async updateQueue(
     @Req() req: AuthenticatedRequest,
@@ -84,7 +82,7 @@ export class QueueController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @Patch(':id/status')
   async updateStatus(
     @Req() req: AuthenticatedRequest,

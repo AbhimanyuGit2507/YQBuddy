@@ -1,3 +1,5 @@
+import type { NextRouter } from 'next/router';
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -10,6 +12,13 @@ export class ApiError extends Error {
   }
 }
 
+let router: NextRouter | null = null;
+let redirecting = false;
+
+export function setApiRouter(r: NextRouter) {
+  router = r;
+}
+
 export const AuthStorage = {
   clear: () => {
     if (typeof window !== 'undefined') {
@@ -18,6 +27,35 @@ export const AuthStorage = {
   },
 };
 
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1000;
+
+async function fetchWithRetry(
+  endpoint: string,
+  options: RequestInit,
+  attempt: number = 0,
+): Promise<Response> {
+  try {
+    const response = await fetch(`${endpoint}`, {
+      ...options,
+      signal: options.signal,
+    });
+    return response;
+  } catch (error) {
+    if (
+      attempt < MAX_RETRIES &&
+      error instanceof DOMException &&
+      error.name === 'AbortError'
+    ) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, RETRY_DELAY_MS * Math.pow(2, attempt)),
+      );
+      return fetchWithRetry(endpoint, options, attempt + 1);
+    }
+    throw error;
+  }
+}
+
 export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -25,7 +63,11 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
   if (!headers.has('Accept')) {
     headers.set('Accept', 'application/json');
   }
-  if (!headers.has('Content-Type') && options.body instanceof URLSearchParams === false && !(options.body instanceof FormData)) {
+  if (
+    !headers.has('Content-Type') &&
+    options.body instanceof URLSearchParams === false &&
+    !(options.body instanceof FormData)
+  ) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -33,7 +75,7 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
   const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   try {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+    const response = await fetchWithRetry(`${baseUrl}${endpoint}`, {
       ...options,
       headers,
       credentials: 'include',
@@ -52,7 +94,15 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
       } catch (e) {
         errorMessage = response.statusText;
       }
-      console.error(`[API Error] ${options.method || 'GET'} ${endpoint} → ${response.status}: ${errorMessage}`, errorDetails);
+      if (response.status === 401) {
+        console.warn(`[API Auth Error] ${options.method || 'GET'} ${endpoint} → 401 Unauthorized`);
+        if (router && !redirecting) {
+          redirecting = true;
+          router.push('/login');
+        }
+      } else {
+        console.error(`[API Error] ${options.method || 'GET'} ${endpoint} → ${response.status}: ${errorMessage}`, errorDetails);
+      }
       throw new ApiError(response.status, errorMessage, endpoint, errorDetails);
     }
 
@@ -69,6 +119,10 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
     }
     if (error instanceof ApiError) {
       throw error;
+    }
+    if (!navigator.onLine) {
+      console.error(`[API Offline] ${options.method || 'GET'} ${endpoint} → Device is offline`);
+      throw new ApiError(0, 'You are offline. Please check your internet connection.', endpoint);
     }
     console.error(`[API Network Error] ${options.method || 'GET'} ${endpoint} → ${error.message}`, error);
     throw new ApiError(0, error.message || 'Network error', endpoint);

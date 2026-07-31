@@ -28,10 +28,11 @@ export default function StaffDirectory() {
     }
   }, [user, router]);
 
-  const { data: staff = [], isLoading } = useQuery<StaffMember[]>({
+  const { data: staff = [], isLoading, isError } = useQuery<StaffMember[]>({
     queryKey: ['staff'],
     queryFn: () => fetchApi('/users'),
-    enabled: user?.role === 'TENANT_ADMIN'
+    enabled: user?.role === 'TENANT_ADMIN',
+    staleTime: 30000,
   });
 
   const createStaff = useMutation({
@@ -66,7 +67,7 @@ export default function StaffDirectory() {
   };
 
   const handleDelete = (id: string, email: string) => {
-    if (id === user?.id) {
+    if (id === user?.userId) {
       toast.warning('You cannot remove yourself from the staff list.');
       return;
     }
@@ -74,11 +75,35 @@ export default function StaffDirectory() {
     deleteStaff.mutate(id);
   };
 
-  if (!user || user.role !== 'TENANT_ADMIN') return null;
-
   const currentUserEmail = user?.email || '';
-  const adminCount = staff.filter(s => s.role === 'TENANT_ADMIN').length;
+  const currentUserId = user?.userId || '';
+
+  // The current admin is always guaranteed to appear in the staff list,
+  // even if the API returns empty (e.g. edge case where the admin is the
+  // only member of the workspace or the request fails).
+  const displayStaff: StaffMember[] = React.useMemo(() => {
+    const list = Array.isArray(staff) ? [...staff] : [];
+    const existingIndex = list.findIndex((s) => s.email === currentUserEmail);
+    if (existingIndex >= 0) {
+      list[existingIndex] = {
+        id: list[existingIndex].id || currentUserId,
+        email: currentUserEmail,
+        role: list[existingIndex].role || user?.role || '',
+      };
+    } else {
+      list.unshift({
+        id: currentUserId,
+        email: currentUserEmail,
+        role: user?.role || '',
+      });
+    }
+    return list;
+  }, [staff, currentUserEmail, currentUserId, user?.role]);
+
+  const adminCount = displayStaff.filter((s) => s.role === 'TENANT_ADMIN').length;
   const isLastAdmin = adminCount <= 1;
+
+  if (!user || user.role !== 'TENANT_ADMIN') return null;
 
   return (
     <AdminLayout pageTitle="Staff Directory" pageSubtitle="Manage roles and permissions for your team">
@@ -149,10 +174,14 @@ export default function StaffDirectory() {
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-white/5">
-              {isLoading ? (
-                <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Loading...</td></tr>
-              ) : staff.map((s: StaffMember) => {
+              <tbody className="divide-y divide-gray-200 dark:divide-white/5">
+                {isLoading ? (
+                  <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Loading...</td></tr>
+                ) : isError ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">Could not load staff list. Showing your account.</td>
+                  </tr>
+                ) : displayStaff.map((s: StaffMember) => {
                 const isCurrentUser = s.email === currentUserEmail;
                 const isAdmin = s.role === 'TENANT_ADMIN';
                 const canRemove = !isCurrentUser && !(isAdmin && isLastAdmin);
@@ -203,9 +232,9 @@ export default function StaffDirectory() {
                   </tr>
                 );
               })}
-              {staff.length === 0 && !isLoading && (
+              {displayStaff.length === 1 && !isLoading && !isError && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No staff found. Invite team members to get started.</td>
+                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">Only you are in this workspace. Invite team members to get started.</td>
                 </tr>
               )}
             </tbody>

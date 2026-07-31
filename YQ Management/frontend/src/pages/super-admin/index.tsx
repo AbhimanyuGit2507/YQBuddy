@@ -12,14 +12,14 @@ export default function SuperAdminDashboard() {
   });
 
   const stats = [
-    { name: 'Total Businesses', value: metrics?.totalTenants || 0, icon: Building2, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20' },
-    { name: 'Active Queues', value: metrics?.activeQueues || 0, icon: Activity, color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20' },
-    { name: 'Total Customers Served', value: metrics?.totalCustomersServed || 0, icon: Users, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20' },
+    { name: 'Total Businesses', value: metrics?.totalTenants || 0, icon: Building2, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/20' },
+    { name: 'Active Queues', value: metrics?.activeQueues || 0, icon: Activity, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20' },
+    { name: 'Total Customers Served', value: metrics?.totalCustomersServed || 0, icon: Users, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20' },
     { name: 'Total Revenue (ZAR)', value: `R${metrics?.totalRevenue || 0}`, icon: CreditCard, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20' },
   ];
 
   return (
-    <SuperAdminLayout>
+    <SuperAdminLayout pageTitle="Overview" pageSubtitle="Platform-wide metrics and quick actions">
       <Head>
         <title>Command Center | Super Admin</title>
       </Head>

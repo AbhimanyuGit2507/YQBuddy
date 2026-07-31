@@ -4,6 +4,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
+import createLogRoutingTransport from './config/log-routing';
 import { AppController } from './app.controller';
 import { HealthController } from './health/health.controller';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
@@ -19,8 +20,10 @@ import { RedisModule } from './redis/redis.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { PaymentsModule } from './payments/payments.module';
+import { PlansModule } from './plans/plans.module';
 import { SuperAdminModule } from './super-admin/super-admin.module';
 import { EmailModule } from './email/email.module';
+import { CommunicationModule } from './communication/communication.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { MessagesModule } from './messages/messages.module';
@@ -32,10 +35,8 @@ import { WorkspaceModule } from './workspace/workspace.module';
     ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule.forRoot({
       pinoHttp: {
-        transport: {
-          target: 'pino-pretty',
-          options: { singleLine: true },
-        },
+        level: 'info',
+        stream: createLogRoutingTransport(),
       },
     }),
     ThrottlerModule.forRoot([
@@ -61,8 +62,10 @@ import { WorkspaceModule } from './workspace/workspace.module';
     NotificationsModule,
     WhatsappModule,
     PaymentsModule,
+    PlansModule,
     SuperAdminModule,
     EmailModule,
+    CommunicationModule,
     WebhooksModule,
     AnalyticsModule,
     MessagesModule,

@@ -85,8 +85,8 @@ export default function SuperAdminBilling() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-rose-200/60">
-                        <div className="font-medium text-gray-900 dark:text-rose-100">{format(new Date(tx.createdAt), 'MMM d, yyyy')}</div>
-                        <div className="text-xs">{format(new Date(tx.createdAt), 'h:mm a')}</div>
+                        <div className="font-medium text-gray-900 dark:text-rose-100">{tx.createdAt ? format(new Date(tx.createdAt), 'MMM d, yyyy') : '-'}</div>
+                        <div className="text-xs">{tx.createdAt ? format(new Date(tx.createdAt), 'h:mm a') : '-'}</div>
                       </td>
                     </tr>
                   ))

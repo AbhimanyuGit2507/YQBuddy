@@ -20,10 +20,43 @@ export class WhatsappController {
   constructor(private readonly whatsappService: WhatsappService) {}
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @Post('connect')
   connect(@Req() req: AuthenticatedRequest) {
     return this.whatsappService.connect(req.user.tenantId);
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
+  @Post('generate-validation-code')
+  async generateValidationCode(@Req() req: AuthenticatedRequest) {
+    return this.whatsappService.generateValidationCode(req.user.tenantId);
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
+  @Post('pairing-code')
+  async generatePairingCode(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: { phoneNumber: string },
+  ) {
+    return this.whatsappService.generatePairingCode(
+      req.user.tenantId,
+      body.phoneNumber,
+    );
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
+  @Post('connect-with-code')
+  connectWithCode(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: { validationCode: string },
+  ) {
+    return this.whatsappService.connectWithValidationCode(
+      req.user.tenantId,
+      body.validationCode,
+    );
   }
 
   @UseGuards(AuthGuard('jwt'), WorkspaceGuard)
@@ -41,7 +74,7 @@ export class WhatsappController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   @Post('settings')
   saveChatbotSettings(@Req() req: AuthenticatedRequest, @Body() body: any) {
     return this.whatsappService.saveChatbotSettings(req.user.tenantId, body);

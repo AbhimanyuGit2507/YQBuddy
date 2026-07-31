@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { fetchApi } from '../../lib/api';
-import { QrCode, Loader2, ArrowRight, Store, Activity, Pizza, Briefcase, Check } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { QrCode, Loader2, ArrowRight, Store, Activity, Pizza, Briefcase, Check, Keyboard, Copy, CheckCircle2 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const BUSINESS_TEMPLATES = [
   {
@@ -104,14 +105,73 @@ const BUSINESS_TEMPLATES = [
 
 export default function Onboarding() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<1 | 2>(1);
-  const [loading, setLoading] = useState(false);
   const [selectedType, setSelectedType] = useState<string>('general');
 
   // WhatsApp State
   const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
-  const [connecting, setConnecting] = useState(false);
+  const [connectionMode, setConnectionMode] = useState<'qr' | 'code'>('qr');
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [pairingPhoneNumber, setPairingPhoneNumber] = useState('');
+  const [pairingCopied, setPairingCopied] = useState(false);
+
+  const setupQueuesMutation = useMutation({
+    mutationFn: (template: typeof BUSINESS_TEMPLATES[number]) =>
+      Promise.all(template.queues.map(q =>
+        fetchApi('/queue', {
+          method: 'POST',
+          body: JSON.stringify({ name: q.name, formConfig: q.formConfig }),
+        })
+      )),
+    onSuccess: () => {
+      setStep(2);
+      queryClient.invalidateQueries({ queryKey: ['queues'] });
+      toast.success('Queues setup successfully');
+    },
+    onError: () => {
+      toast.error('Failed to setup your queues. Please try again.');
+    },
+    onSettled: () => {
+    },
+  });
+
+  const connectWhatsAppMutation = useMutation({
+    mutationFn: () => fetchApi('/whatsapp/connect', { method: 'POST' }),
+    onSuccess: (res) => {
+      if (res.qr) setQrCode(res.qr);
+      if (res.state === 'open') {
+        setIsWhatsAppConnected(true);
+        toast.success('WhatsApp connected');
+      } else if (res.state === 'connecting') {
+        toast.success('QR code generated — scan it in WhatsApp');
+      } else {
+        toast.info('WhatsApp connection initiated');
+      }
+    },
+    onError: () => {
+      toast.error('Error connecting to WhatsApp. Is Evolution API running?');
+    },
+    onSettled: () => {
+    },
+  });
+
+  const generatePairingCodeMutation = useMutation({
+    mutationFn: (phoneNumber: string) =>
+      fetchApi('/whatsapp/pairing-code', {
+        method: 'POST',
+        body: JSON.stringify({ phoneNumber }),
+      }),
+    onSuccess: (res) => {
+      setPairingCode(res.pairingCode);
+      setPairingCopied(false);
+      toast.success('Pairing code generated. Enter it in WhatsApp.');
+    },
+    onError: () => {
+      toast.error('Failed to generate pairing code');
+    },
+  });
 
   useEffect(() => {
     // Save token if coming from Google SSO
@@ -126,55 +186,36 @@ export default function Onboarding() {
   const { data: whatsappStatus } = useQuery({
     queryKey: ['whatsapp-status'],
     queryFn: () => fetchApi('/whatsapp/status'),
-    refetchInterval: (data: any) => (data?.state === 'connecting' || qrCode) && data?.state !== 'open' ? 3000 : false,
+    refetchInterval: (data: any) => {
+      if (!data) return 3000;
+      if (data.state === 'open' || data.state === 'close' || data.state === 'unconfigured') return false;
+      return 3000;
+    },
     enabled: step === 2,
   });
 
   useEffect(() => {
-    if (whatsappStatus?.state === 'open') {
-      setIsWhatsAppConnected(true);
-      setQrCode(null);
-    }
-  }, [whatsappStatus]);
+     if (whatsappStatus?.state === 'open') {
+       setIsWhatsAppConnected(true);
+       setQrCode(null);
+       setPairingCode(null);
+       setPairingPhoneNumber('');
+     } else if (whatsappStatus?.state === 'connecting') {
+       if (whatsappStatus.qr) setQrCode(whatsappStatus.qr);
+     } else if (whatsappStatus?.state === 'close' || whatsappStatus?.state === 'unconfigured') {
+       setQrCode(null);
+     }
+   }, [whatsappStatus]);
 
-  const handleSetupQueues = async () => {
-    setLoading(true);
+  const handleSetupQueues = () => {
     const template = BUSINESS_TEMPLATES.find(t => t.id === selectedType);
-    
-    try {
-      if (template) {
-        // Create each queue sequentially (or parallel if backend supports, but sequential is safer for SQLite/basic setups)
-        await Promise.all(template.queues.map(q => 
-          fetchApi('/queue', {
-            method: 'POST',
-            body: JSON.stringify({ name: q.name, formConfig: q.formConfig }),
-          })
-        ));
-      }
-      
-      setStep(2);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to setup your queues. Please try again.');
-    } finally {
-      setLoading(false);
+    if (template) {
+      setupQueuesMutation.mutate(template);
     }
   };
 
-  const handleConnectWhatsApp = async () => {
-    setConnecting(true);
-    try {
-      const res = await fetchApi('/whatsapp/connect', { method: 'POST' });
-      if (res.qr) {
-        setQrCode(res.qr);
-      }
-      if (res.state === 'open') {
-        setIsWhatsAppConnected(true);
-      }
-    } catch (e) {
-      alert('Error connecting to WhatsApp. Is Evolution API running?');
-    }
-    setConnecting(false);
+  const handleConnectWhatsApp = () => {
+    connectWhatsAppMutation.mutate();
   };
 
   const finishOnboarding = () => {
@@ -273,12 +314,12 @@ export default function Onboarding() {
               <div className="flex justify-end">
                 <button 
                   onClick={handleSetupQueues}
-                  disabled={loading}
-                  className="px-8 py-4 bg-[#2563EB] hover:bg-blue-700 rounded-xl font-bold text-white transition-colors shadow-lg disabled:opacity-70 flex justify-center items-center gap-2"
+disabled={setupQueuesMutation.isPending}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
                 >
-                  {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-                  {loading ? 'Setting up queues...' : 'Continue'}
-                  {!loading && <ArrowRight className="w-5 h-5" />}
+                  {setupQueuesMutation.isPending && <Loader2 className="w-5 h-5 animate-spin" />}
+                  {setupQueuesMutation.isPending ? 'Setting up queues...' : 'Continue'}
+                  {!setupQueuesMutation.isPending && <ArrowRight className="w-5 h-5" />}
                 </button>
               </div>
             </div>
@@ -286,7 +327,7 @@ export default function Onboarding() {
 
           {step === 2 && (
             <div className="max-w-lg mx-auto animate-in fade-in slide-in-from-right-8 duration-500 bg-white rounded-3xl p-10 shadow-xl border border-gray-100 text-center">
-              
+
               {!isWhatsAppConnected ? (
                 <>
                   {qrCode ? (
@@ -303,6 +344,75 @@ export default function Onboarding() {
                         Waiting for connection...
                       </div>
                     </div>
+                  ) : connectionMode === 'code' ? (
+                    <div className="animate-in zoom-in duration-500">
+                      <h3 className="text-xl font-bold text-gray-900 mb-4">
+                        {pairingCode ? 'Enter This Code in WhatsApp' : 'Connect with Pairing Code'}
+                      </h3>
+                      {pairingCode ? (
+                        <p className="text-gray-500 max-w-sm mx-auto mb-6">
+                          Open WhatsApp on your phone, go to Settings → Linked Devices, and enter this code.
+                        </p>
+                      ) : (
+                        <p className="text-gray-500 max-w-sm mx-auto mb-6">
+                          Enter your WhatsApp phone number to receive a pairing code. No QR scanning required.
+                        </p>
+                      )}
+
+                      {pairingCode ? (
+                        <div className="bg-gray-50 rounded-2xl p-4 mb-4 border border-gray-200">
+                          <p className="text-sm text-gray-500 mb-2">Pairing Code</p>
+                          <div className="flex items-center justify-center gap-2">
+                            <code className="text-lg font-mono font-bold text-gray-900 tracking-wider">{pairingCode}</code>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(pairingCode);
+                                setPairingCopied(true);
+                                setTimeout(() => setPairingCopied(false), 2000);
+                              }}
+                              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                              title="Copy code"
+                            >
+                              {pairingCopied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-2">Enter this code in WhatsApp within 60 seconds</p>
+                        </div>
+                      ) : (
+                        <div className="bg-blue-50 rounded-2xl p-4 mb-4 border border-blue-100">
+                          <p className="text-sm text-gray-500">We&apos;ll generate a pairing code that you enter on your phone.</p>
+                        </div>
+                      )}
+
+                      {!pairingCode && (
+                        <div className="flex flex-col gap-3">
+                          <input
+                            type="tel"
+                            value={pairingPhoneNumber}
+                            onChange={(e) => setPairingPhoneNumber(e.target.value.toUpperCase())}
+                            placeholder="Enter phone number (e.g. 5511999999999)"
+                            maxLength={15}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-mono text-center tracking-wider focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                          />
+                          <button
+                            onClick={() => generatePairingCodeMutation.mutate(pairingPhoneNumber)}
+                            disabled={generatePairingCodeMutation.isPending || pairingPhoneNumber.length < 7}
+                            className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
+                          >
+                            {generatePairingCodeMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Keyboard className="w-5 h-5" />}
+                            {generatePairingCodeMutation.isPending ? 'Generating...' : 'Generate Pairing Code'}
+                          </button>
+                          <p className="text-xs text-gray-400">Include country code, no spaces or + sign</p>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={() => { setConnectionMode('qr'); setPairingCode(null); setPairingPhoneNumber(''); }}
+                        className="mt-4 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
+                      >
+                        Use QR code instead
+                      </button>
+                    </div>
                   ) : (
                     <>
                       <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -312,15 +422,22 @@ export default function Onboarding() {
                       <p className="text-gray-500 max-w-md mx-auto mb-8">
                         Connecting your WhatsApp allows you to automatically notify customers when they join a queue, track their position, and alert them when it's their turn.
                       </p>
-                      <button 
+                      <button
                         onClick={handleConnectWhatsApp}
-                        disabled={connecting}
-                        className="w-full py-4 bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl font-bold transition-colors shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 mb-4"
+                        disabled={connectWhatsAppMutation.isPending}
+                        className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
                       >
-                        {connecting ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
-                        {connecting ? 'Generating QR Code...' : 'Connect WhatsApp'}
+                        {connectWhatsAppMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
+                        {connectWhatsAppMutation.isPending ? 'Generating QR Code...' : 'Connect WhatsApp'}
                       </button>
-                      <button 
+                      <button
+                        onClick={() => setConnectionMode('code')}
+                        className="w-full mt-3 py-3 text-gray-500 hover:text-gray-700 font-medium transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Keyboard className="w-4 h-4" />
+                        Use pairing code instead
+                      </button>
+                      <button
                         onClick={finishOnboarding}
                         className="w-full py-4 text-gray-500 hover:text-gray-700 font-bold transition-colors"
                       >
@@ -340,7 +457,7 @@ export default function Onboarding() {
                   <p className="text-gray-500 max-w-sm mx-auto mb-8">
                     Your account is successfully linked and ready to send notifications.
                   </p>
-                  <button 
+                  <button
                     onClick={finishOnboarding}
                     className="w-full py-4 bg-[#2563EB] hover:bg-blue-700 text-white rounded-xl font-bold transition-colors shadow-lg flex items-center justify-center gap-2"
                   >

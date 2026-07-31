@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import Head from 'next/head';
 import AdminLayout from '../../../components/AdminLayout';
-import { Plus, QrCode, X, Check, Loader2 } from 'lucide-react';
+import { Plus, QrCode, X, Check, Loader2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
 import { toast } from 'sonner';
+import { Button } from '../../../components/ui/button';
+import { Card, CardContent } from '../../../components/ui/card';
 
 export default function QueuesList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,6 +16,7 @@ export default function QueuesList() {
   const [includeName, setIncludeName] = useState(true);
   const [includePhone, setIncludePhone] = useState(true);
   const [includePurpose, setIncludePurpose] = useState(true);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -160,7 +163,7 @@ export default function QueuesList() {
                   <button onClick={() => handleToggleStatus(queue.id, queue.status)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors border border-white/5">
                     {queue.status === 'ACTIVE' ? 'Pause' : 'Resume'}
                   </button>
-                  <button onClick={() => { if (confirm('Are you sure you want to delete this queue?')) handleDeleteQueue(queue.id); }} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-sm font-medium transition-colors border border-red-500/20">
+                  <button onClick={() => setDeleteConfirmId(queue.id)} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-sm font-medium transition-colors border border-red-500/20">
                     Delete
                   </button>
                 </div>
@@ -170,8 +173,40 @@ export default function QueuesList() {
         </div>
       </div>
 
-      {/* Create Queue Modal */}
-      {isModalOpen && typeof document !== 'undefined' && createPortal(
+{/* Delete Confirmation Dialog */}
+            {deleteConfirmId && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                <Card className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 shadow-2xl">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center">
+                        <AlertTriangle className="w-5 h-5 text-red-500" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Delete Queue</h3>
+                        <p className="text-sm text-gray-500 dark:text-zinc-400">This action cannot be undone.</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-zinc-400 mb-6">Are you sure you want to delete this queue? All associated tokens and data will be permanently removed.</p>
+                    <div className="flex gap-3 justify-end">
+                      <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
+                      <Button
+                        onClick={() => {
+                          if (deleteConfirmId) handleDeleteQueue(deleteConfirmId);
+                          setDeleteConfirmId(null);
+                        }}
+                        className="bg-red-600 hover:bg-red-500 text-white"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Create Queue Modal */}
+            {isModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl">
             <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/20">

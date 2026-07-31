@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -31,15 +31,16 @@ export class UsersService {
     });
   }
 
-  async getUsersByTenant(tenantId: string) {
+  async getUsersByWorkspace(workspaceId: string) {
     return this.prisma.user.findMany({
-      where: { tenantId },
+      where: { workspaceId },
       select: { id: true, email: true, role: true },
     });
   }
 
   async createUser(
     tenantId: string,
+    workspaceId: string,
     data: { email: string; role: any; password?: string },
   ) {
     let hashedPassword = null;
@@ -52,26 +53,27 @@ export class UsersService {
     return this.prisma.user.create({
       data: {
         tenantId,
+        workspaceId,
         email: data.email,
-        role: data.role,
+        role: data.role as Role,
         password: hashedPassword,
       },
       select: { id: true, email: true, role: true },
     });
   }
 
-  async deleteUser(tenantId: string, id: string, currentUserId: string) {
+  async deleteUser(workspaceId: string, id: string, currentUserId: string) {
     const targetUser = await this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, role: true, tenantId: true },
+      select: { id: true, role: true, workspaceId: true },
     });
 
     if (!targetUser) {
       throw new NotFoundException('User not found');
     }
 
-    if (targetUser.tenantId !== tenantId) {
-      throw new BadRequestException('User does not belong to this tenant');
+    if (targetUser.workspaceId !== workspaceId) {
+      throw new BadRequestException('User does not belong to this workspace');
     }
 
     if (targetUser.id === currentUserId) {
@@ -82,7 +84,7 @@ export class UsersService {
 
     if (targetUser.role === 'TENANT_ADMIN') {
       const adminCount = await this.prisma.user.count({
-        where: { tenantId, role: 'TENANT_ADMIN' },
+        where: { workspaceId, role: 'TENANT_ADMIN' },
       });
 
       if (adminCount <= 1) {

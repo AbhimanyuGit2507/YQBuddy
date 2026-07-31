@@ -21,7 +21,9 @@ import {
   PlayCircle,
   StopCircle,
   Ticket,
-  User
+  User,
+  Keyboard,
+  Loader2,
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
 import { useQuery } from '@tanstack/react-query';
@@ -176,6 +178,9 @@ export default function AdminScanner() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [useFrontCamera, setUseFrontCamera] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
+  const [manualTokenId, setManualTokenId] = useState('');
+  const [manualProcessing, setManualProcessing] = useState(false);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastScanTimeRef = useRef<number>(0);
@@ -434,25 +439,99 @@ export default function AdminScanner() {
     setScannerStatus('idle');
   }, [cleanupScanner]);
 
-  const resetScanner = useCallback(async () => {
-    if (idleTimerRef.current) {
-      clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = null;
-    }
-    await cleanupScanner();
-    setValidationResult(null);
-    setError(null);
-    setScannerStatus('idle');
-    await startScanning();
-  }, [cleanupScanner, startScanning]);
+   const resetScanner = useCallback(async () => {
+     if (idleTimerRef.current) {
+       clearTimeout(idleTimerRef.current);
+       idleTimerRef.current = null;
+     }
+     await cleanupScanner();
+     setValidationResult(null);
+     setError(null);
+     setScannerStatus('idle');
+     await startScanning();
+   }, [cleanupScanner, startScanning]);
 
-  useEffect(() => {
-    getCameras();
+   const validateManualToken = useCallback(async () => {
+     if (!manualTokenId.trim()) {
+       setError('Please enter a token ID');
+       return;
+     }
 
-    return () => {
-      cleanupScanner();
-    };
-  }, [getCameras, cleanupScanner]);
+     setManualProcessing(true);
+     setError(null);
+     setValidationResult(null);
+     setScannerStatus('processing');
+
+     try {
+       const result = await fetchApi('/token/validate', {
+         method: 'POST',
+         body: JSON.stringify({ tokenId: manualTokenId.trim() }),
+       });
+
+       const validationResult: ValidationResult = {
+         valid: result.valid,
+         status: result.status,
+         reason: result.reason,
+         tokenId: manualTokenId.trim(),
+         customerName: result.customerName,
+         queueName: result.queueName,
+         purpose: result.purpose,
+         phone: result.phone,
+         joinedAt: result.joinedAt,
+         queueId: result.queueId,
+       };
+
+       setValidationResult(validationResult);
+       setScannerStatus(validationResult.valid ? 'approved' : 'rejected');
+     } catch (e: unknown) {
+       let status = 'Invalid Token';
+       let reason = 'Unknown error';
+
+       if (e instanceof Error) {
+         reason = e.message;
+
+         if (e.message.includes('expired')) {
+           status = 'QR Expired';
+         } else if (e.message.includes('already used')) {
+           status = 'Already Used';
+         } else if (e.message.includes('wrong queue')) {
+           status = 'Wrong Queue';
+         } else if (e.message.includes('wrong branch')) {
+           status = 'Wrong Branch/Location';
+         } else if (e.message.includes('wrong tenant')) {
+           status = 'Wrong Tenant/Organization';
+         } else if (e.message.includes('queue closed')) {
+           status = 'Queue Closed';
+         } else if (e.message.includes('not started')) {
+           status = 'Queue Not Started Yet';
+         } else if (e.message.includes('already checked')) {
+           status = 'Person Already Checked In';
+         } else if (e.message.includes('revoked') || e.message.includes('cancelled')) {
+           status = 'Token Revoked/Cancelled';
+         } else if (e.message.includes('network') || e.message.includes('server')) {
+           status = 'Server/Network Error';
+         }
+       }
+
+       setValidationResult({
+         valid: false,
+         status,
+         reason,
+         tokenId: manualTokenId.trim(),
+       });
+       setScannerStatus('rejected');
+     } finally {
+       setManualProcessing(false);
+     }
+   }, [manualTokenId]);
+
+   useEffect(() => {
+     getCameras();
+
+     return () => {
+       cleanupScanner();
+     };
+   }, [getCameras, cleanupScanner]);
 
   useEffect(() => {
     if (selectedCamera && scannerStatus === 'idle' && !manualStopRef.current) {
@@ -506,45 +585,122 @@ export default function AdminScanner() {
                 </p>
                 </div>
 
-                <div className="flex items-center gap-3 flex-wrap">
-                  {availableCameras.length > 1 && (
-                    <button
-                      onClick={toggleCamera}
-                      disabled={scannerStatus === 'processing'}
-                      className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
-                    >
-                      <Smartphone className="w-4 h-4" />
-                      {useFrontCamera ? 'Front' : 'Rear'} Camera
-                    </button>
-                  )}
+                 <div className="flex items-center gap-3 flex-wrap">
+                   {availableCameras.length > 1 && (
+                     <button
+                       onClick={toggleCamera}
+                       disabled={scannerStatus === 'processing' || manualMode}
+                       className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                     >
+                       <Smartphone className="w-4 h-4" />
+                       {useFrontCamera ? 'Front' : 'Rear'} Camera
+                     </button>
+                   )}
 
-                  <button
-                    onClick={scannerStatus === 'scanning' ? stopScanning : startScanning}
-                    disabled={scannerStatus === 'processing'}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all text-white ${
-                      scannerStatus === 'scanning'
-                        ? 'bg-red-500 hover:bg-red-600'
-                        : 'bg-indigo-600 hover:bg-indigo-700'
-                    } disabled:opacity-50`}
-                  >
-                    {scannerStatus === 'scanning' ? (
-                      <>
-                        <StopCircle className="w-5 h-5" />
-                        Stop
-                      </>
-                    ) : (
-                      <>
-                        <PlayCircle className="w-5 h-5" />
-                        Start
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
+                   <button
+                     onClick={() => setManualMode(prev => !prev)}
+                     disabled={scannerStatus === 'processing'}
+                     className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                       manualMode
+                         ? 'bg-indigo-100 text-indigo-700 border border-indigo-300 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-700'
+                         : 'bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700'
+                     } disabled:opacity-50`}
+                   >
+                     <Keyboard className="w-4 h-4" />
+                     {manualMode ? 'Manual Entry' : 'Manual Entry'}
+                   </button>
 
-            <div className="min-h-[450px] sm:min-h-[500px] bg-black relative">
-              <div id="reader" className="w-full h-full"></div>
+                   {!manualMode && (
+                     <button
+                       onClick={scannerStatus === 'scanning' ? stopScanning : startScanning}
+                       disabled={scannerStatus === 'processing'}
+                       className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all text-white ${
+                         scannerStatus === 'scanning'
+                           ? 'bg-red-500 hover:bg-red-600'
+                           : 'bg-indigo-600 hover:bg-indigo-700'
+                       } disabled:opacity-50`}
+                     >
+                       {scannerStatus === 'scanning' ? (
+                         <>
+                           <StopCircle className="w-5 h-5" />
+                           Stop
+                         </>
+                       ) : (
+                         <>
+                           <PlayCircle className="w-5 h-5" />
+                           Start
+                         </>
+                       )}
+                     </button>
+                   )}
+
+                   {manualMode && (
+                     <button
+                       onClick={validateManualToken}
+                       disabled={manualProcessing || manualTokenId.trim().length < 5}
+                       className="flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                     >
+                       {manualProcessing ? (
+                         <>
+                           <Loader2 className="w-5 h-5 animate-spin" />
+                           Validating...
+                         </>
+                       ) : (
+                         <>
+                           <CheckCircle2 className="w-5 h-5" />
+                           Validate
+                         </>
+                       )}
+                     </button>
+                   )}
+                 </div>
+               </div>
+             </div>
+
+             <div className="min-h-[450px] sm:min-h-[500px] bg-black relative">
+               {!manualMode ? (
+                 <>
+                   <div id="reader" className="w-full h-full"></div>
+                   {isInitializing && (
+                     <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6 z-10">
+                       <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4"></div>
+                       <p className="text-lg font-medium">Loading Scanner...</p>
+                       <p className="text-sm text-gray-400 mt-2">Initializing camera and QR detection</p>
+                     </div>
+                   )}
+                 </>
+               ) : (
+                 <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+                   <div className="w-full max-w-md">
+                     <h3 className="text-xl font-bold text-white mb-2 text-center">Manual Token Entry</h3>
+                     <p className="text-gray-400 text-sm text-center mb-6">
+                       Enter a token ID to validate it without scanning
+                     </p>
+                     <div className="flex gap-3">
+                       <input
+                         type="text"
+                         value={manualTokenId}
+                         onChange={(e) => setManualTokenId(e.target.value)}
+                         placeholder="Enter token ID..."
+                         className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-zinc-500"
+                         onKeyDown={(e) => {
+                           if (e.key === 'Enter') validateManualToken();
+                         }}
+                       />
+                       <button
+                         onClick={validateManualToken}
+                         disabled={manualProcessing || manualTokenId.trim().length < 5}
+                         className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 whitespace-nowrap"
+                       >
+                         {manualProcessing ? 'Validating...' : 'Validate'}
+                       </button>
+                     </div>
+                     <p className="text-xs text-zinc-500 mt-3 text-center">
+                       Press Enter or click Validate to check the token
+                     </p>
+                   </div>
+                 </div>
+               )}
               {isInitializing && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6 z-10">
                   <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4"></div>
