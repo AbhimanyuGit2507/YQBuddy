@@ -73,6 +73,14 @@ export class TokenService {
     const isAppointment = !!scheduledFor;
     const scheduledDate = scheduledFor ? new Date(scheduledFor) : null;
 
+    if (isAppointment && !queue?.allowAppointments) {
+      throw new BadRequestException('This queue does not accept future appointments.');
+    }
+
+    if (isAppointment && scheduledDate && scheduledDate <= new Date()) {
+      throw new BadRequestException('Appointment time must be in the future.');
+    }
+
     const token = await this.prisma.token.create({
       data: {
         queueId,
