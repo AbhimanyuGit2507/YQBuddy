@@ -67,8 +67,8 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle }: Admin
       )}
 
       {/* Sidebar */}
-      <aside className={`w-64 border-r border-gray-200 dark:border-white/10 bg-white dark:bg-zinc-950 flex flex-col z-20 shrink-0 transition-colors lg:translate-x-0 ${
-        mobileOpen ? 'translate-x-0 fixed inset-y-0 left-0 shadow-2xl' : '-translate-x-full fixed'
+      <aside className={`w-64 border-r border-gray-200 dark:border-white/10 bg-white dark:bg-zinc-950 flex flex-col z-20 shrink-0 transition-colors fixed inset-y-0 left-0 ${
+        mobileOpen ? 'translate-x-0 shadow-2xl lg:translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-white/10 transition-colors">
           <Link href="/dashboard" className="flex items-center gap-3">
