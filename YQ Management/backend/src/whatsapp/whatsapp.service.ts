@@ -175,8 +175,9 @@ export class WhatsappService {
       return;
     }
 
-    const webhookUrl = `${this.appUrl}/whatsapp/webhook/${instanceName}`;
-    this.logger.debug(`Setting webhook for ${instanceName} -> ${webhookUrl}`);
+    const secretParams = process.env.WEBHOOK_SECRET ? `?secret=${process.env.WEBHOOK_SECRET}` : '';
+    const webhookUrl = `${this.appUrl}/whatsapp/webhook/${instanceName}${secretParams}`;
+    this.logger.debug(`Setting webhook for ${instanceName} -> ${webhookUrl.split('?')[0]}`);
 
     const result = await this.fetchEvo(`/webhook/set/${instanceName}`, 'POST', {
       webhook: {
@@ -498,6 +499,27 @@ export class WhatsappService {
     };
   }
 
+  async disconnect(tenantId: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
+    if (!tenant || !tenant.whatsappInstanceId) {
+      return { success: true };
+    }
+
+    const instanceName = tenant.whatsappInstanceId;
+    
+    // Attempt to logout from evolution API
+    await this.fetchEvo(`/instance/logout/${instanceName}`, 'DELETE');
+
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { whatsappConnected: false },
+    });
+
+    return { success: true };
+  }
+
   async status(tenantId: string) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -604,10 +626,20 @@ export class WhatsappService {
       const message = payload.data.message;
       const jid = payload.data.key?.remoteJid;
       const fromMe = payload.data.key?.fromMe;
+      const messageId = payload.data.key?.id;
 
       if (fromMe || !jid || jid.includes('@g.us')) {
         this.logger.debug(`Ignoring outgoing or group message from ${jid}`);
         return { ignored: true };
+      }
+
+      if (messageId) {
+        const isDuplicate = await this.redisService.client.get(`webhook_processed:${messageId}`);
+        if (isDuplicate) {
+          this.logger.debug(`Ignoring duplicate webhook for messageId ${messageId}`);
+          return { ignored: true, reason: 'duplicate' };
+        }
+        await this.redisService.client.set(`webhook_processed:${messageId}`, '1', 'EX', 86400); // 24 hours
       }
 
       const phone = jid.split('@')[0];

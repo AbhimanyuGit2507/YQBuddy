@@ -106,8 +106,11 @@ const BUSINESS_TEMPLATES = [
 export default function Onboarding() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedType, setSelectedType] = useState<string>('general');
+  const [fullName, setFullName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [phone, setPhone] = useState('');
 
   // WhatsApp State
   const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
@@ -116,6 +119,23 @@ export default function Onboarding() {
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [pairingPhoneNumber, setPairingPhoneNumber] = useState('');
   const [pairingCopied, setPairingCopied] = useState(false);
+
+  const savePersonalInfoMutation = useMutation({
+    mutationFn: () => {
+      // Assuming we patch user settings here
+      return fetchApi('/auth/personal-settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ fullName, phone }),
+      });
+    },
+    onSuccess: () => {
+      setStep(2);
+      toast.success('Information saved');
+    },
+    onError: () => {
+      toast.error('Failed to save information. Please try again.');
+    },
+  });
 
   const setupQueuesMutation = useMutation({
     mutationFn: (template: typeof BUSINESS_TEMPLATES[number]) =>
@@ -126,7 +146,7 @@ export default function Onboarding() {
         })
       )),
     onSuccess: () => {
-      setStep(2);
+      setStep(3);
       queryClient.invalidateQueries({ queryKey: ['queues'] });
       toast.success('Queues setup successfully');
     },
@@ -240,6 +260,13 @@ export default function Onboarding() {
         <div className="max-w-md">
           {step === 1 ? (
             <>
+              <h1 className="text-5xl font-bold mb-6 leading-tight">Welcome to Qmova</h1>
+              <p className="text-blue-200/70 text-lg leading-relaxed">
+                Let's start by getting to know you and your business.
+              </p>
+            </>
+          ) : step === 2 ? (
+            <>
               <h1 className="text-5xl font-bold mb-6 leading-tight">What kind of business are you running?</h1>
               <p className="text-blue-200/70 text-lg leading-relaxed">
                 We'll automatically set up the perfect queues and custom form questions tailored to your industry.
@@ -258,7 +285,7 @@ export default function Onboarding() {
         <div className="mt-auto flex items-center gap-2">
           <div className={`w-4 h-1 rounded-full ${step === 1 ? 'bg-white' : 'bg-white/30'}`}></div>
           <div className={`w-4 h-1 rounded-full ${step === 2 ? 'bg-white' : 'bg-white/30'}`}></div>
-          <div className="w-4 h-1 rounded-full bg-white/30"></div>
+          <div className={`w-4 h-1 rounded-full ${step === 3 ? 'bg-white' : 'bg-white/30'}`}></div>
           <div className="w-4 h-1 rounded-full bg-white/30"></div>
         </div>
       </div>
@@ -268,6 +295,55 @@ export default function Onboarding() {
         <div className="w-full max-w-2xl py-12">
           
           {step === 1 && (
+            <div className="animate-in fade-in slide-in-from-right-8 duration-500 max-w-md mx-auto">
+              <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Personal Information</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      placeholder="Jane Doe"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Company / Workspace Name</label>
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      placeholder="Acme Corp"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      placeholder="+1 (555) 000-0000"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => savePersonalInfoMutation.mutate()}
+                  disabled={savePersonalInfoMutation.isPending || !fullName || !companyName}
+                  className="w-full mt-8 flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
+                >
+                  {savePersonalInfoMutation.isPending && <Loader2 className="w-5 h-5 animate-spin" />}
+                  {savePersonalInfoMutation.isPending ? 'Saving...' : 'Continue'}
+                  {!savePersonalInfoMutation.isPending && <ArrowRight className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
             <div className="animate-in fade-in slide-in-from-right-8 duration-500">
               
               <div className="grid grid-cols-2 gap-4 mb-8">
@@ -325,7 +401,7 @@ disabled={setupQueuesMutation.isPending}
             </div>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <div className="max-w-lg mx-auto animate-in fade-in slide-in-from-right-8 duration-500 bg-white rounded-3xl p-10 shadow-xl border border-gray-100 text-center">
 
               {!isWhatsAppConnected ? (

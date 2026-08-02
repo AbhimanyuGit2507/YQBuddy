@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
 
 export interface TemplateVariables {
   [key: string]: string | number | undefined;
@@ -13,6 +14,9 @@ export interface Template {
 @Injectable()
 export class TemplateService {
   private readonly logger = new Logger(TemplateService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
 
   private readonly emailTemplates: Record<string, Template> = {
     signup_otp: {
@@ -238,6 +242,12 @@ export class TemplateService {
       'Thanks for visiting {{queue_name}}! Please reply with a number from 1 to 5 to rate your experience (5 being excellent).',
     thank_you:
       'Thank you for visiting {{queue_name}}, {{name}}! We hope to see you again soon.',
+    appointment_created:
+      'Hello {{name}}! Your appointment is scheduled for {{date}}. Your token is {{token}}. Track your status here: {{link}}',
+    checked_in:
+      'Hello {{name}}! You have been checked in and are now waiting in the live line. Track your status here: {{link}}',
+    transferred:
+      'You have been transferred to {{queue_name}}. You are now waiting in the new queue.',
   };
 
   renderEmail(templateKey: string, variables: TemplateVariables): Template {
@@ -275,6 +285,34 @@ export class TemplateService {
     }
 
     let result = template;
+    for (const [key, value] of Object.entries(variables)) {
+      const placeholder = new RegExp(`{{${key}}}`, 'g');
+      result = result.replace(placeholder, String(value ?? ''));
+    }
+    return result;
+  }
+
+  async renderWhatsAppForWorkspace(
+    workspaceId: string | null,
+    templateKey: string,
+    variables: TemplateVariables,
+  ): Promise<string> {
+    let templateContent = this.whatsappTemplates[templateKey];
+    if (!templateContent) {
+      this.logger.warn(`WhatsApp template "${templateKey}" not found`);
+      return '';
+    }
+
+    if (workspaceId) {
+      const customTemplate = await this.prisma.whatsAppTemplate.findFirst({
+        where: { workspaceId, key: templateKey, active: true },
+      });
+      if (customTemplate && customTemplate.content) {
+        templateContent = customTemplate.content;
+      }
+    }
+
+    let result = templateContent;
     for (const [key, value] of Object.entries(variables)) {
       const placeholder = new RegExp(`{{${key}}}`, 'g');
       result = result.replace(placeholder, String(value ?? ''));

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, UseGuards, Req, Param } from '@nestjs/common';
 import { TenantService } from './tenant.service';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/roles.guard';
@@ -26,5 +26,22 @@ export class TenantController {
   @UseGuards(WorkspaceGuard)
   async getAllTenants(@Req() req: AuthenticatedRequest) {
     return this.tenantService.getAllTenants();
+  }
+
+  @Roles(Role.SUPER_ADMIN, Role.TENANT_ADMIN)
+  @Patch(':id')
+  @UseGuards(WorkspaceGuard)
+  async updateTenant(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: { name?: string; branding?: any },
+  ) {
+    return this.tenantService.updateTenant(id, body);
+  }
+
+  // Public endpoint for customer portal subdomain routing
+  @Get('public/:subdomain')
+  async getPublicTenant(@Param('subdomain') subdomain: string) {
+    return this.tenantService.getTenantBySubdomain(subdomain);
   }
 }

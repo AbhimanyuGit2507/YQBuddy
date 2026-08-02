@@ -9,19 +9,26 @@ export class EmailService {
     this.apiKey = process.env.BREVO_API_KEY || '';
   }
 
-  async sendOTP(email: string, otpCode: string, purpose: 'signup' | 'login') {
+  async sendOTP(email: string, otpCode: string, purpose: 'signup' | 'login' | 'reset') {
     try {
       if (!this.apiKey) {
-        this.logger.warn(
-          `BREVO_API_KEY missing. Mock sent ${purpose} OTP to ${email}: ${otpCode}`,
-        );
+        this.logger.warn(`
+=========================================================
+ 📨 MOCK EMAIL SENT (No BREVO_API_KEY found)
+---------------------------------------------------------
+ To:      ${email}
+ Purpose: ${purpose.toUpperCase()}
+ OTP:     ${otpCode}
+=========================================================
+        `);
         return;
       }
 
-      const subject =
-        purpose === 'signup'
-          ? 'Verify your QMover Account'
-          : 'Your QMover Login Code';
+      let subject = '';
+      if (purpose === 'signup') subject = 'Verify your QMover Account';
+      else if (purpose === 'login') subject = 'Your QMover Login Code';
+      else subject = 'Reset your QMover Password';
+
       const htmlContent = `<html><body><h2>Your OTP Code is: <strong>${otpCode}</strong></h2><p>This code will expire in 10 minutes.</p></body></html>`;
 
       const res = await fetch('https://api.brevo.com/v3/smtp/email', {

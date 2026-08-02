@@ -24,7 +24,7 @@ export default function Dashboard() {
         <title>Dashboard | QMover</title>
       </Head>
 
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-8 p-4 sm:p-6 lg:p-8">
         
         {/* Header Section */}
         <div className="flex items-end justify-between">

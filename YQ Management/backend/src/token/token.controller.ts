@@ -66,22 +66,29 @@ export class TokenController {
     return this.tokenService.checkIn(id, req.user.tenantId);
   }
 
+  // Public endpoint for customer to check in themselves
+  @Post(':id/customer-checkin')
+  @UseGuards(ThrottlerGuard)
+  async customerCheckInToken(@Param('id') id: string) {
+    return this.tokenService.checkIn(id);
+  }
+
   @UseGuards(ThrottlerGuard, AuthGuard('jwt'), WorkspaceGuard)
   @Post(':id/complete')
   async completeToken(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
-    return this.tokenService.completeToken(id);
+    return this.tokenService.completeToken(id, req.user.tenantId);
   }
 
   @UseGuards(ThrottlerGuard, AuthGuard('jwt'), WorkspaceGuard)
   @Post('advance/:queueId')
   async advanceQueue(@Req() req: AuthenticatedRequest, @Param('queueId') queueId: string) {
-    return this.tokenService.advanceQueue(queueId);
+    return this.tokenService.advanceQueue(queueId, req.user.tenantId);
   }
 
   @UseGuards(ThrottlerGuard, AuthGuard('jwt'), WorkspaceGuard)
   @Post('validate')
   async validateToken(@Req() req: AuthenticatedRequest, @Body() body: { tokenId: string }) {
-    return this.tokenService.validateToken(body.tokenId);
+    return this.tokenService.validateToken(body.tokenId, req.user.tenantId);
   }
 
   @UseGuards(ThrottlerGuard, AuthGuard('jwt'), WorkspaceGuard)
@@ -91,6 +98,6 @@ export class TokenController {
     @Param('id') id: string,
     @Body() body: { nextQueueId: string },
   ) {
-    return this.tokenService.transferToken(id, body.nextQueueId);
+    return this.tokenService.transferToken(id, body.nextQueueId, req.user.tenantId);
   }
 }

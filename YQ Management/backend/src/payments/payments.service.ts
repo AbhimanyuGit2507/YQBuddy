@@ -87,6 +87,11 @@ export class PaymentsService {
       return { success: false };
     }
 
+    if (transaction.status !== 'PENDING') {
+      this.logger.log(`Transaction ${TransactionReference} already processed with status ${transaction.status}`);
+      return { success: true };
+    }
+
     const newStatus =
       Status === 'Complete'
         ? 'SUCCESS'

@@ -17,6 +17,7 @@ import { EmailService } from '../email/email.service';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { PasswordResetService } from './password-reset.service';
 import type { AuthenticatedRequest } from './types/auth.types';
+import { RedisService } from '../redis/redis.service';
 
 @Controller('auth')
 export class AuthController {
@@ -25,6 +26,7 @@ export class AuthController {
     private readonly usersService: UsersService,
     private readonly emailService: EmailService,
     private readonly passwordResetService: PasswordResetService,
+    private readonly redisService: RedisService,
   ) {}
 
   @UseGuards(ThrottlerGuard)
@@ -59,8 +61,12 @@ export class AuthController {
     return { success: true, user, access_token };
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post('logout')
-  async logout(@Res({ passthrough: true }) res: any) {
+  async logout(@Req() req: any, @Res({ passthrough: true }) res: any) {
+    if (req.user?.jti) {
+      await this.redisService.client.set(`blocklist:${req.user.jti}`, '1', 'EX', 7 * 24 * 60 * 60);
+    }
     res.clearCookie('token', { path: '/' });
     return { success: true, message: 'Logged out successfully' };
   }
@@ -152,24 +158,17 @@ export class AuthController {
   async updatePersonalSettings(
     @Req() req: AuthenticatedRequest,
     @Body()
-    body: { theme?: string; language?: string; notificationsEnabled?: boolean },
+    body: { theme?: string; language?: string; notificationsEnabled?: boolean; fullName?: string; phone?: string; },
   ) {
-    const updates: any = {};
-    if (body.theme !== undefined)
-      updates.personalSettings = {
-        ...req.user.personalSettings,
-        theme: body.theme,
-      };
-    if (body.language !== undefined)
-      updates.personalSettings = {
-        ...updates.personalSettings,
-        language: body.language,
-      };
-    if (body.notificationsEnabled !== undefined)
-      updates.personalSettings = {
-        ...updates.personalSettings,
-        notificationsEnabled: body.notificationsEnabled,
-      };
+    let currentSettings = req.user.personalSettings || {};
+    
+    if (body.theme !== undefined) currentSettings = { ...currentSettings, theme: body.theme };
+    if (body.language !== undefined) currentSettings = { ...currentSettings, language: body.language };
+    if (body.notificationsEnabled !== undefined) currentSettings = { ...currentSettings, notificationsEnabled: body.notificationsEnabled };
+    if (body.fullName !== undefined) currentSettings = { ...currentSettings, fullName: body.fullName };
+    if (body.phone !== undefined) currentSettings = { ...currentSettings, phone: body.phone };
+
+    const updates = { personalSettings: currentSettings };
 
     const updatedUser = await this.usersService['prisma'].user.update({
       where: { id: req.user.sub },
@@ -183,12 +182,33 @@ export class AuthController {
   @UseGuards(ThrottlerGuard)
   @Post('forgot-password')
   async forgotPassword(@Body() body: { email: string }) {
-    return this.passwordResetService.requestReset(body.email);
+    const user = await this.usersService.findOneByEmail(body.email);
+    if (!user) {
+      // The user specifically requested to be prompted if the email is not in userbase.
+      throw new UnauthorizedException('No account found with this email.');
+    }
+    await this.authService.generateAndSendOTP(body.email, 'reset');
+    return { success: true, message: 'Password reset OTP sent.' };
   }
 
   @UseGuards(ThrottlerGuard)
   @Post('reset-password')
-  async resetPassword(@Body() body: { token: string; password: string }) {
-    return this.passwordResetService.resetPassword(body.token, body.password);
+  async resetPassword(@Body() body: { email: string; otp: string; password: string }) {
+    // This will throw if OTP is invalid/expired
+    await this.authService.verifyOTP(body.email, body.otp);
+    
+    // Once verified, we can update the password
+    const user = await this.usersService.findOneByEmail(body.email);
+    if (!user) throw new UnauthorizedException('User not found');
+
+    const bcrypt = require('bcrypt');
+    const hashedPassword = await bcrypt.hash(body.password, 10);
+    
+    await this.usersService['prisma'].user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword }
+    });
+
+    return { success: true, message: 'Password reset successfully' };
   }
 }

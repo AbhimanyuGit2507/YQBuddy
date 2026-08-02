@@ -51,9 +51,20 @@ export default function QueueDisplay() {
       if (audioEnabled) {
         const displayCode = serving.displayId || serving.id.split('-')[0].toUpperCase();
         const namePart = showName ? serving.customerName : '';
-        const announcement = namePart
-          ? `Ticket number ${displayCode}, ${namePart}, kindly proceed to ${queueName}.`
-          : `Ticket number ${displayCode}, kindly proceed to ${queueName}.`;
+        
+        let announcement = '';
+        if (displayConfig.ttsTemplate) {
+          announcement = displayConfig.ttsTemplate
+            .replace(/{token}/g, displayCode)
+            .replace(/{name}/g, namePart)
+            .replace(/{queueName}/g, queueName)
+            .replace(/ ,/g, ','); // Cleanup if name is empty
+        } else {
+          announcement = namePart
+            ? `Ticket number ${displayCode}, ${namePart}, kindly proceed to ${queueName}.`
+            : `Ticket number ${displayCode}, kindly proceed to ${queueName}.`;
+        }
+        
         speak(announcement);
       }
       setPreviousServingId(serving.id);

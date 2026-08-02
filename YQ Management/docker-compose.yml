@@ -51,13 +51,14 @@ services:
     environment:
       - SERVER_URL=http://localhost:8080
       - DOCKER_ENV=true
-      - LOG_LEVEL=ERROR,WARN,INFO,WEBHOOKS
+      - LOG_LEVEL=DEBUG,ERROR,WARN,INFO,WEBHOOKS
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=yq_secret_evolution_key_123
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://postgres:postgres@postgres:5432/postgres?schema=public
       - DATABASE_CONNECTION_CLIENT_NAME=evolution_api
-      - REDIS_URI=redis://redis:6379
+      - REDIS_URI=redis://redis:6379/1
+      - CACHE_REDIS_URI=redis://redis:6379/1
       - REDIS_PREFIX_KEY=evolution
       - CONFIG_SESSION_PHONE_VERSION=2.3.7
       - WEB_VERSION=2.3.7

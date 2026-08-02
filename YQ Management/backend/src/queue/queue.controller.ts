@@ -7,6 +7,7 @@ import {
   Param,
   UseGuards,
   Req,
+  Query,
 } from '@nestjs/common';
 import { QueueService } from './queue.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -96,5 +97,32 @@ export class QueueController {
       req.user.tenantId,
       body.status,
     );
+  }
+
+  // Public endpoint for customer portal subdomain routing
+  @Get('public/tenant/:tenantId')
+  async getPublicQueuesForTenant(@Param('tenantId') tenantId: string) {
+    return this.queueService.getPublicQueuesForTenant(tenantId);
+  }
+
+  // Public endpoint for live TV display
+  @Get('public/:id')
+  async getPublicQueue(@Param('id') id: string) {
+    return this.queueService.getQueueById(id);
+  }
+
+  // Public endpoint for live TV display tokens
+  @Get('public/:id/tokens')
+  async getPublicQueueTokens(@Param('id') id: string) {
+    return this.queueService.getQueueTokens(id);
+  }
+
+  // Public endpoint to get available slots for appointments
+  @Get(':id/slots')
+  async getAvailableSlots(
+    @Param('id') id: string,
+    @Query('date') date: string,
+  ) {
+    return this.queueService.getAvailableSlots(id, date);
   }
 }

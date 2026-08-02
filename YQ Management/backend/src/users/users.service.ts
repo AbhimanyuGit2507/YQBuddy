@@ -6,10 +6,14 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private redisService: RedisService,
+  ) {}
 
   async findOneByEmail(email: string) {
     return this.prisma.user.findUnique({
@@ -31,16 +35,15 @@ export class UsersService {
     });
   }
 
-  async getUsersByWorkspace(workspaceId: string) {
+  async getUsersByTenant(tenantId: string) {
     return this.prisma.user.findMany({
-      where: { workspaceId },
+      where: { tenantId },
       select: { id: true, email: true, role: true },
     });
   }
 
   async createUser(
     tenantId: string,
-    workspaceId: string,
     data: { email: string; role: any; password?: string },
   ) {
     let hashedPassword = null;
@@ -53,7 +56,6 @@ export class UsersService {
     return this.prisma.user.create({
       data: {
         tenantId,
-        workspaceId,
         email: data.email,
         role: data.role as Role,
         password: hashedPassword,
@@ -62,18 +64,18 @@ export class UsersService {
     });
   }
 
-  async deleteUser(workspaceId: string, id: string, currentUserId: string) {
+  async deleteUser(tenantId: string, id: string, currentUserId: string) {
     const targetUser = await this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, role: true, workspaceId: true },
+      select: { id: true, role: true, tenantId: true },
     });
 
     if (!targetUser) {
       throw new NotFoundException('User not found');
     }
 
-    if (targetUser.workspaceId !== workspaceId) {
-      throw new BadRequestException('User does not belong to this workspace');
+    if (targetUser.tenantId !== tenantId) {
+      throw new BadRequestException('User does not belong to this tenant');
     }
 
     if (targetUser.id === currentUserId) {
@@ -84,7 +86,7 @@ export class UsersService {
 
     if (targetUser.role === 'TENANT_ADMIN') {
       const adminCount = await this.prisma.user.count({
-        where: { workspaceId, role: 'TENANT_ADMIN' },
+        where: { tenantId, role: 'TENANT_ADMIN' },
       });
 
       if (adminCount <= 1) {
@@ -97,6 +99,14 @@ export class UsersService {
     await this.prisma.user.delete({
       where: { id },
     });
+
+    // Revoke any active JWT sessions for this user for 7 days (max expiry)
+    await this.redisService.client.set(
+      `blocklist_user:${id}`,
+      '1',
+      'EX',
+      7 * 24 * 60 * 60,
+    );
 
     return { success: true };
   }

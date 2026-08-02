@@ -31,7 +31,7 @@ export class AuthService {
     return null;
   }
 
-  async generateAndSendOTP(email: string, purpose: 'signup' | 'login') {
+  async generateAndSendOTP(email: string, purpose: 'signup' | 'login' | 'reset') {
     const otp = this.generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
@@ -84,44 +84,7 @@ export class AuthService {
       let isNewUser = false;
 
       if (!user) {
-        isNewUser = true;
-        const tenant = await this.usersService['prisma'].tenant.create({
-          data: {
-            name: 'My Company',
-            subdomain: `temp-${Date.now()}`,
-          },
-        });
-
-        user = await this.usersService.create({
-          email,
-          googleId,
-          role: 'TENANT_ADMIN',
-          tenantId: tenant.id,
-          personalSettings: {
-            theme: 'light',
-            language: 'en',
-            notificationsEnabled: true,
-          },
-        });
-
-        const workspace = await this.workspaceService.createWorkspace({
-          name: 'My Company',
-          subdomain: `mycompany-${Date.now()}`,
-          ownerId: user.id,
-          tenantId: tenant.id,
-        });
-
-        await this.usersService['prisma'].user.update({
-          where: { id: user.id },
-          data: { workspaceId: workspace.id },
-        });
-
-        user = { ...user, workspaceId: workspace.id };
-
-        // Sync to marketing
-        this.emailService.addContactToMarketingList(email).catch((err) =>
-          this.logger.error(`Failed to sync ${email} to marketing list`, err),
-        );
+        throw new UnauthorizedException('User not found. Please register or ask for an invite.');
       } else if (!user.googleId) {
         // Link Google ID if email exists
         user = await this.usersService['prisma'].user.update({
@@ -145,6 +108,7 @@ export class AuthService {
       tenantId: user.tenantId,
       workspaceId: user.workspaceId,
       personalSettings: user.personalSettings,
+      jti: require('crypto').randomUUID(),
     };
     return {
       access_token: this.jwtService.sign(payload),

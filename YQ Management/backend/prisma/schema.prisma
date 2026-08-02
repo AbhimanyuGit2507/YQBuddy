@@ -54,61 +54,64 @@ enum WebhookProcessingStatus {
 }
 
 model Tenant {
-  id                 String   @id @default(uuid())
+  id                 String            @id @default(uuid())
   name               String
-  subdomain          String   @unique // e.g., 'hospitalname'
-  branding           Json?    // Stores colors, logo URLs
-  whatsappInstanceId String?  // Optional Evolution API instance name
-  whatsappConnected  Boolean  @default(false)
+  subdomain          String            @unique // e.g., 'hospitalname'
+  branding           Json? // Stores colors, logo URLs
+  whatsappInstanceId String? // Optional Evolution API instance name
+  whatsappConnected  Boolean           @default(false)
   whatsappPhone      String?
-  chatbotEnabled     Boolean  @default(false)
-  chatbotConfig      Json?    // Stores custom button menus and automated replies
-  subscriptionStatus String   @default("TRIAL") // TRIAL, ACTIVE, EXPIRED
+  chatbotEnabled     Boolean           @default(false)
+  chatbotConfig      Json? // Stores custom button menus and automated replies
+  subscriptionStatus String            @default("TRIAL") // TRIAL, ACTIVE, EXPIRED
   users              User[]
   workspaces         Workspace[]
   queues             Queue[]
   transactions       Transaction[]
   webhooks           WebhookEndpoint[]
-  createdAt          DateTime @default(now())
+  createdAt          DateTime          @default(now())
 }
 
 model User {
-  id               String   @id @default(uuid())
+  id               String     @id @default(uuid())
   tenantId         String
   workspaceId      String?
-  email            String   @unique
+  email            String     @unique
   password         String?
-  googleId         String?  @unique
+  googleId         String?    @unique
   role             Role
   otpCode          String?
   otpExpiresAt     DateTime?
   personalSettings Json?
-  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  tenant           Tenant     @relation(fields: [tenantId], references: [id])
   workspace        Workspace? @relation(fields: [workspaceId], references: [id])
+
+  @@index([tenantId])
+  @@index([workspaceId])
 }
 
 model PasswordReset {
-  id          String   @id @default(uuid())
-  userId      String
-  token       String   @unique
-  expiresAt   DateTime
-  used        Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([token])
 }
 
 model AuditLog {
-  id          String   @id @default(uuid())
-  userId      String
-  action      String
-  resource    String
-  resourceId  String?
-  details     Json?
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  resource   String
+  resourceId String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
 
   @@index([userId])
   @@index([action])
@@ -116,22 +119,22 @@ model AuditLog {
 }
 
 model Queue {
-  id                     String      @id @default(uuid())
-  tenantId               String
-  workspaceId            String?
-  name                   String
-  status                 QueueStatus 
-  nextQueueId            String?     // For multi-step routing (e.g. Registration -> Billing)
-  formConfig             Json?       // Dynamic form configuration
-  tokenDisplayConfig     Json?       // Display settings and token number generation config
-  
+  id                 String      @id @default(uuid())
+  tenantId           String
+  workspaceId        String?
+  name               String
+  status             QueueStatus
+  nextQueueId        String? // For multi-step routing (e.g. Registration -> Billing)
+  formConfig         Json? // Dynamic form configuration
+  tokenDisplayConfig Json? // Display settings and token number generation config
+
   // Future Bookings & Hybrid Queuing
-  allowAppointments        Boolean @default(false)
-  requireManualCheckIn     Boolean @default(false) // If true, customer must click "I have arrived"
-  appointmentGranularityMins Int     @default(15)      // e.g. 15 mins increments
-  tenant                 Tenant      @relation(fields: [tenantId], references: [id])
-  workspace              Workspace?  @relation(fields: [workspaceId], references: [id])
-  tokens                 Token[]
+  allowAppointments          Boolean    @default(false)
+  requireManualCheckIn       Boolean    @default(false) // If true, customer must click "I have arrived"
+  appointmentGranularityMins Int        @default(15) // e.g. 15 mins increments
+  tenant                     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workspace                  Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tokens                     Token[]
 
   @@index([tenantId])
 }
@@ -141,29 +144,29 @@ model Token {
   queueId      String
   customerName String
   phone        String?
-  status       TokenStatus 
+  status       TokenStatus
   joinedAt     DateTime    @default(now())
-  
+
   // Hybrid Appointments
-  isAppointment Boolean    @default(false)
+  isAppointment Boolean   @default(false)
   scheduledFor  DateTime?
-  checkedIn     Boolean    @default(false)
+  checkedIn     Boolean   @default(false)
 
   // Feedback & CSAT
-  rating       Int?        // 1-5 star rating
-  feedbackText String?     // Optional feedback comment
-  
-  formResponses Json?      // Customer answers to dynamic queue fields
-  purpose      String?     // Extracted top-level purpose for ETA logic and fast analytics
-  language     String      @default("en") // Customer language preference
-  displayId    String?     // Human-readable token number (e.g. "CC876")
-  
-  // Time Tracking (for ETA logic)
-  servedAt     DateTime?
-  completedAt  DateTime?
+  rating       Int? // 1-5 star rating
+  feedbackText String? // Optional feedback comment
 
-  queue        Queue       @relation(fields: [queueId], references: [id])
-  messages     Message[]
+  formResponses Json? // Customer answers to dynamic queue fields
+  purpose       String? // Extracted top-level purpose for ETA logic and fast analytics
+  language      String  @default("en") // Customer language preference
+  displayId     String? // Human-readable token number (e.g. "CC876")
+
+  // Time Tracking (for ETA logic)
+  servedAt    DateTime?
+  completedAt DateTime?
+
+  queue    Queue     @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  messages Message[]
 
   @@index([queueId, status])
   @@index([queueId, joinedAt])
@@ -173,166 +176,166 @@ model Message {
   id        String   @id @default(uuid())
   tokenId   String
   body      String
-  sender    String   // 'OPERATOR' or 'CUSTOMER'
+  sender    String // 'OPERATOR' or 'CUSTOMER'
   createdAt DateTime @default(now())
-  
-  token     Token    @relation(fields: [tokenId], references: [id])
-  
+
+  token Token @relation(fields: [tokenId], references: [id])
+
   @@index([tokenId])
 }
 
 model Transaction {
-  id               String   @id @default(uuid())
-  tenantId         String
-  workspaceId      String?
-  transactionRef   String   @unique
-  amount           Float
-  currency         String   @default("ZAR")
-  status           String   @default("PENDING") // PENDING, SUCCESS, CANCELLED, FAILED
-  ozowPayRequestId String?
+  id                  String   @id @default(uuid())
+  tenantId            String
+  workspaceId         String?
+  transactionRef      String   @unique
+  amount              Float
+  currency            String   @default("ZAR")
+  status              String   @default("PENDING") // PENDING, SUCCESS, CANCELLED, FAILED
+  ozowPayRequestId    String?
   rawProviderResponse Json?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  tenant           Tenant   @relation(fields: [tenantId], references: [id])
-  workspace        Workspace? @relation(fields: [workspaceId], references: [id])
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  workspace Workspace? @relation(fields: [workspaceId], references: [id])
 
   @@index([tenantId])
   @@index([workspaceId])
 }
 
 model WebhookEndpoint {
-  id          String   @id @default(uuid())
-  tenantId    String
-  url         String
-  secret      String?
-  events      String[] // Array of event names, e.g. ["TOKEN_COMPLETED", "TOKEN_JOINED"]
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  tenantId  String
+  url       String
+  secret    String?
+  events    String[] // Array of event names, e.g. ["TOKEN_COMPLETED", "TOKEN_JOINED"]
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
 }
 
 model Workspace {
-  id                  String   @id @default(uuid())
-  tenantId            String
-  ownerId             String
-  name                String
-  subdomain           String   @unique
-  branding            Json?
-  subscriptionStatus  String   @default("TRIAL")
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  tenantId           String
+  ownerId            String
+  name               String
+  subdomain          String   @unique
+  branding           Json?
+  subscriptionStatus String   @default("TRIAL")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  tenant              Tenant      @relation(fields: [tenantId], references: [id])
-  users               User[]
-  queues              Queue[]
-  subscriptions       Subscription[]
-  invoices            Invoice[]
-  usages              WorkspaceUsage[]
-  transactions        Transaction[]
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users         User[]
+  queues        Queue[]
+  subscriptions Subscription[]
+  invoices      Invoice[]
+  usages        WorkspaceUsage[]
+  transactions  Transaction[]
 
   @@index([tenantId])
 }
 
 model Plan {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  type        String   @default("standard")
-  price       Float
-  currency    String   @default("ZAR")
-  interval    String   @default("monthly")
-  billingInterval String @default("monthly")
-  trialDays   Int      @default(0)
-  features    Json?
-  limits      Json?
-  maxTokens   Int?
-  maxQueues   Int?
-  sortOrder   Int     @default(0)
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  type            String   @default("standard")
+  price           Float
+  currency        String   @default("ZAR")
+  interval        String   @default("monthly")
+  billingInterval String   @default("monthly")
+  trialDays       Int      @default(0)
+  features        Json?
+  limits          Json?
+  maxTokens       Int?
+  maxQueues       Int?
+  sortOrder       Int      @default(0)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   subscriptions Subscription[]
 }
 
 model Subscription {
-  id                  String   @id @default(uuid())
-  workspaceId         String
-  planId              String
-  status              SubscriptionStatus @default(TRIAL)
-  currentPeriodStart  DateTime @default(now())
-  currentPeriodEnd    DateTime
-  cancelAtPeriodEnd   Boolean @default(false)
-  ozowSubscriptionId  String?
-  trialStartDate      DateTime?
-  trialEndDate        DateTime?
-  billingInterval     String   @default("monthly")
-  nextBillingDate     DateTime?
-  renewalDate         DateTime?
-  cancellationDate    DateTime?
-  endedAt             DateTime?
-  metadata            Json?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String             @id @default(uuid())
+  workspaceId        String
+  planId             String
+  status             SubscriptionStatus @default(TRIAL)
+  currentPeriodStart DateTime           @default(now())
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean            @default(false)
+  ozowSubscriptionId String?
+  trialStartDate     DateTime?
+  trialEndDate       DateTime?
+  billingInterval    String             @default("monthly")
+  nextBillingDate    DateTime?
+  renewalDate        DateTime?
+  cancellationDate   DateTime?
+  endedAt            DateTime?
+  metadata           Json?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
-  workspace           Workspace @relation(fields: [workspaceId], references: [id])
-  plan                Plan      @relation(fields: [planId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  plan      Plan      @relation(fields: [planId], references: [id])
 
-  @@index([workspaceId])
   @@unique([workspaceId])
+  @@index([workspaceId])
 }
 
 model PaymentProvider {
-  id             String   @id @default(uuid())
+  id             String              @id @default(uuid())
   name           PaymentProviderName
-  active         Boolean  @default(true)
+  active         Boolean             @default(true)
   config         Json?
   siteCode       String?
   privateKey     String?
   baseUrl        String?
-  sandboxEnabled Boolean @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  sandboxEnabled Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 }
 
 model Invoice {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   workspaceId String
   amount      Float
-  currency    String   @default("ZAR")
-  status      String   @default("DRAFT")
+  currency    String    @default("ZAR")
+  status      String    @default("DRAFT")
   dueDate     DateTime?
   paidAt      DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
 
   @@index([workspaceId])
 }
 
 model WorkspaceUsage {
-  id              String   @id @default(uuid())
-  workspaceId     String
-  tokensUsed      Int      @default(0)
-  messagesSent    Int      @default(0)
-  branches        Int      @default(0)
-  whatsappMessages Int     @default(0)
-  aiRequests      Int      @default(0)
-  storageBytes    BigInt  @default(0)
-  apiCalls        Int      @default(0)
-  activeQueues    Int      @default(0)
-  queueJoins      Int      @default(0)
-  operators       Int      @default(0)
-  periodStart     DateTime
-  periodEnd       DateTime
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  workspace       Workspace @relation(fields: [workspaceId], references: [id])
+  id               String    @id @default(uuid())
+  workspaceId      String
+  tokensUsed       Int       @default(0)
+  messagesSent     Int       @default(0)
+  branches         Int       @default(0)
+  whatsappMessages Int       @default(0)
+  aiRequests       Int       @default(0)
+  storageBytes     BigInt    @default(0)
+  apiCalls         Int       @default(0)
+  activeQueues     Int       @default(0)
+  queueJoins       Int       @default(0)
+  operators        Int       @default(0)
+  periodStart      DateTime
+  periodEnd        DateTime
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  workspace        Workspace @relation(fields: [workspaceId], references: [id])
 
   @@unique([workspaceId, periodStart, periodEnd])
   @@index([workspaceId])
@@ -344,7 +347,7 @@ model WhatsAppTemplate {
   name        String
   content     String
   active      Boolean  @default(true)
-  isActive    Boolean @default(true)
+  isActive    Boolean  @default(true)
   variables   Json?
   workspaceId String?
   createdAt   DateTime @default(now())
@@ -352,7 +355,7 @@ model WhatsAppTemplate {
 }
 
 model CommunicationLog {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   workspaceId String?
   channel     String
   type        String
@@ -366,42 +369,42 @@ model CommunicationLog {
   sentAt      DateTime?
   deliveredAt DateTime?
   failedAt    DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([workspaceId])
 }
 
 model Invitation {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   workspaceId String
-  code        String   @unique
+  code        String    @unique
   email       String?
-  role        Role     @default(OPERATOR)
-  used        Boolean  @default(false)
-  usedCount   Int      @default(0)
-  maxUses     Int      @default(1)
+  role        Role      @default(OPERATOR)
+  used        Boolean   @default(false)
+  usedCount   Int       @default(0)
+  maxUses     Int       @default(1)
   usedAt      DateTime?
   expiresAt   DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([workspaceId])
 }
 
 model WebhookEvent {
-  id              String   @id @default(uuid())
-  tenantId        String
-  workspaceId     String?
-  transactionId   String?
-  eventType       WebhookEventType
-  payload         Json
-  headers         Json?
-  provider        String?
+  id               String                  @id @default(uuid())
+  tenantId         String
+  workspaceId      String?
+  transactionId    String?
+  eventType        WebhookEventType
+  payload          Json
+  headers          Json?
+  provider         String?
   processingStatus WebhookProcessingStatus @default(PENDING)
   processingResult Json?
-  signatureValid  Boolean?
-  processedAt     DateTime?
-  error           String?
-  createdAt       DateTime @default(now())
+  signatureValid   Boolean?
+  processedAt      DateTime?
+  error            String?
+  createdAt        DateTime                @default(now())
 
   @@index([tenantId])
   @@index([eventType])

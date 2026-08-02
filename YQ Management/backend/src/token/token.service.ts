@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
   ServiceUnavailableException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -11,6 +13,7 @@ import { WebhooksService } from '../webhooks/webhooks.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { QueueService } from '../queue/queue.service';
 import { TokenStatus } from '@prisma/client';
+import { TemplateService } from '../communication/templates/template.service';
 
 @Injectable()
 export class TokenService {
@@ -21,6 +24,7 @@ export class TokenService {
     private readonly webhooksService: WebhooksService,
     private readonly whatsappService: WhatsappService,
     private readonly queueService: QueueService,
+    private readonly templateService: TemplateService,
   ) {}
 
   async requestOtp(phone: string, queueId: string) {
@@ -41,32 +45,31 @@ export class TokenService {
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     await this.redisService.client.set(`otp:${phone}`, otp, 'EX', 300); // 5 mins
-    await this.notificationsService.sendWhatsAppMessage(
-      phone,
-      `Your Qmover verification code is: ${otp}. It expires in 5 minutes.`,
+    const message = await this.templateService.renderWhatsAppForWorkspace(
+      queue.workspaceId,
+      'otp',
+      { otp },
     );
+    await this.notificationsService.sendWhatsAppMessage(phone, message);
          return { success: true, message: 'OTP sent' };
   }
 
-  private generateDisplayId(tokenDisplayConfig: any): { displayId: string; updatedConfig: any } {
+  private async generateDisplayId(queueId: string, tokenDisplayConfig: any): Promise<{ displayId: string; updatedConfig: any }> {
     const config = tokenDisplayConfig || {};
     const mode = config.generationMode || 'random';
     const format = config.format || 'alphanumeric';
     const prefix = config.prefix || 'CC';
-    let counter = config.counter || 0;
 
     let numberPart: string;
 
     if (mode === 'sequential') {
-      counter += 1;
+      const counter = await this.redisService.client.incr(`queue:${queueId}:sequence`);
       numberPart = counter.toString();
+      return { displayId: format === 'alphanumeric' ? `${prefix}${numberPart}` : numberPart, updatedConfig: { ...config, counter } };
     } else {
       numberPart = Math.floor(1000 + Math.random() * 9000).toString();
+      return { displayId: format === 'alphanumeric' ? `${prefix}${numberPart}` : numberPart, updatedConfig: config };
     }
-
-    const displayId = format === 'alphanumeric' ? `${prefix}${numberPart}` : numberPart;
-
-    return { displayId, updatedConfig: { ...config, counter } };
   }
 
   async joinQueue(
@@ -110,7 +113,7 @@ export class TokenService {
     const isAppointment = !!scheduledFor;
     const scheduledDate = scheduledFor ? new Date(scheduledFor) : null;
 
-    const { displayId, updatedConfig } = this.generateDisplayId(queue?.tokenDisplayConfig);
+    const { displayId, updatedConfig } = await this.generateDisplayId(queueId, queue?.tokenDisplayConfig);
     if (queue && updatedConfig && updatedConfig.counter !== (queue.tokenDisplayConfig as any)?.counter) {
       await this.prisma.queue.update({
         where: { id: queueId },
@@ -143,19 +146,14 @@ export class TokenService {
     });
 
     if (!isAppointment) {
-      // Add to Redis list (queue)
-      await this.redisService.client.rpush(`queue:${queueId}:tokens`, token.id);
-      await this.redisService.client.zadd(
-        `queue:${queueId}:waiting`,
-        Date.now(),
-        token.id,
-      );
-
-      // Broadcast event
-      this.redisService.client.publish(
+      // Add to Redis ZSET and Broadcast event atomically
+      const pipeline = this.redisService.client.multi();
+      pipeline.zadd(`queue:${queueId}:waiting`, Date.now(), token.id);
+      pipeline.publish(
         'queue_events',
         JSON.stringify({ type: 'TOKEN_JOINED', queueId, token }),
       );
+      await pipeline.exec();
     } else {
       this.redisService.client.publish(
         'queue_events',
@@ -166,23 +164,43 @@ export class TokenService {
     // Send confirmation
     const displayCode = token.displayId || token.id.substring(0, 5).toUpperCase();
     if (phone) {
+      let message = '';
       if (isAppointment) {
-        await this.notificationsService.sendWhatsAppMessage(
-          phone,
-          `Hello ${customerName}! Your appointment is scheduled for ${scheduledDate?.toLocaleString()}. Your token is ${displayCode}. Track your status here: ${process.env.APP_URL || 'http://localhost:3001'}/customer/status/${token.id}`,
+        message = await this.templateService.renderWhatsAppForWorkspace(
+          queue?.workspaceId || null,
+          'appointment_created',
+          {
+            name: customerName,
+            date: scheduledDate?.toLocaleString(),
+            token: displayCode,
+            link: `${process.env.APP_URL || 'http://localhost:3001'}/customer/status/${token.id}`,
+          },
         );
       } else {
-        await this.notificationsService.sendWhatsAppMessage(
-          phone,
-          `Hello ${customerName}! You have successfully joined the queue. Your token is ${displayCode}. You can track your live status here: ${process.env.APP_URL || 'http://localhost:3001'}/customer/status/${token.id}`,
+        message = await this.templateService.renderWhatsAppForWorkspace(
+          queue?.workspaceId || null,
+          'queue_joined',
+          {
+            name: customerName,
+            position: '1', // ETA and actual position can be fetched, simplified here
+            link: `${process.env.APP_URL || 'http://localhost:3001'}/customer/status/${token.id}`,
+          },
         );
+      }
+      if (message) {
+        await this.notificationsService.sendWhatsAppMessage(phone, message);
       }
     }
 
     return token;
   }
 
-  async advanceQueue(queueId: string) {
+  async advanceQueue(queueId: string, tenantId: string) {
+    const queue = await this.prisma.queue.findUnique({ where: { id: queueId } });
+    if (!queue || queue.tenantId !== tenantId) {
+      throw new BadRequestException('Queue not found or unauthorized');
+    }
+
     // End the currently serving token
     const currentlyServingId = await this.redisService.client.get(
       `queue:${queueId}:serving`,
@@ -206,9 +224,8 @@ export class TokenService {
     }
 
     // Pop the next token
-    const nextTokenId = await this.redisService.client.lpop(
-      `queue:${queueId}:tokens`,
-    );
+    const popped = await this.redisService.client.zpopmin(`queue:${queueId}:waiting`);
+    const nextTokenId = popped && popped.length > 0 ? popped[0] : null;
     if (!nextTokenId) {
       await this.redisService.client.del(`queue:${queueId}:serving`);
       return null;
@@ -222,45 +239,62 @@ export class TokenService {
       },
     });
 
-    await this.redisService.client.set(
-      `queue:${queueId}:serving`,
-      nextToken.id,
-    );
-    this.redisService.client.publish(
+    const pipeline = this.redisService.client.multi();
+    pipeline.set(`queue:${queueId}:serving`, nextToken.id);
+    pipeline.publish(
       'queue_events',
       JSON.stringify({ type: 'QUEUE_ADVANCED', queueId, token: nextToken }),
     );
+    await pipeline.exec();
 
     // Notify the serving token
     if (nextToken.phone) {
-      await this.notificationsService.sendWhatsAppMessage(
-        nextToken.phone,
-        `Hi ${nextToken.customerName}, it is your turn now! Please proceed to the counter.`,
+      const message = await this.templateService.renderWhatsAppForWorkspace(
+        queue.workspaceId,
+        'now_serving',
+        {
+          name: nextToken.customerName,
+          queue_name: queue.name,
+        },
       );
+      if (message) {
+        await this.notificationsService.sendWhatsAppMessage(
+          nextToken.phone,
+          message,
+        );
+      }
     }
 
     // Notify the next person in line
-    const upcomingTokenId = await this.redisService.client.lindex(
-      `queue:${queueId}:tokens`,
-      0,
-    );
+    const upcoming = await this.redisService.client.zrange(`queue:${queueId}:waiting`, 0, 0);
+    const upcomingTokenId = upcoming && upcoming.length > 0 ? upcoming[0] : null;
     if (upcomingTokenId) {
       const upcomingToken = await this.prisma.token.findUnique({
         where: { id: upcomingTokenId },
       });
       if (upcomingToken && upcomingToken.phone) {
-        await this.notificationsService.sendWhatsAppMessage(
-          upcomingToken.phone,
-          `Hi ${upcomingToken.customerName}, you are next in line! Get ready.`,
+        const message = await this.templateService.renderWhatsAppForWorkspace(
+          queue.workspaceId,
+          'near_turn',
+          {
+            name: upcomingToken.customerName,
+            queue_name: queue.name,
+          },
         );
+        if (message) {
+          await this.notificationsService.sendWhatsAppMessage(
+            upcomingToken.phone,
+            message,
+          );
+        }
       }
     }
 
     return nextToken;
   }
 
-  async completeToken(tokenId: string) {
-    return this.queueService.completeToken(tokenId);
+  async completeToken(tokenId: string, tenantId: string) {
+    return this.queueService.completeToken(tokenId, tenantId);
   }
 
   async getTokenStatus(tokenId: string) {
@@ -278,13 +312,12 @@ export class TokenService {
       return { token, position: 0, estimatedWaitTime: 0, isScheduled: true };
     }
 
-    // Find position in Redis list
-    const tokens = await this.redisService.client.lrange(
-      `queue:${token.queueId}:tokens`,
-      0,
-      -1,
+    // Find position in Redis ZSET
+    const rank = await this.redisService.client.zrank(
+      `queue:${token.queueId}:waiting`,
+      tokenId,
     );
-    const position = tokens.indexOf(tokenId) + 1;
+    const position = rank !== null ? rank + 1 : 0;
 
     let avgServiceTime = 5; // Default 5 mins
 
@@ -335,11 +368,14 @@ export class TokenService {
     return { token, position, estimatedWaitTime };
   }
 
-  async validateToken(tokenId: string) {
+  async validateToken(tokenId: string, tenantId: string) {
     const token = await this.prisma.token.findUnique({
       where: { id: tokenId },
+      include: { queue: true },
     });
-    if (!token) return { valid: false, reason: 'Invalid Token' };
+    if (!token || token.queue.tenantId !== tenantId) {
+      return { valid: false, reason: 'Invalid Token or unauthorized' };
+    }
 
     const servingTokenId = await this.redisService.client.get(
       `queue:${token.queueId}:serving`,
@@ -357,25 +393,16 @@ export class TokenService {
     });
     if (!token) throw new NotFoundException('Token not found');
 
-    if (token.status === TokenStatus.WAITING) {
-      // Remove from redis list
-      await this.redisService.client.lrem(
-        `queue:${token.queueId}:tokens`,
-        0,
-        tokenId,
-      );
-      await this.redisService.client.zrem(
-        `queue:${token.queueId}:waiting`,
-        tokenId,
-      );
-    }
-
     const updatedToken = await this.prisma.token.update({
       where: { id: tokenId },
       data: { status: TokenStatus.MISSED },
     });
 
-    this.redisService.client.publish(
+    const pipeline = this.redisService.client.multi();
+    if (token.status === TokenStatus.WAITING) {
+      pipeline.zrem(`queue:${token.queueId}:waiting`, tokenId);
+    }
+    pipeline.publish(
       'queue_events',
       JSON.stringify({
         type: 'TOKEN_CANCELLED',
@@ -383,6 +410,7 @@ export class TokenService {
         token: updatedToken,
       }),
     );
+    await pipeline.exec();
 
     const queue = await this.prisma.queue.findUnique({
       where: { id: token.queueId },
@@ -398,28 +426,34 @@ export class TokenService {
     return updatedToken;
   }
 
-  async transferToken(tokenId: string, nextQueueId: string) {
+  async transferToken(id: string, nextQueueId: string, tenantId: string) {
     const token = await this.prisma.token.findUnique({
-      where: { id: tokenId },
+      where: { id },
+      include: { queue: true },
     });
-    if (!token) throw new NotFoundException('Token not found');
+    if (!token) {
+      throw new HttpException('Token not found', HttpStatus.NOT_FOUND);
+    }
+    if (token.queue.tenantId !== tenantId) {
+      throw new HttpException('Unauthorized access to tenant resources', HttpStatus.FORBIDDEN);
+    }
 
     // Remove from current queue's serving key if it's there
     const servingTokenId = await this.redisService.client.get(
       `queue:${token.queueId}:serving`,
     );
-    if (servingTokenId === tokenId) {
+    if (servingTokenId === id) {
       await this.redisService.client.del(`queue:${token.queueId}:serving`);
     } else if (token.status === TokenStatus.WAITING) {
       // Remove from old queue sorted set
       await this.redisService.client.zrem(
         `queue:${token.queueId}:waiting`,
-        tokenId,
+        id,
       );
     }
 
     const updatedToken = await this.prisma.token.update({
-      where: { id: tokenId },
+      where: { id: id },
       data: {
         queueId: nextQueueId,
         status: TokenStatus.WAITING,
@@ -428,19 +462,10 @@ export class TokenService {
       },
     });
 
-    // Add to new queue in Redis
-    await this.redisService.client.rpush(
-      `queue:${nextQueueId}:tokens`,
-      updatedToken.id,
-    );
-    await this.redisService.client.zadd(
-      `queue:${nextQueueId}:waiting`,
-      Date.now(),
-      updatedToken.id,
-    );
-
-    // Broadcast events
-    this.redisService.client.publish(
+    // Add to new queue in Redis and Broadcast events
+    const pipeline = this.redisService.client.multi();
+    pipeline.zadd(`queue:${nextQueueId}:waiting`, Date.now(), updatedToken.id);
+    pipeline.publish(
       'queue_events',
       JSON.stringify({
         type: 'TOKEN_TRANSFERRED',
@@ -449,6 +474,7 @@ export class TokenService {
         token: updatedToken,
       }),
     );
+    await pipeline.exec();
 
     // Webhook Trigger
     const queue = await this.prisma.queue.findUnique({
@@ -467,26 +493,37 @@ export class TokenService {
       const newQueue = await this.prisma.queue.findUnique({
         where: { id: nextQueueId },
       });
-      await this.notificationsService.sendWhatsAppMessage(
-        updatedToken.phone,
-        `You have been transferred to ${newQueue?.name}. You are now waiting in the new queue.`,
+      const message = await this.templateService.renderWhatsAppForWorkspace(
+        queue?.workspaceId || null,
+        'transferred',
+        {
+          queue_name: newQueue?.name,
+        },
       );
+      if (message) {
+        await this.notificationsService.sendWhatsAppMessage(
+          updatedToken.phone,
+          message,
+        );
+      }
     }
 
     return updatedToken;
   }
 
-  async checkIn(tokenId: string, tenantId: string) {
+  async checkIn(tokenId: string, tenantId?: string) {
     const token = await this.prisma.token.findUnique({
       where: { id: tokenId },
       include: { queue: true },
     });
     if (!token) throw new NotFoundException('Token not found');
 
-    const tenantQueue = await this.prisma.queue.findFirst({
-      where: { id: token.queueId, tenantId },
-    });
-    if (!tenantQueue) throw new NotFoundException('Token not found');
+    if (tenantId) {
+      const tenantQueue = await this.prisma.queue.findFirst({
+        where: { id: token.queueId, tenantId },
+      });
+      if (!tenantQueue) throw new NotFoundException('Token not found');
+    }
 
     if (token.checkedIn || token.status !== TokenStatus.WAITING) return token;
 
@@ -495,16 +532,9 @@ export class TokenService {
       data: { checkedIn: true, joinedAt: new Date() }, // Refresh joinedAt to now so ETA is accurate
     });
 
-    await this.redisService.client.rpush(
-      `queue:${token.queueId}:tokens`,
-      updatedToken.id,
-    );
-    await this.redisService.client.zadd(
-      `queue:${token.queueId}:waiting`,
-      Date.now(),
-      updatedToken.id,
-    );
-    this.redisService.client.publish(
+    const pipeline = this.redisService.client.multi();
+    pipeline.zadd(`queue:${token.queueId}:waiting`, Date.now(), updatedToken.id);
+    pipeline.publish(
       'queue_events',
       JSON.stringify({
         type: 'TOKEN_JOINED',
@@ -512,12 +542,24 @@ export class TokenService {
         token: updatedToken,
       }),
     );
+    await pipeline.exec();
 
     if (updatedToken.phone) {
-      await this.notificationsService.sendWhatsAppMessage(
-        updatedToken.phone,
-        `Hello ${updatedToken.customerName}! You have been checked in and are now waiting in the live line.`,
+      const queueData = token.queue;
+      const message = await this.templateService.renderWhatsAppForWorkspace(
+        queueData.workspaceId,
+        'checked_in',
+        {
+          name: updatedToken.customerName,
+          link: `${process.env.APP_URL || 'http://localhost:3001'}/customer/status/${updatedToken.id}`,
+        },
       );
+      if (message) {
+        await this.notificationsService.sendWhatsAppMessage(
+          updatedToken.phone,
+          message,
+        );
+      }
     }
     return updatedToken;
   }

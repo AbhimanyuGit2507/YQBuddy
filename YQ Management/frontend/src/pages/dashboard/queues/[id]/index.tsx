@@ -13,6 +13,7 @@ import { QueueHeader } from '../../../../components/queue/QueueHeader';
 import { QueueControls } from '../../../../components/queue/QueueControls';
 import { TokenList } from '../../../../components/queue/TokenList';
 import { SettingsPanel } from '../../../../components/queue/SettingsPanel';
+import { SharePanel } from '../../../../components/queue/SharePanel';
 import { ErrorBoundary } from '../../../../components/ErrorBoundary';
 // import { ChatDrawer } from '../../../../components/queue/ChatDrawer';
 
@@ -20,8 +21,8 @@ export default function QueueWorkspace() {
   const router = useRouter();
   const { user } = useAuth();
   const { id } = router.query;
-  const activeTab = (router.query.tab as 'workspace' | 'settings') || 'workspace';
-  const setActiveTab = (tab: 'workspace' | 'settings') => {
+  const activeTab = (router.query.tab as 'workspace' | 'settings' | 'share') || 'workspace';
+  const setActiveTab = (tab: 'workspace' | 'settings' | 'share') => {
     router.push({ query: { ...router.query, tab } }, undefined, { shallow: true });
   };
 
@@ -42,6 +43,7 @@ export default function QueueWorkspace() {
   const [generationMode, setGenerationMode] = useState<'sequential' | 'random'>('random');
   const [tokenFormat, setTokenFormat] = useState<'alphanumeric' | 'numeric'>('alphanumeric');
   const [tokenPrefix, setTokenPrefix] = useState('CC');
+  const [ttsTemplate, setTtsTemplate] = useState('');
 
   const { data: allQueues = [] } = useQuery({
     queryKey: ['queues'],
@@ -70,6 +72,7 @@ export default function QueueWorkspace() {
         setGenerationMode(dc.generationMode || 'random');
         setTokenFormat(dc.format || 'alphanumeric');
         setTokenPrefix(dc.prefix || 'CC');
+        setTtsTemplate(dc.ttsTemplate || '');
        }
        return q;
      },
@@ -140,27 +143,31 @@ export default function QueueWorkspace() {
         </Head>
 
         {isOffline && (
-          <div className="max-w-6xl mx-auto mb-4 p-3 bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-xl flex items-center gap-3 text-yellow-700 dark:text-yellow-400 text-sm">
+          <div className="max-w-6xl mx-auto mb-4 px-4 sm:px-6 lg:px-8">
+            <div className="p-3 bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-xl flex items-center gap-3 text-yellow-700 dark:text-yellow-400 text-sm">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>You are offline. Some features may not work.</span>
             <button onClick={handleRetry} className="ml-auto px-3 py-1 bg-yellow-100 dark:bg-yellow-500/20 rounded-lg text-xs font-medium hover:bg-yellow-200 dark:hover:bg-yellow-500/30 transition-colors">
               Retry
             </button>
+            </div>
           </div>
         )}
 
         {hasError && !isLoading && (
-          <div className="max-w-6xl mx-auto mb-4 p-6 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-center">
+          <div className="max-w-6xl mx-auto mb-4 px-4 sm:px-6 lg:px-8">
+            <div className="p-6 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-center">
             <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
             <h3 className="text-lg font-bold text-red-700 dark:text-red-400 mb-2">Failed to load queue data</h3>
             <p className="text-sm text-red-500 dark:text-red-400 mb-4">Please check your connection and try again.</p>
             <button onClick={handleRetry} className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mx-auto">
               <RefreshCw className="w-4 h-4" /> Retry
             </button>
+            </div>
           </div>
         )}
 
-        <div className="max-w-6xl mx-auto space-y-8 pb-12">
+        <div className="max-w-6xl mx-auto space-y-8 pb-12 p-4 sm:p-6 lg:p-8">
           <QueueHeader
             queueName={queueName}
             queueId={id as string}
@@ -185,6 +192,8 @@ export default function QueueWorkspace() {
                 nextQueueId={queue?.nextQueueId}
               />
             </div>
+          ) : activeTab === 'share' ? (
+            <SharePanel queueId={id as string} />
           ) : (
              <SettingsPanel
                queueId={id as string}
@@ -211,6 +220,8 @@ export default function QueueWorkspace() {
                setTokenFormat={setTokenFormat}
                tokenPrefix={tokenPrefix}
                setTokenPrefix={setTokenPrefix}
+               ttsTemplate={ttsTemplate}
+               setTtsTemplate={setTtsTemplate}
              />
           )}
         </div>

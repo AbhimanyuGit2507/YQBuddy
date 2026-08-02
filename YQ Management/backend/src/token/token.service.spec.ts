@@ -6,6 +6,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { QueueService } from '../queue/queue.service';
+import { TemplateService } from '../communication/templates/template.service';
 
 describe('TokenService', () => {
   let service: TokenService;
@@ -26,6 +27,7 @@ describe('TokenService', () => {
         { provide: WebhooksService, useValue: { triggerWebhooks: jest.fn() } },
         { provide: WhatsappService, useValue: {} },
         { provide: QueueService, useValue: {} },
+        { provide: TemplateService, useValue: { renderWhatsAppForWorkspace: jest.fn() } },
       ],
     }).compile();
 

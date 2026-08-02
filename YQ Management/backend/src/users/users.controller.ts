@@ -18,20 +18,19 @@ import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('users')
 @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
-@Roles(Role.TENANT_ADMIN)
+@Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
   getUsers(@Req() req: AuthenticatedRequest) {
-    return this.usersService.getUsersByWorkspace(req.user.workspaceId);
+    return this.usersService.getUsersByTenant(req.user.tenantId);
   }
 
   @Post()
   createUser(@Req() req: AuthenticatedRequest, @Body() body: any) {
     return this.usersService.createUser(
       req.user.tenantId,
-      req.user.workspaceId,
       body,
     );
   }
@@ -39,7 +38,7 @@ export class UsersController {
   @Delete(':id')
   async deleteUser(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     const result = await this.usersService.deleteUser(
-      req.user.workspaceId,
+      req.user.tenantId,
       id,
       req.user.userId,
     );

@@ -1,23 +1,80 @@
 #!/bin/bash
 
+# ==============================================================================
+# YQ Queue Management - Local Development Environment
+# ==============================================================================
+
+# ANSI Color Codes
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+BOLD='\033[1m'
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_FILE="$SCRIPT_DIR/logs/log.txt"
+LOG_DIR="$SCRIPT_DIR/logs"
+LOG_FILE="$LOG_DIR/log.txt"
 FAIL_MODE=0
 
-mkdir -p "$SCRIPT_DIR/logs"
+mkdir -p "$LOG_DIR"
 > "$LOG_FILE"
 
-echo "=========================================="
-echo "🚀 Starting YQ Queue Local Environment 🚀"
-echo "=========================================="
+# ------------------------------------------------------------------------------
+# Utility Functions
+# ------------------------------------------------------------------------------
 
 log() {
-    echo "$1" | tee -a "$LOG_FILE"
+    echo -e "$1"
+    echo -e "$1" | sed -r "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g" >> "$LOG_FILE"
+}
+
+log_info() { log "${BLUE}ℹ${NC} $1"; }
+log_success() { log "${GREEN}✓${NC} $1"; }
+log_warning() { log "${YELLOW}⚠${NC} $1"; }
+log_error() { log "${RED}✗${NC} $1"; }
+log_step() { log "\n${CYAN}${BOLD}▶ $1${NC}"; }
+
+check_dependency() {
+    if ! command -v "$1" &> /dev/null; then
+        log_error "$1 is not installed. Please install it to continue."
+        exit 1
+    fi
+}
+
+check_env_file() {
+    local dir=$1
+    if [ ! -f "$SCRIPT_DIR/$dir/.env" ]; then
+        if [ -f "$SCRIPT_DIR/$dir/.env.example" ]; then
+            log_warning "No .env found in $dir. Copying .env.example..."
+            cp "$SCRIPT_DIR/$dir/.env.example" "$SCRIPT_DIR/$dir/.env"
+            log_success "Created .env for $dir"
+        else
+            log_warning "No .env or .env.example found in $dir. You may need to configure environment variables."
+        fi
+    fi
+}
+
+free_port() {
+    local port=$1
+    if lsof -Pi ":$port" -sTCP:LISTEN -t >/dev/null 2>&1; then
+        log_warning "Port $port is in use. Attempting to free..."
+        PIDS=$(lsof -ti ":$port")
+        if [ -n "$PIDS" ]; then
+            kill -9 $PIDS 2>/dev/null || true
+            sleep 2
+        fi
+        if lsof -Pi ":$port" -sTCP:LISTEN -t >/dev/null 2>&1; then
+            log_error "Port $port is still in use. Please free it manually."
+            exit 1
+        fi
+        log_success "Freed port $port"
+    fi
 }
 
 cleanup() {
-    echo "" | tee -a "$LOG_FILE"
-    log "🛑 Stopping services..."
+    log "\n${YELLOW}🛑 Shutting down YQ local environment...${NC}"
     if [ ! -z "$BACKEND_PID" ] && kill -0 $BACKEND_PID 2>/dev/null; then
         kill $BACKEND_PID 2>/dev/null
         wait $BACKEND_PID 2>/dev/null || true
@@ -30,208 +87,154 @@ cleanup() {
         kill $DOCKER_LOGS_PID 2>/dev/null
         wait $DOCKER_LOGS_PID 2>/dev/null || true
     fi
-    log "🛑 Stopping Docker containers..."
+    
+    log_info "Stopping Docker containers..."
     docker compose stop >> "$LOG_FILE" 2>&1
-    log "✅ All services stopped."
+    
+    log_success "All services stopped gracefully. See you next time! 👋"
     exit 0
 }
 
 trap cleanup SIGINT SIGTERM EXIT
 
-log "📋 Log file: $LOG_FILE"
+# ------------------------------------------------------------------------------
+# Pre-flight Checks
+# ------------------------------------------------------------------------------
+clear
+log "${BLUE}${BOLD}=======================================================${NC}"
+log "${BLUE}${BOLD}          🚀 YQ MANAGEMENT - LOCAL DEV SERVER         ${NC}"
+log "${BLUE}${BOLD}=======================================================${NC}"
 
-# 1. Start Docker Services
-log "📦 Starting PostgreSQL and Redis via Docker Compose..."
+log_step "Running pre-flight checks..."
+check_dependency "docker"
+check_dependency "node"
+check_dependency "npm"
+
+check_env_file "backend"
+check_env_file "frontend"
+
+log_success "All dependencies met."
+
+# ------------------------------------------------------------------------------
+# 1. Infrastructure (Docker)
+# ------------------------------------------------------------------------------
+log_step "Starting Infrastructure (PostgreSQL & Redis)..."
 docker compose up -d >> "$LOG_FILE" 2>&1
 
-# Wait for database to be ready
-log "⏳ Waiting for database to initialize..."
-sleep 5
+log_info "Waiting for databases to initialize..."
+sleep 3
 
-# Verify PostgreSQL is ready
-log "🔍 Checking PostgreSQL connection..."
-for i in {1..30}; do
+for i in {1..15}; do
     if docker compose exec -T postgres pg_isready -U postgres >/dev/null 2>&1; then
-        log "✅ PostgreSQL is ready"
+        log_success "PostgreSQL is ready."
         break
     fi
-    if [ $i -eq 30 ]; then
-        log "❌ PostgreSQL failed to start"
-        exit 1
-    fi
+    if [ $i -eq 15 ]; then log_error "PostgreSQL failed to start."; exit 1; fi
     sleep 1
 done
 
-# Verify Redis is ready
-log "🔍 Checking Redis connection..."
-for i in {1..30}; do
+for i in {1..15}; do
     if docker compose exec -T redis redis-cli ping >/dev/null 2>&1; then
-        log "✅ Redis is ready"
+        log_success "Redis is ready."
         break
     fi
-    if [ $i -eq 30 ]; then
-        log "❌ Redis failed to start"
-        exit 1
-    fi
+    if [ $i -eq 15 ]; then log_error "Redis failed to start."; exit 1; fi
     sleep 1
 done
 
-# 2. Setup & Start Backend
-log "⚙️ Setting up backend..."
-cd backend
+# ------------------------------------------------------------------------------
+# 2. Backend Service
+# ------------------------------------------------------------------------------
+log_step "Bootstrapping Backend..."
+free_port 3000
+cd "$SCRIPT_DIR/backend"
 
-# Install dependencies if node_modules doesn't exist
 if [ ! -d "node_modules" ]; then
-    log "📦 Installing backend dependencies..."
-    npm install >> "$LOG_FILE" 2>&1
+    log_info "Installing backend dependencies..."
+    npm install --silent >> "$LOG_FILE" 2>&1
 fi
 
-# Ensure Prisma is synced and generated
-log "🔄 Syncing Prisma schema..."
+log_info "Syncing Prisma schema..."
 npx prisma db push --accept-data-loss >> "$LOG_FILE" 2>&1
 npx prisma generate >> "$LOG_FILE" 2>&1
 
-# Build backend
-log "🔨 Building backend..."
-if ! npm run build >> "$LOG_FILE" 2>&1; then
-    log "❌ Backend build failed. Check logs for details."
-    log "Last 20 lines of log:"
-    tail -20 "$LOG_FILE" | tee -a "$LOG_FILE"
-    FAIL_MODE=1
-fi
-
-if [ "$FAIL_MODE" -eq 1 ]; then
-    log "🛑 Stopping services..."
-    docker compose stop >> "$LOG_FILE" 2>&1
-    exit 1
-fi
-
-# Check if port 3000 is already in use
-if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
-    log "⚠️  Port 3000 is already in use. Killing existing process..."
-    PIDS=$(lsof -ti :3000)
-    if [ -n "$PIDS" ]; then
-        kill -9 $PIDS 2>/dev/null || true
-        sleep 5
-    fi
-    # Double check
-    if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
-        log "❌ Port 3000 still in use. Please manually stop the process."
-        exit 1
-    fi
-fi
-
-log "🟢 Starting NestJS Backend Server..."
-env NODE_ENV=development node dist/src/main >> "$LOG_FILE" 2>&1 &
+log_info "Starting NestJS in development mode..."
+# Using start:dev instead of build for faster dev startup
+npm run start:dev >> "$LOG_FILE" 2>&1 &
 BACKEND_PID=$!
 
-# Wait a moment for the process to start
-sleep 3
-
-# Verify the process is actually running
+sleep 4
 if ! kill -0 $BACKEND_PID 2>/dev/null; then
-    log "❌ Backend process died immediately"
-    log "Last 20 lines of backend log:"
-    tail -20 "$LOG_FILE" 2>/dev/null || true
+    log_error "Backend crashed immediately. Check logs."
+    tail -15 "$LOG_FILE"
     exit 1
 fi
+log_success "Backend running (PID: $BACKEND_PID)"
 
-log "✅ Backend started (PID: $BACKEND_PID)"
+# ------------------------------------------------------------------------------
+# 3. Frontend Service
+# ------------------------------------------------------------------------------
+log_step "Bootstrapping Frontend..."
+free_port 3001
+cd "$SCRIPT_DIR/frontend"
 
-cd ..
-
-# 3. Setup & Start Frontend
-log "🎨 Setting up frontend..."
-cd frontend
-
-# Install dependencies if node_modules doesn't exist
 if [ ! -d "node_modules" ]; then
-    log "📦 Installing frontend dependencies..."
-    npm install >> "$LOG_FILE" 2>&1
+    log_info "Installing frontend dependencies..."
+    npm install --silent >> "$LOG_FILE" 2>&1
 fi
 
-# Check if port 3001 is already in use
-if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null 2>&1; then
-    log "⚠️  Port 3001 is already in use. Killing existing process..."
-    PIDS=$(lsof -ti :3001)
-    if [ -n "$PIDS" ]; then
-        kill -9 $PIDS 2>/dev/null || true
-        sleep 5
-    fi
-    # Double check
-    if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null 2>&1; then
-        log "❌ Port 3001 still in use. Please manually stop the process."
-        exit 1
-    fi
-fi
-
-log "🟢 Starting Next.js Frontend Server..."
-
-# Start frontend in background and capture PID
-npm run dev >> "$LOG_FILE" 2>&1 &
+log_info "Starting Next.js development server..."
+npm run dev -- -p 3001 >> "$LOG_FILE" 2>&1 &
 FRONTEND_PID=$!
 
-# Wait a moment for the process to start
-sleep 3
-
-# Verify the process is actually running
+sleep 4
 if ! kill -0 $FRONTEND_PID 2>/dev/null; then
-    log "❌ Frontend process died immediately"
-    log "Last 20 lines of frontend log:"
-    tail -20 "$LOG_FILE" 2>/dev/null || true
+    log_error "Frontend crashed immediately. Check logs."
+    tail -15 "$LOG_FILE"
     exit 1
 fi
+log_success "Frontend running (PID: $FRONTEND_PID)"
 
-log "✅ Frontend started (PID: $FRONTEND_PID)"
-
-cd ..
-
-# 4. Wait for services to be ready
-log ""
-log "⏳ Waiting for services to be ready..."
+# ------------------------------------------------------------------------------
+# 4. Final Health Checks
+# ------------------------------------------------------------------------------
+log_step "Waiting for services to become healthy..."
 
 # Wait for backend
-log "🔍 Checking backend health..."
 for i in {1..30}; do
     if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 http://localhost:3000/health 2>/dev/null | grep -q "200"; then
-        log "✅ Backend is ready"
+        log_success "Backend API is healthy."
         break
     fi
-    if [ $i -eq 30 ]; then
-        log "⚠️  Backend health check timeout (but process is running)"
-    fi
+    if [ $i -eq 30 ]; then log_warning "Backend health check timed out, but process is alive."; fi
     sleep 1
 done
 
 # Wait for frontend
-log "🔍 Checking frontend..."
 for i in {1..30}; do
     if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 http://localhost:3001/ 2>/dev/null | grep -q "200"; then
-        log "✅ Frontend is ready"
+        log_success "Frontend UI is healthy."
         break
     fi
-    if [ $i -eq 30 ]; then
-        log "⚠️  Frontend health check timeout (but process is running)"
-    fi
+    if [ $i -eq 30 ]; then log_warning "Frontend health check timed out, but process is alive."; fi
     sleep 1
 done
 
-log ""
-log "=========================================="
-log "✨ YQ Queue is now running locally! ✨"
-log "=========================================="
-log "🔗 Frontend: http://localhost:3001"
-log "🔗 Backend API: http://localhost:3000"
-log "🔗 Health: http://localhost:3000/health"
-log "📋 Logs: $LOG_FILE"
-log "👉 Press Ctrl+C at any time to gracefully stop all services."
-log "=========================================="
+# ------------------------------------------------------------------------------
+# Dashboard
+# ------------------------------------------------------------------------------
+log "\n${GREEN}${BOLD}=======================================================${NC}"
+log "${GREEN}${BOLD}             ✨ ENVIRONMENT IS READY ✨              ${NC}"
+log "${GREEN}${BOLD}=======================================================${NC}"
+log "${BOLD}🖥️  Frontend URL :${NC} ${CYAN}http://localhost:3001${NC}"
+log "${BOLD}⚙️  Backend API  :${NC} ${CYAN}http://localhost:3000${NC}"
+log "${BOLD}❤️  Health Check :${NC} ${CYAN}http://localhost:3000/health${NC}"
+log "${BOLD}📄 Log File     :${NC} ${YELLOW}$LOG_FILE${NC}"
+log "${GREEN}${BOLD}=======================================================${NC}"
+log "${YELLOW}Press Ctrl+C to safely shut down all services.${NC}\n"
 
 # Stream docker logs to log file in background
-(
-  docker compose logs -f --no-color >> "$LOG_FILE" 2>&1
-) &
+(docker compose logs -f --no-color >> "$LOG_FILE" 2>&1) &
 DOCKER_LOGS_PID=$!
 
-# Wait indefinitely so the script doesn't exit, keeping trap active
 wait

@@ -34,7 +34,7 @@ export default function AnalyticsDashboard() {
         <title>Analytics | YQ Dashboard</title>
       </Head>
 
-      <div className="p-8 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics</h1>

@@ -72,7 +72,7 @@ export default function HistoryPage() {
         <title>Analytics & History | QMover</title>
       </Head>
 
-      <div className="max-w-6xl mx-auto space-y-8 pb-12">
+      <div className="max-w-6xl mx-auto space-y-8 pb-12 p-4 sm:p-6 lg:p-8">
         
         {/* Header Section */}
         <div className="flex items-end justify-between border-b border-gray-200 dark:border-white/10 pb-6">

@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
-import AdminLayout from '../../../components/AdminLayout';
+import SettingsLayout from '../../../components/SettingsLayout';
+
+// ... (other imports remain, but we replace AdminLayout usage)
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
 import { Plus, Trash2, Mail, Shield, User as UserIcon, Loader2, MailCheck, AlertTriangle } from 'lucide-react';
@@ -106,12 +109,12 @@ export default function StaffDirectory() {
   if (!user || user.role !== 'TENANT_ADMIN') return null;
 
   return (
-    <AdminLayout pageTitle="Staff Directory" pageSubtitle="Manage roles and permissions for your team">
+    <SettingsLayout pageTitle="Staff Directory" pageSubtitle="Manage roles and permissions for your team">
       <Head>
         <title>Staff Directory | QMover</title>
       </Head>
 
-      <div className="max-w-4xl mx-auto space-y-8 pb-12">
+      <div className="max-w-4xl space-y-8 pb-12">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Staff Directory</h1>
           <p className="text-gray-500 dark:text-zinc-400 mt-2">Manage roles and permissions for your team. At least one admin is required.</p>
@@ -242,6 +245,6 @@ export default function StaffDirectory() {
         </div>
 
       </div>
-    </AdminLayout>
+    </SettingsLayout>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
-import AdminLayout from '../../../components/AdminLayout';
+import SettingsLayout from '../../../components/SettingsLayout';
 import { CreditCard, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { fetchApi } from '../../../lib/api';
 import { useRouter } from 'next/router';
@@ -61,15 +61,15 @@ export default function BillingSettings() {
   }, [paymentData]);
 
   return (
-    <AdminLayout pageTitle="Billing" pageSubtitle="Manage your subscription and payment methods">
+    <SettingsLayout pageTitle="Billing & Subscriptions" pageSubtitle="Manage your plan and payment methods">
       <Head>
-        <title>Billing & Subscription | QMover</title>
+        <title>Billing | QMover</title>
       </Head>
 
-      <div className="max-w-4xl mx-auto space-y-8 pb-12 animate-in fade-in duration-500">
+      <div className="max-w-4xl space-y-8 pb-12">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Billing & Subscription</h1>
-          <p className="text-gray-500 dark:text-zinc-400 mt-1">Manage your QMover subscription plan and payment methods.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Billing & Subscriptions</h1>
+          <p className="text-gray-500 dark:text-zinc-400 mt-2">Manage your current plan, payment methods, and billing history.</p>
         </div>
 
         {statusMessage && (
@@ -143,6 +143,6 @@ export default function BillingSettings() {
         </div>
 
       </div>
-    </AdminLayout>
+    </SettingsLayout>
   );
 }

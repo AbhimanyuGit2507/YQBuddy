@@ -8,6 +8,7 @@ import { WebhooksService } from '../webhooks/webhooks.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { QueueService } from '../queue/queue.service';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { TemplateService } from '../communication/templates/template.service';
 
 describe('TokenController', () => {
   let controller: TokenController;
@@ -25,6 +26,7 @@ describe('TokenController', () => {
         { provide: WhatsappService, useValue: { sendMessage: jest.fn() } },
         { provide: QueueService, useValue: { advanceTurn: jest.fn() } },
         { provide: 'BullQueue_whatsapp', useValue: { add: jest.fn() } },
+        { provide: TemplateService, useValue: { renderWhatsAppForWorkspace: jest.fn() } },
       ],
     }).compile();
 

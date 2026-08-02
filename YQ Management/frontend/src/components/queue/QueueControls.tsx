@@ -27,7 +27,7 @@ export function QueueControls({ queueId, servingToken }: QueueControlsProps) {
   });
 
   const skipTokenMutation = useMutation({
-    mutationFn: (tokenId: string) => fetchApi(`/token/${tokenId}/complete`, { method: 'POST' }),
+    mutationFn: (tokenId: string) => fetchApi(`/token/${tokenId}/cancel`, { method: 'POST' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['queueTokens', queueId] });
       setShowSkipConfirm(false);
@@ -107,7 +107,9 @@ export function QueueControls({ queueId, servingToken }: QueueControlsProps) {
               <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
               <span className="text-sm font-medium text-red-700 dark:text-red-400">Confirm Skip Token</span>
             </div>
-            <p className="text-xs text-red-600 dark:text-red-400 mb-3">This will mark token <strong>{servingToken?.displayId || servingToken?.id.split('-')[0].toUpperCase()}</strong> as completed and skip it. This action cannot be undone.</p>
+            <p className="text-gray-300 text-sm mb-4">
+              This will mark token <strong>{(servingToken as any)?.displayId || servingToken?.id.split('-')[0]}</strong> as completed and skip it. This action cannot be undone.
+            </p>
             <div className="flex gap-2">
               <Button
                 onClick={() => { servingToken && skipTokenMutation.mutate(servingToken.id); setShowSkipConfirm(false); }}

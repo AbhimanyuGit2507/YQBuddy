@@ -9,6 +9,7 @@ import { ProcessWebhookDto } from './dto/webhook.dto';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { PaymentsService } from '../payments/payments.service';
 import { BillingException } from '../billing/errors/billing-exceptions';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class WebhookProcessService {
@@ -20,6 +21,7 @@ export class WebhookProcessService {
     private readonly providerRegistry: ProviderRegistry,
     private readonly subscriptionService: SubscriptionService,
     private readonly paymentsService: PaymentsService,
+    private readonly redisService: RedisService,
   ) {}
 
   async processPaymentWebhook(
@@ -28,6 +30,14 @@ export class WebhookProcessService {
   ): Promise<{ success: boolean }> {
     const providerEventId =
       headers['x-ozow-event-id'] || body.id || body.eventId;
+
+    // Strict Redis Lock for Idempotency
+    const lockKey = `webhook_lock:${providerEventId || body.TransactionReference}`;
+    const acquiredLock = await this.redisService.client.set(lockKey, '1', 'EX', 3600, 'NX');
+    if (!acquiredLock) {
+      this.logger.log(`Webhook already processing for ${lockKey}, dropping duplicate`);
+      return { success: true };
+    }
 
     const existing = await this.prisma.webhookEvent.findFirst({
       where: {
