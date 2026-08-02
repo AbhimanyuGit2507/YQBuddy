@@ -23,6 +23,10 @@ export default function QueueDisplay() {
   const queueName = queue?.name || 'Loading...';
   const joinUrl = typeof window !== 'undefined' ? `${window.location.origin}/customer/join/${id}` : '';
 
+  const displayConfig = (queue?.tokenDisplayConfig as any) || {};
+  const showName = displayConfig.showName !== false;
+  const showTokenNumber = displayConfig.showTokenNumber !== false;
+
   const { data: tokens = [], refetch } = useQuery({
     queryKey: ['queueTokens', id],
     queryFn: () => fetchApi(`/queue/${id}/tokens`),
@@ -45,11 +49,16 @@ export default function QueueDisplay() {
   useEffect(() => {
     if (serving && serving.id !== previousServingId) {
       if (audioEnabled) {
-        speak(`Ticket number ${serving.id.split('-')[0]}, ${serving.customerName}, kindly proceed to ${queueName}.`);
+        const displayCode = serving.displayId || serving.id.split('-')[0].toUpperCase();
+        const namePart = showName ? serving.customerName : '';
+        const announcement = namePart
+          ? `Ticket number ${displayCode}, ${namePart}, kindly proceed to ${queueName}.`
+          : `Ticket number ${displayCode}, kindly proceed to ${queueName}.`;
+        speak(announcement);
       }
       setPreviousServingId(serving.id);
     }
-  }, [serving, previousServingId, audioEnabled, queueName]);
+  }, [serving, previousServingId, audioEnabled, queueName, showName]);
 
   useEffect(() => {
     if (!id) return;
@@ -171,8 +180,17 @@ export default function QueueDisplay() {
           <div className="flex-1 flex items-center justify-center">
             {serving ? (
               <div className="text-center animate-in zoom-in duration-500">
-                <p className="text-8xl font-black text-white tracking-tight mb-4">{serving.id}</p>
-                <p className="text-3xl text-zinc-400 font-medium">{serving.customerName}</p>
+                {showTokenNumber && (
+                  <p className="text-8xl font-black text-white tracking-tight mb-4">
+                    {serving.displayId || serving.id.split('-')[0].toUpperCase()}
+                  </p>
+                )}
+                {showName && (
+                  <p className="text-3xl text-zinc-400 font-medium">{serving.customerName}</p>
+                )}
+                {!showTokenNumber && !showName && (
+                  <p className="text-3xl text-zinc-400 font-medium">Now Serving</p>
+                )}
               </div>
             ) : (
               <div className="text-center text-zinc-600">
@@ -202,12 +220,26 @@ export default function QueueDisplay() {
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4">
-                {waiting.map((ticket: any, i: number) => (
-                  <div key={ticket.id} className="bg-white/5 border border-white/5 rounded-xl p-4 flex items-center justify-between">
-                    <span className="text-2xl font-bold text-white">{ticket.id}</span>
-                    <span className="text-zinc-400">{ticket.customerName}</span>
-                  </div>
-                ))}
+                 {waiting.map((ticket: any, i: number) => (
+                   <div key={ticket.id} className="bg-white/5 border border-white/5 rounded-xl p-4 flex items-center justify-between">
+                     <div className="flex items-center gap-4">
+                       <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold">
+                         {i + 1}
+                       </div>
+                       <div>
+                         {showTokenNumber && (
+                           <p className="text-2xl font-bold text-white">{ticket.displayId || ticket.id.split('-')[0].toUpperCase()}</p>
+                         )}
+                         {showName && (
+                           <p className="text-zinc-400">{ticket.customerName}</p>
+                         )}
+                         {!showTokenNumber && !showName && (
+                           <p className="text-2xl font-bold text-white">{i + 1}</p>
+                         )}
+                       </div>
+                     </div>
+                   </div>
+                 ))}
               </div>
             )}
           </div>

@@ -25,6 +25,7 @@ export class QueueService {
     workspaceId: string | undefined,
     name: string,
     formConfig?: any,
+    tokenDisplayConfig?: any,
   ) {
     const queue = await this.prisma.queue.create({
       data: {
@@ -33,6 +34,7 @@ export class QueueService {
         name,
         status: QueueStatus.ACTIVE,
         formConfig,
+        tokenDisplayConfig,
       },
     });
 
@@ -48,6 +50,7 @@ export class QueueService {
     data: {
       name?: string;
       formConfig?: any;
+      tokenDisplayConfig?: any;
       nextQueueId?: string | null;
       allowAppointments?: boolean;
       requireManualCheckIn?: boolean;
@@ -66,6 +69,7 @@ export class QueueService {
     data: {
       name?: string;
       formConfig?: any;
+      tokenDisplayConfig?: any;
       nextQueueId?: string | null;
       allowAppointments?: boolean;
       requireManualCheckIn?: boolean;
@@ -172,11 +176,37 @@ export class QueueService {
     phone: string | null,
     isAppointment = false,
   ) {
+    const queueWithConfig = await this.prisma.queue.findUnique({
+      where: { id: queueId },
+      select: { tokenDisplayConfig: true },
+    });
+
+    let displayId: string | undefined;
+    const config = (queueWithConfig?.tokenDisplayConfig as any) || {};
+    const mode = config.generationMode || 'random';
+    const format = config.format || 'alphanumeric';
+    const prefix = config.prefix || 'CC';
+    let counter = config.counter || 0;
+
+    if (mode === 'sequential') {
+      counter += 1;
+      const numberPart = counter.toString();
+      displayId = format === 'alphanumeric' ? `${prefix}${numberPart}` : numberPart;
+      await this.prisma.queue.update({
+        where: { id: queueId },
+        data: { tokenDisplayConfig: { ...config, counter } },
+      });
+    } else {
+      const numberPart = Math.floor(1000 + Math.random() * 9000).toString();
+      displayId = format === 'alphanumeric' ? `${prefix}${numberPart}` : numberPart;
+    }
+
     const token = await this.prisma.token.create({
       data: {
         queueId,
         customerName,
         phone,
+        displayId,
         status: TokenStatus.WAITING,
         isAppointment,
       },

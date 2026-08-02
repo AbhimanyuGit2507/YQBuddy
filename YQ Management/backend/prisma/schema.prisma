@@ -123,6 +123,7 @@ model Queue {
   status                 QueueStatus 
   nextQueueId            String?     // For multi-step routing (e.g. Registration -> Billing)
   formConfig             Json?       // Dynamic form configuration
+  tokenDisplayConfig     Json?       // Display settings and token number generation config
   
   // Future Bookings & Hybrid Queuing
   allowAppointments        Boolean @default(false)
@@ -155,6 +156,7 @@ model Token {
   formResponses Json?      // Customer answers to dynamic queue fields
   purpose      String?     // Extracted top-level purpose for ETA logic and fast analytics
   language     String      @default("en") // Customer language preference
+  displayId    String?     // Human-readable token number (e.g. "CC876")
   
   // Time Tracking (for ETA logic)
   servedAt     DateTime?

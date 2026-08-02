@@ -45,7 +45,28 @@ export class TokenService {
       phone,
       `Your Qmover verification code is: ${otp}. It expires in 5 minutes.`,
     );
-    return { success: true, message: 'OTP sent' };
+         return { success: true, message: 'OTP sent' };
+  }
+
+  private generateDisplayId(tokenDisplayConfig: any): { displayId: string; updatedConfig: any } {
+    const config = tokenDisplayConfig || {};
+    const mode = config.generationMode || 'random';
+    const format = config.format || 'alphanumeric';
+    const prefix = config.prefix || 'CC';
+    let counter = config.counter || 0;
+
+    let numberPart: string;
+
+    if (mode === 'sequential') {
+      counter += 1;
+      numberPart = counter.toString();
+    } else {
+      numberPart = Math.floor(1000 + Math.random() * 9000).toString();
+    }
+
+    const displayId = format === 'alphanumeric' ? `${prefix}${numberPart}` : numberPart;
+
+    return { displayId, updatedConfig: { ...config, counter } };
   }
 
   async joinQueue(
@@ -89,6 +110,14 @@ export class TokenService {
     const isAppointment = !!scheduledFor;
     const scheduledDate = scheduledFor ? new Date(scheduledFor) : null;
 
+    const { displayId, updatedConfig } = this.generateDisplayId(queue?.tokenDisplayConfig);
+    if (queue && updatedConfig && updatedConfig.counter !== (queue.tokenDisplayConfig as any)?.counter) {
+      await this.prisma.queue.update({
+        where: { id: queueId },
+        data: { tokenDisplayConfig: updatedConfig },
+      });
+    }
+
     if (isAppointment && !queue?.allowAppointments) {
       throw new BadRequestException('This queue does not accept future appointments.');
     }
@@ -102,6 +131,7 @@ export class TokenService {
         queueId,
         customerName,
         phone,
+        displayId,
         status: TokenStatus.WAITING,
         formResponses,
         purpose,
@@ -134,16 +164,17 @@ export class TokenService {
     }
 
     // Send confirmation
+    const displayCode = token.displayId || token.id.substring(0, 5).toUpperCase();
     if (phone) {
       if (isAppointment) {
         await this.notificationsService.sendWhatsAppMessage(
           phone,
-          `Hello ${customerName}! Your appointment is scheduled for ${scheduledDate?.toLocaleString()}. Track your status here: ${process.env.APP_URL || 'http://localhost:3001'}/customer/status/${token.id}`,
+          `Hello ${customerName}! Your appointment is scheduled for ${scheduledDate?.toLocaleString()}. Your token is ${displayCode}. Track your status here: ${process.env.APP_URL || 'http://localhost:3001'}/customer/status/${token.id}`,
         );
       } else {
         await this.notificationsService.sendWhatsAppMessage(
           phone,
-          `Hello ${customerName}! You have successfully joined the queue. You can track your live status here: ${process.env.APP_URL || 'http://localhost:3001'}/customer/status/${token.id}`,
+          `Hello ${customerName}! You have successfully joined the queue. Your token is ${displayCode}. You can track your live status here: ${process.env.APP_URL || 'http://localhost:3001'}/customer/status/${token.id}`,
         );
       }
     }

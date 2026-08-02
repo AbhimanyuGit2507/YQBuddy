@@ -8,7 +8,7 @@ import { Card, CardContent } from '../../components/ui/card';
 import { toast } from 'sonner';
 
 interface TokenListProps {
-  tokens: Array<{ id: string; customerName: string; status: string }>;
+  tokens: Array<{ id: string; displayId?: string; customerName: string; status: string }>;
   queueId: string;
   nextQueueId: string | undefined;
 }
@@ -52,7 +52,7 @@ export function TokenList({ tokens, queueId, nextQueueId }: TokenListProps) {
                 </div>
                 <div>
                   <p className="text-gray-900 dark:text-white font-medium">{token.customerName}</p>
-                  <p className="text-gray-500 dark:text-zinc-500 text-sm font-mono">{token.id}</p>
+                  <p className="text-gray-500 dark:text-zinc-500 text-sm font-mono">{token.displayId || token.id.substring(0, 5).toUpperCase()}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">

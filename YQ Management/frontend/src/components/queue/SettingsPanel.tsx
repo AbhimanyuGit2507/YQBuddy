@@ -33,6 +33,16 @@ interface SettingsPanelProps {
   setRequireManualCheckIn: (v: boolean) => void;
   appointmentGranularityMins: number;
   setAppointmentGranularityMins: (v: number) => void;
+  showName: boolean;
+  setShowName: (v: boolean) => void;
+  showTokenNumber: boolean;
+  setShowTokenNumber: (v: boolean) => void;
+  generationMode: 'sequential' | 'random';
+  setGenerationMode: (v: 'sequential' | 'random') => void;
+  tokenFormat: 'alphanumeric' | 'numeric';
+  setTokenFormat: (v: 'alphanumeric' | 'numeric') => void;
+  tokenPrefix: string;
+  setTokenPrefix: (v: string) => void;
 }
 
 export function SettingsPanel({
@@ -41,6 +51,11 @@ export function SettingsPanel({
   allowAppointments, setAllowAppointments,
   requireManualCheckIn, setRequireManualCheckIn,
   appointmentGranularityMins, setAppointmentGranularityMins,
+  showName, setShowName,
+  showTokenNumber, setShowTokenNumber,
+  generationMode, setGenerationMode,
+  tokenFormat, setTokenFormat,
+  tokenPrefix, setTokenPrefix,
 }: SettingsPanelProps) {
   const queryClient = useQueryClient();
 
@@ -54,6 +69,13 @@ export function SettingsPanel({
         allowAppointments,
         requireManualCheckIn,
         appointmentGranularityMins,
+        tokenDisplayConfig: {
+          showName,
+          showTokenNumber,
+          generationMode,
+          format: tokenFormat,
+          prefix: tokenPrefix,
+        },
       }),
     }),
     onSuccess: () => {
@@ -189,6 +211,105 @@ export function SettingsPanel({
                 </>
               )}
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-6 border-b border-gray-200 dark:border-white/10 pb-6">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Display Settings</h2>
+              <p className="text-sm text-gray-500 dark:text-zinc-500">Customize what is shown on the display screen.</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <label className="flex items-center justify-between p-4 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/5 rounded-xl cursor-pointer">
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">Show Customer Name</p>
+                <p className="text-sm text-gray-500 dark:text-zinc-500">Display customer name on the queue display screen.</p>
+              </div>
+              <input type="checkbox" checked={showName} onChange={e => setShowName(e.target.checked)} className="sr-only peer" />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+            </label>
+
+            <label className="flex items-center justify-between p-4 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/5 rounded-xl cursor-pointer">
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">Show Token Number</p>
+                <p className="text-sm text-gray-500 dark:text-zinc-500">Display the token number on the queue display screen.</p>
+              </div>
+              <input type="checkbox" checked={showTokenNumber} onChange={e => setShowTokenNumber(e.target.checked)} className="sr-only peer" />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+            </label>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-6 border-b border-gray-200 dark:border-white/10 pb-6">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Token Number Generation</h2>
+              <p className="text-sm text-gray-500 dark:text-zinc-500">Configure how token numbers are generated for this queue.</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-400 mb-2">Generation Mode</label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/5 rounded-xl cursor-pointer">
+                  <input type="radio" name="generationMode" value="sequential" checked={generationMode === 'sequential'} onChange={() => setGenerationMode('sequential')} className="accent-indigo-500" />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Sequential</p>
+                    <p className="text-sm text-gray-500 dark:text-zinc-500">Incremental numbers (1, 2, 3...)</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/5 rounded-xl cursor-pointer">
+                  <input type="radio" name="generationMode" value="random" checked={generationMode === 'random'} onChange={() => setGenerationMode('random')} className="accent-indigo-500" />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Random</p>
+                    <p className="text-sm text-gray-500 dark:text-zinc-500">Random numbers for each token</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-400 mb-2">Token Format</label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/5 rounded-xl cursor-pointer">
+                  <input type="radio" name="tokenFormat" value="alphanumeric" checked={tokenFormat === 'alphanumeric'} onChange={() => setTokenFormat('alphanumeric')} className="accent-indigo-500" />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Alphanumeric</p>
+                    <p className="text-sm text-gray-500 dark:text-zinc-500">Prefix + numbers (e.g. CC876)</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/5 rounded-xl cursor-pointer">
+                  <input type="radio" name="tokenFormat" value="numeric" checked={tokenFormat === 'numeric'} onChange={() => setTokenFormat('numeric')} className="accent-indigo-500" />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Numeric Only</p>
+                    <p className="text-sm text-gray-500 dark:text-zinc-500">Numbers only (e.g. 876)</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {tokenFormat === 'alphanumeric' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-400 mb-2">Token Prefix</label>
+                <Input
+                  type="text"
+                  value={tokenPrefix}
+                  onChange={(e) => setTokenPrefix(e.target.value.toUpperCase())}
+                  placeholder="CC"
+                  maxLength={5}
+                  className="max-w-24"
+                />
+                <p className="text-xs text-gray-500 dark:text-zinc-500 mt-2">Prefix added before the token number. Leave empty for numbers only.</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

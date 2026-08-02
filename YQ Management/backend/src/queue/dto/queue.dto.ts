@@ -19,6 +19,10 @@ export class CreateQueueDto {
   formConfig?: any;
 
   @IsOptional()
+  @IsObject()
+  tokenDisplayConfig?: any;
+
+  @IsOptional()
   @IsBoolean()
   active?: boolean;
 
@@ -39,6 +43,10 @@ export class UpdateQueueDto {
   @IsOptional()
   @IsArray()
   formConfig?: any;
+
+  @IsOptional()
+  @IsObject()
+  tokenDisplayConfig?: any;
 
   @IsOptional()
   @IsString()

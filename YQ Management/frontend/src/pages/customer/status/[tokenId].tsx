@@ -101,14 +101,14 @@ export default function CustomerStatus() {
             {isServing ? t(lang, 'itIsYourTurn') : token.status === 'MISSED' ? t(lang, 'tokenCancelled') : isCompleted ? t(lang, 'tokenCompleted') : t(lang, 'waitingInLine')}
           </motion.div>
 
-          <motion.div 
-            key={token.id}
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="text-6xl font-bold text-indigo-600 dark:text-indigo-400 mb-2 font-mono tracking-wider"
-          >
-            {token.id.substring(0, 5).toUpperCase()}
-          </motion.div>
+            <motion.div layout 
+             key={token.id}
+             initial={{ y: 10, opacity: 0 }}
+             animate={{ y: 0, opacity: 1 }}
+             className="text-6xl font-bold text-indigo-600 dark:text-indigo-400 mb-2 font-mono tracking-wider"
+           >
+             {token.displayId || (token.id ? token.id.substring(0, 5).toUpperCase() : '---')}
+           </motion.div>
           <motion.p layout className="text-sm text-gray-500 dark:text-zinc-500 font-medium mb-8">Hi, {token.customerName}</motion.p>
 
           <AnimatePresence mode="wait">

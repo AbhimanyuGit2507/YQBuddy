@@ -37,6 +37,11 @@ export default function QueueWorkspace() {
   const [allowAppointments, setAllowAppointments] = useState(false);
   const [requireManualCheckIn, setRequireManualCheckIn] = useState(false);
   const [appointmentGranularityMins, setAppointmentGranularityMins] = useState(15);
+  const [showName, setShowName] = useState(true);
+  const [showTokenNumber, setShowTokenNumber] = useState(true);
+  const [generationMode, setGenerationMode] = useState<'sequential' | 'random'>('random');
+  const [tokenFormat, setTokenFormat] = useState<'alphanumeric' | 'numeric'>('alphanumeric');
+  const [tokenPrefix, setTokenPrefix] = useState('CC');
 
   const { data: allQueues = [] } = useQuery({
     queryKey: ['queues'],
@@ -55,13 +60,19 @@ export default function QueueWorkspace() {
         setAllowAppointments(q.allowAppointments || false);
         setRequireManualCheckIn(q.requireManualCheckIn || false);
         setAppointmentGranularityMins(q.appointmentGranularityMins || 15);
-        setFormConfig(q.formConfig || [
+         setFormConfig(q.formConfig || [
           { id: 'name', type: 'text', label: 'Full Name', required: true, system: true },
           { id: 'phone', type: 'phone', label: 'WhatsApp Number', required: true, system: true },
         ]);
-      }
-      return q;
-    },
+        const dc = q.tokenDisplayConfig || {};
+        setShowName(dc.showName !== false);
+        setShowTokenNumber(dc.showTokenNumber !== false);
+        setGenerationMode(dc.generationMode || 'random');
+        setTokenFormat(dc.format || 'alphanumeric');
+        setTokenPrefix(dc.prefix || 'CC');
+       }
+       return q;
+     },
     enabled: !!id,
   });
 
@@ -175,22 +186,32 @@ export default function QueueWorkspace() {
               />
             </div>
           ) : (
-            <SettingsPanel
-              queueId={id as string}
-              queueName={queueName}
-              formConfig={formConfig}
-              setQueueName={setQueueName}
-              setFormConfig={setFormConfig}
-              allQueues={allQueues}
-              nextQueueId={nextQueueId}
-              setNextQueueId={setNextQueueId}
-              allowAppointments={allowAppointments}
-              setAllowAppointments={setAllowAppointments}
-              requireManualCheckIn={requireManualCheckIn}
-              setRequireManualCheckIn={setRequireManualCheckIn}
-              appointmentGranularityMins={appointmentGranularityMins}
-              setAppointmentGranularityMins={setAppointmentGranularityMins}
-            />
+             <SettingsPanel
+               queueId={id as string}
+               queueName={queueName}
+               formConfig={formConfig}
+               setQueueName={setQueueName}
+               setFormConfig={setFormConfig}
+               allQueues={allQueues}
+               nextQueueId={nextQueueId}
+               setNextQueueId={setNextQueueId}
+               allowAppointments={allowAppointments}
+               setAllowAppointments={setAllowAppointments}
+               requireManualCheckIn={requireManualCheckIn}
+               setRequireManualCheckIn={setRequireManualCheckIn}
+               appointmentGranularityMins={appointmentGranularityMins}
+               setAppointmentGranularityMins={setAppointmentGranularityMins}
+               showName={showName}
+               setShowName={setShowName}
+               showTokenNumber={showTokenNumber}
+               setShowTokenNumber={setShowTokenNumber}
+               generationMode={generationMode}
+               setGenerationMode={setGenerationMode}
+               tokenFormat={tokenFormat}
+               setTokenFormat={setTokenFormat}
+               tokenPrefix={tokenPrefix}
+               setTokenPrefix={setTokenPrefix}
+             />
           )}
         </div>
 

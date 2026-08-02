@@ -25,13 +25,14 @@ export class QueueController {
   @Post()
   async createQueue(
     @Req() req: AuthenticatedRequest,
-    @Body() body: { name: string; formConfig?: any },
+    @Body() body: { name: string; formConfig?: any; tokenDisplayConfig?: any },
   ) {
     return this.queueService.createQueue(
       req.user.tenantId,
       req.user.workspaceId,
       body.name,
       body.formConfig,
+      body.tokenDisplayConfig,
     );
   }
 
@@ -63,6 +64,7 @@ export class QueueController {
     body: {
       name?: string;
       formConfig?: any;
+      tokenDisplayConfig?: any;
       nextQueueId?: string | null;
       allowAppointments?: boolean;
       requireManualCheckIn?: boolean;

@@ -51,7 +51,7 @@ export default function QueueConfirmation() {
 
         <div className="bg-white dark:bg-zinc-900/50 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-3xl p-8 mb-8 shadow-xl dark:shadow-[0_0_40px_rgba(0,0,0,0.3)]">
           <div className="text-sm font-medium text-gray-500 dark:text-zinc-500 uppercase tracking-widest mb-2">Your Token</div>
-          <div className="text-5xl font-bold text-indigo-600 dark:text-indigo-400 mb-8 font-mono">{token.id.substring(0, 5).toUpperCase()}</div>
+          <div className="text-5xl font-bold text-indigo-600 dark:text-indigo-400 mb-8 font-mono">{token.displayId || token.id.substring(0, 5).toUpperCase()}</div>
 
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-gray-50 dark:bg-black/50 rounded-2xl p-4 border border-gray-100 dark:border-white/5">
