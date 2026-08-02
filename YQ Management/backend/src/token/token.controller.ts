@@ -8,6 +8,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { TokenService } from './token.service';
+import { RequestOtpDto, JoinQueueDto } from './dto/token.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { WorkspaceGuard } from '../auth/workspace.guard';
@@ -19,8 +20,8 @@ export class TokenController {
 
   @UseGuards(ThrottlerGuard)
   @Post('request-otp')
-  async requestOtp(@Body() body: { phone: string }) {
-    return this.tokenService.requestOtp(body.phone);
+  async requestOtp(@Body() body: RequestOtpDto) {
+    return this.tokenService.requestOtp(body.phone, body.queueId);
   }
 
   @UseGuards(ThrottlerGuard)

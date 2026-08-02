@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { fetchApi } from '../../../lib/api';
+import { fetchApi, ApiError } from '../../../lib/api';
 import { languages, t } from '../../../lib/i18n';
 
 export default function JoinQueue() {
@@ -44,14 +44,28 @@ export default function JoinQueue() {
   const requestOtpMutation = useMutation({
     mutationFn: (phone: string) => fetchApi('/token/request-otp', {
       method: 'POST',
-      body: JSON.stringify({ phone })
+      body: JSON.stringify({ phone, queueId: queueId as string })
     }),
     onSuccess: () => {
       setStep(2);
       setError('');
     },
     onError: (err: any) => {
-      setError(err.message || 'Failed to send OTP. Please try again.');
+      if (err instanceof ApiError && err.status === 503) {
+        const phoneField = queue?.formConfig?.find((f: any) => f.type === 'phone');
+        const phone = phoneField ? responses[phoneField.id] : undefined;
+        joinMutation.mutate({
+          queueId: queueId as string,
+          customerName: responses['name'] || 'Customer',
+          phone,
+          otp: undefined,
+          formResponses: responses,
+          language,
+          scheduledFor: joinMode === 'appointment' ? new Date(scheduledFor).toISOString() : undefined
+        });
+      } else {
+        setError(err.message || 'Failed to send OTP. Please try again.');
+      }
     }
   });
 
@@ -226,7 +240,7 @@ export default function JoinQueue() {
                         placeholder="+1234567890"
                         required={field.required}
                       />
-                      <p className="text-xs text-gray-500 dark:text-zinc-500 mt-2">We'll send you an OTP via WhatsApp to verify your number.</p>
+                      <p className="text-xs text-gray-500 dark:text-zinc-500 mt-2">We'll send you an OTP via WhatsApp to verify your number. If WhatsApp is unavailable, you'll join without verification.</p>
                     </div>
                   )}
 
@@ -314,7 +328,7 @@ export default function JoinQueue() {
                 disabled={requestOtpMutation.isPending}
                 className="w-full py-4 mt-8 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(79,70,229,0.3)]"
               >
-                {requestOtpMutation.isPending ? 'Sending OTP...' : 'Continue'}
+                {requestOtpMutation.isPending ? 'Sending OTP...' : joinMutation.isPending ? 'Joining queue...' : 'Continue'}
               </button>
             </form>
           ) : (

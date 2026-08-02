@@ -1,6 +1,10 @@
 import { IsString, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
 
 export class RequestOtpDto {
+  @IsUUID()
+  @IsNotEmpty()
+  queueId: string;
+
   @IsString()
   @IsNotEmpty()
   phone: string;

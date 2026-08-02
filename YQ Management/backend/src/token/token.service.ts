@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -22,7 +23,22 @@ export class TokenService {
     private readonly queueService: QueueService,
   ) {}
 
-  async requestOtp(phone: string) {
+  async requestOtp(phone: string, queueId: string) {
+    const queue = await this.prisma.queue.findUnique({
+      where: { id: queueId },
+      include: { tenant: true },
+    });
+
+    if (!queue) {
+      throw new BadRequestException('Queue not found');
+    }
+
+    if (!queue.tenant?.whatsappConnected || !queue.tenant?.whatsappInstanceId) {
+      throw new ServiceUnavailableException(
+        'WhatsApp is not connected for this tenant. Proceeding without OTP verification.',
+      );
+    }
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     await this.redisService.client.set(`otp:${phone}`, otp, 'EX', 300); // 5 mins
     await this.notificationsService.sendWhatsAppMessage(
