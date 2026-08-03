@@ -24,6 +24,7 @@ import {
   User,
   Keyboard,
   Loader2,
+  ChevronDown,
 } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
 import { useQuery } from '@tanstack/react-query';
@@ -587,14 +588,29 @@ export default function AdminScanner() {
 
                  <div className="flex items-center gap-3 flex-wrap">
                    {availableCameras.length > 1 && (
-                     <button
-                       onClick={toggleCamera}
-                       disabled={scannerStatus === 'processing' || manualMode}
-                       className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
-                     >
-                       <Smartphone className="w-4 h-4" />
-                       {useFrontCamera ? 'Front' : 'Rear'} Camera
-                     </button>
+                     <div className="relative">
+                       <Smartphone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-zinc-400 pointer-events-none" />
+                       <select
+                         value={selectedCamera}
+                         onChange={(e) => {
+                           const cameraId = e.target.value;
+                           setSelectedCamera(cameraId);
+                           const camera = availableCameras.find(c => c.deviceId === cameraId);
+                           if (camera) {
+                             setUseFrontCamera(camera.label.toLowerCase().includes('front'));
+                           }
+                         }}
+                         disabled={scannerStatus === 'processing' || manualMode}
+                         className="appearance-none pl-9 pr-8 py-2 bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-sm font-medium text-gray-700 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full max-w-[200px] truncate"
+                       >
+                         {availableCameras.map((camera, index) => (
+                           <option key={camera.deviceId} value={camera.deviceId}>
+                             {camera.label || `Camera ${index + 1}`}
+                           </option>
+                         ))}
+                       </select>
+                       <ChevronDown className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-zinc-400 pointer-events-none" />
+                     </div>
                    )}
 
                    <button
