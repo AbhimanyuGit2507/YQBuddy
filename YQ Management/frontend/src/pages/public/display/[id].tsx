@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { Home, Sun, Maximize, Scan, Volume2, VolumeX } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { fetchApi } from '../../../../lib/api';
+import { fetchApi } from '@/lib/api';
 import { io } from 'socket.io-client';
 import QRCode from 'react-qr-code';
 
