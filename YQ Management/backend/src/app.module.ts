@@ -7,6 +7,7 @@ import { LoggerModule } from 'nestjs-pino';
 import createLogRoutingTransport from './config/log-routing';
 import { AppController } from './app.controller';
 import { HealthController } from './health/health.controller';
+import { KeepAliveService } from './health/keep-alive.service';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AppService } from './app.service';
 import { TenantModule } from './tenant/tenant.module';
@@ -74,6 +75,7 @@ import { WorkspaceModule } from './workspace/workspace.module';
   controllers: [AppController, HealthController],
   providers: [
     AppService,
+    KeepAliveService,
     {
       provide: 'APP_INTERCEPTOR',
       useClass: AuditInterceptor,
