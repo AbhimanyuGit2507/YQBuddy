@@ -35,7 +35,7 @@ async function main() {
   });
 
   // Create requested Super Admin
-  const newAdminPassword = await bcrypt.hash('Admin@123', 10);
+  const newAdminPassword = await bcrypt.hash('Southafrica@2026', 10);
   
   await prisma.user.upsert({
     where: { email: 'yqbuddysa@gmail.com' },
@@ -54,7 +54,7 @@ async function main() {
   console.log('✅ Seed completed successfully');
   console.log('Admin Credentials:');
   console.log('Email: admin@yqqueue.com (admin123)');
-  console.log('Email: yqbuddysa@gmail.com (Admin@123)');
+  console.log('Email: yqbuddysa@gmail.com (Southafrica@2026)');
 }
 
 main()
