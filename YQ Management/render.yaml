@@ -1,4 +1,9 @@
 services:
+  - type: redis
+    name: qmova-redis
+    ipAllowList: []
+    plan: free
+
   - type: web
     name: qmova-backend
     env: node
@@ -15,6 +20,16 @@ services:
         fromDatabase:
           name: qmova-db
           property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: qmova-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: qmova-redis
+          property: port
       - key: PORT
         value: "10000"
       - key: JWT_SECRET
