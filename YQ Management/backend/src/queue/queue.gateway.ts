@@ -12,10 +12,8 @@ import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({
   cors: {
-    origin:
-      (process.env.FRONTEND_URL || 'http://localhost:3001')
-        .split(',')
-        .map((o) => o.trim()),
+    origin: true,
+    credentials: true,
   },
 })
 export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
