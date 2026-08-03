@@ -7,7 +7,13 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get('access_token')?.value || req.cookies.get('token')?.value;
 
   if (!token) {
-    if (!req.nextUrl.pathname.startsWith('/login') && !req.nextUrl.pathname.startsWith('/register')) {
+    const isPublicPath = req.nextUrl.pathname.startsWith('/login') || 
+                         req.nextUrl.pathname.startsWith('/register') ||
+                         req.nextUrl.pathname.startsWith('/public') ||
+                         req.nextUrl.pathname.startsWith('/_next') ||
+                         req.nextUrl.pathname.includes('.'); // Match static files like manifest.json, favicon.ico
+
+    if (!isPublicPath) {
       return NextResponse.redirect(new URL('/login', req.url));
     }
     return NextResponse.next();

@@ -520,6 +520,20 @@ export class WhatsappService {
     return { success: true };
   }
 
+  async testMessage(tenantId: string, phone: string, message: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
+    if (!tenant || !tenant.whatsappInstanceId) {
+      throw new HttpException('WhatsApp is not connected', HttpStatus.BAD_REQUEST);
+    }
+    const result = await this.sendMessage(tenant.whatsappInstanceId, phone, message);
+    if (!result.success) {
+      throw new HttpException(result.error || 'Failed to send message', HttpStatus.BAD_GATEWAY);
+    }
+    return { success: true };
+  }
+
   async status(tenantId: string) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -862,7 +876,7 @@ export class WhatsappService {
       {
         number,
         options: { delay: 1200, presence: 'composing' },
-        textMessage: { text },
+        text,
       },
     );
 

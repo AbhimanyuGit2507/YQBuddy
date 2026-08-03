@@ -73,7 +73,9 @@ export default function QueueDisplay() {
 
   useEffect(() => {
     if (!id) return;
-    const socket = io(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3000');
+    const socket = io(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3000', {
+      transports: ['websocket']
+    });
     socket.emit('joinQueueRoom', id);
 
     socket.on('token_joined', () => refetch());

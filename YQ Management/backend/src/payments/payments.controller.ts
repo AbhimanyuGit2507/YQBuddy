@@ -20,10 +20,19 @@ export class PaymentsController {
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN)
-  @Get('generate-link')
-  async generatePaymentLink(@Req() req: any) {
+  @Post('generate-link')
+  async generatePaymentLink(
+    @Req() req: any,
+    @Body() body: { planId: string; billingInterval: string },
+  ) {
+    const tenantId = req.user.tenantId;
     const workspaceId = req.user.workspaceId;
-    return this.paymentsService.generatePaymentLink(workspaceId);
+    return this.paymentsService.generatePaymentLink(
+      tenantId,
+      workspaceId,
+      body.planId,
+      body.billingInterval,
+    );
   }
 
   @Post('webhook')

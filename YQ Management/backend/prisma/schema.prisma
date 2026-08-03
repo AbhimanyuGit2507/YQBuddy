@@ -194,6 +194,8 @@ model Transaction {
   status              String   @default("PENDING") // PENDING, SUCCESS, CANCELLED, FAILED
   ozowPayRequestId    String?
   rawProviderResponse Json?
+  planId              String?
+  billingInterval     String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

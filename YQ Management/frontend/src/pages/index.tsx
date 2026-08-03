@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { 
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Geist, Geist_Mono } from "next/font/google";
 import { useAuth } from '../components/AuthContext';
+import { fetchApi } from '../lib/api';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,6 +29,14 @@ const geistMono = Geist_Mono({
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
+  const [billingInterval, setBillingInterval] = useState('monthly');
+  const [plans, setPlans] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchApi('/public/plans')
+      .then(res => setPlans(res || []))
+      .catch(err => console.error('Failed to load plans', err));
+  }, []);
 
   return (
     <div className={`min-h-screen bg-black text-zinc-50 ${geistSans.className} overflow-hidden`}>
@@ -217,6 +226,100 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-32 px-6 bg-zinc-950 relative border-t border-white/5">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Simple, transparent pricing</h2>
+            <p className="text-xl text-zinc-400 max-w-2xl mx-auto mb-10">Choose the plan that fits your business needs. Upgrade or downgrade at any time.</p>
+            
+            <div className="inline-flex items-center p-1 bg-white/5 rounded-full border border-white/10 backdrop-blur-sm">
+              <button 
+                onClick={() => setBillingInterval('monthly')}
+                className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all ${billingInterval === 'monthly' ? 'bg-indigo-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'}`}
+              >
+                Monthly
+              </button>
+              <button 
+                onClick={() => setBillingInterval('yearly')}
+                className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all ${billingInterval === 'yearly' ? 'bg-indigo-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'}`}
+              >
+                Annually <span className="ml-1 text-emerald-400 text-xs font-bold">-10%</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {plans.map((plan) => {
+              const price = billingInterval === 'yearly' && plan.billingInterval === 'monthly'
+                ? Math.floor(plan.price * 12 * 0.9)
+                : plan.price;
+              
+              const isPopular = plan.name.toLowerCase().includes('standard') || plan.name.toLowerCase().includes('pro');
+
+              return (
+                <div key={plan.id} className={`rounded-3xl border ${isPopular ? 'border-indigo-500/50 bg-gradient-to-b from-indigo-900/20 to-black relative' : 'border-white/10 bg-black/50'} p-8 flex flex-col backdrop-blur-sm`}>
+                  {isPopular && (
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                      Most Popular
+                    </div>
+                  )}
+                  <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                  <p className="text-zinc-400 text-sm mb-6 h-10">{plan.description}</p>
+                  <div className="mb-8">
+                    <span className="text-5xl font-black">{plan.currency === 'ZAR' ? 'R' : '$'}{price}</span>
+                    <span className="text-zinc-500 ml-2">/{billingInterval === 'yearly' ? 'year' : 'month'}</span>
+                  </div>
+                  
+                  <Link 
+                    href="/register" 
+                    className={`w-full py-4 rounded-xl font-bold text-center transition-all mb-8 ${isPopular ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                  >
+                    {plan.price === 0 ? 'Start Free Trial' : 'Get Started'}
+                  </Link>
+
+                  <div className="space-y-4 flex-1">
+                    <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wider mb-4">What's included:</p>
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-indigo-400 shrink-0" />
+                      <span className="text-zinc-300 text-sm">Up to {plan.limits?.maxQueues || 1} Queues</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-indigo-400 shrink-0" />
+                      <span className="text-zinc-300 text-sm">Up to {plan.limits?.maxTokens || 500} Tokens/day</span>
+                    </div>
+                    {plan.features?.whatsappNotifications && (
+                      <div className="flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-indigo-400 shrink-0" />
+                        <span className="text-zinc-300 text-sm">WhatsApp Notifications</span>
+                      </div>
+                    )}
+                    {plan.features?.textToSpeech && (
+                      <div className="flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-indigo-400 shrink-0" />
+                        <span className="text-zinc-300 text-sm">Text-to-Speech TV Announcements</span>
+                      </div>
+                    )}
+                    {plan.features?.customBranding && (
+                      <div className="flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-indigo-400 shrink-0" />
+                        <span className="text-zinc-300 text-sm">Custom Branding & Logo</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            
+            {plans.length === 0 && (
+              <div className="col-span-3 text-center text-zinc-500 py-12">
+                Loading pricing plans...
+              </div>
+            )}
           </div>
         </div>
       </section>

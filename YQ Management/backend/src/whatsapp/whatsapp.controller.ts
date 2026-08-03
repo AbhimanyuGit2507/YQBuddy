@@ -67,6 +67,20 @@ export class WhatsappController {
     return this.whatsappService.disconnect(req.user.tenantId);
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN)
+  @Post('test')
+  testMessage(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: { phone: string; message: string },
+  ) {
+    return this.whatsappService.testMessage(
+      req.user.tenantId,
+      body.phone,
+      body.message,
+    );
+  }
+
   @UseGuards(AuthGuard('jwt'), WorkspaceGuard)
   @Get('status')
   status(@Req() req: AuthenticatedRequest) {

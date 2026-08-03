@@ -94,7 +94,17 @@ export class QueueService {
   async getQueuesForTenant(tenantId: string) {
     return this.prisma.queue.findMany({
       where: { tenantId },
-      include: { _count: { select: { tokens: true } } },
+      include: {
+        _count: {
+          select: {
+            tokens: {
+              where: {
+                status: TokenStatus.WAITING,
+              },
+            },
+          },
+        },
+      },
     });
   }
 

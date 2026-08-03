@@ -158,7 +158,7 @@ export class AuthController {
   async updatePersonalSettings(
     @Req() req: AuthenticatedRequest,
     @Body()
-    body: { theme?: string; language?: string; notificationsEnabled?: boolean; fullName?: string; phone?: string; },
+    body: { theme?: string; language?: string; notificationsEnabled?: boolean; fullName?: string; phone?: string; location?: string; companyName?: string },
   ) {
     let currentSettings = req.user.personalSettings || {};
     
@@ -167,6 +167,7 @@ export class AuthController {
     if (body.notificationsEnabled !== undefined) currentSettings = { ...currentSettings, notificationsEnabled: body.notificationsEnabled };
     if (body.fullName !== undefined) currentSettings = { ...currentSettings, fullName: body.fullName };
     if (body.phone !== undefined) currentSettings = { ...currentSettings, phone: body.phone };
+    if (body.location !== undefined) currentSettings = { ...currentSettings, location: body.location };
 
     const updates = { personalSettings: currentSettings };
 
@@ -175,6 +176,21 @@ export class AuthController {
       data: updates,
       select: { id: true, email: true, role: true, personalSettings: true },
     });
+
+    if (body.companyName && (req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN' || req.user.role === 'TENANT_ADMIN')) {
+      if (req.user.tenantId) {
+        await this.usersService['prisma'].tenant.update({
+          where: { id: req.user.tenantId },
+          data: { name: body.companyName }
+        });
+      }
+      if (req.user.workspaceId) {
+        await this.usersService['prisma'].workspace.update({
+          where: { id: req.user.workspaceId },
+          data: { name: body.companyName }
+        });
+      }
+    }
 
     return { success: true, user: updatedUser };
   }

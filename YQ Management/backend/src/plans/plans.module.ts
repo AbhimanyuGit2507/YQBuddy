@@ -5,9 +5,11 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { BillingModule } from '../billing/billing.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 
+import { PublicPlansController } from './public-plans.controller';
+
 @Module({
   imports: [PrismaModule, BillingModule, PermissionsModule],
-  controllers: [PlansController],
+  controllers: [PlansController, PublicPlansController],
   providers: [PlansService],
   exports: [PlansService],
 })

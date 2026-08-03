@@ -16,26 +16,42 @@ export class PaymentsService {
 
   constructor(private prisma: PrismaService) {}
 
-  async generatePaymentLink(workspaceId: string) {
-    const workspace = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-      include: { tenant: true },
+  async generatePaymentLink(
+    tenantId: string,
+    workspaceId: string | null,
+    planId: string,
+    billingInterval: string,
+  ) {
+    const plan = await this.prisma.plan.findUnique({
+      where: { id: planId },
     });
 
-    if (!workspace) {
-      throw new InternalServerErrorException('Workspace not found');
+    if (!plan) {
+      throw new BadRequestException('Plan not found');
     }
 
-    const tenant = workspace.tenant;
+    // Example calculation: If yearly, maybe a discount, else 12x. 
+    // Here we'll just assume plan.price is monthly. Yearly = price * 12 * 0.9 (10% discount)
+    let finalAmount = plan.price;
+    if (billingInterval === 'yearly' && plan.billingInterval === 'monthly') {
+      finalAmount = plan.price * 12 * 0.9;
+    } else if (billingInterval === 'yearly') {
+      finalAmount = plan.price;
+    }
+
+    // Ensure amount has 2 decimal places for Ozow
+    const formattedAmount = finalAmount.toFixed(2);
 
     // 1. Create a pending transaction
     const transaction = await this.prisma.transaction.create({
       data: {
-        tenantId: tenant.id,
+        tenantId,
         workspaceId,
+        planId,
+        billingInterval,
         transactionRef: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        amount: 299.0,
-        currency: 'ZAR',
+        amount: finalAmount,
+        currency: plan.currency || 'ZAR',
       },
     });
 
@@ -43,8 +59,8 @@ export class PaymentsService {
     const payload = {
       siteCode: this.siteCode,
       countryCode: 'ZA',
-      currencyCode: 'ZAR',
-      amount: '299.00',
+      currencyCode: plan.currency || 'ZAR',
+      amount: formattedAmount,
       transactionReference: transaction.transactionRef,
       bankReference: `QMOVER-${transaction.transactionRef.substring(4, 12)}`,
       cancelUrl: `${this.frontendUrl}/dashboard/settings/billing?status=cancelled`,
@@ -109,6 +125,37 @@ export class PaymentsService {
         where: { id: transaction.workspaceId },
         data: { subscriptionStatus: 'ACTIVE' },
       });
+
+      if (transaction.planId) {
+        const currentPeriodEnd = new Date();
+        if (transaction.billingInterval === 'yearly') {
+          currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+        } else {
+          currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+        }
+
+        await this.prisma.subscription.upsert({
+          where: { workspaceId: transaction.workspaceId },
+          update: {
+            planId: transaction.planId,
+            status: 'ACTIVE',
+            billingInterval: transaction.billingInterval || 'monthly',
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: currentPeriodEnd,
+            nextBillingDate: currentPeriodEnd,
+          },
+          create: {
+            workspaceId: transaction.workspaceId,
+            planId: transaction.planId,
+            status: 'ACTIVE',
+            billingInterval: transaction.billingInterval || 'monthly',
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: currentPeriodEnd,
+            nextBillingDate: currentPeriodEnd,
+          },
+        });
+      }
+
       this.logger.log(
         `Subscription activated for workspace ${transaction.workspaceId}`,
       );
@@ -118,7 +165,7 @@ export class PaymentsService {
   }
 
   async createCheckout(dto: any, workspaceId: string) {
-    return this.generatePaymentLink(workspaceId);
+    return this.generatePaymentLink(workspaceId, null, dto.planId || 'standard-plan', dto.billingInterval || 'monthly');
   }
 
   async getPaymentStatus(transactionRef: string) {

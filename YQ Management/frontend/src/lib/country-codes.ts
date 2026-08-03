@@ -58,6 +58,10 @@ export const getCountryByCode = (code: string) => {
   return countryCodes.find(c => c.code === code);
 };
 
+export const getCountryByAbbr = (abbr: string) => {
+  return countryCodes.find(c => c.country === abbr);
+};
+
 export const detectCountryByTimezone = (): string => {
   try {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';

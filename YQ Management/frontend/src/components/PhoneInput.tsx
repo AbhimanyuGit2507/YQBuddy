@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { countryCodes, getCountryByCode, detectCountryByTimezone } from '../lib/country-codes';
+import { countryCodes, getCountryByCode, getCountryByAbbr, detectCountryByTimezone } from '../lib/country-codes';
 
 interface PhoneInputProps {
   value: string;
@@ -27,7 +27,7 @@ export default function PhoneInput({
 
   useEffect(() => {
     const detected = detectCountryByTimezone();
-    const country = getCountryByCode(countryCode) || getCountryByCode(detected) || countryCodes[0];
+    const country = getCountryByCode(countryCode) || getCountryByAbbr(detected) || countryCodes[0];
     if (country.code !== countryCode) {
       onCountryCodeChange(country.code);
     }
@@ -63,7 +63,7 @@ export default function PhoneInput({
           <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 rounded-xl shadow-xl z-[9999] max-h-60 overflow-y-auto">
             {countryCodes.map((c) => (
               <button
-                key={`${c.code}-${c.country}`}
+                key={`${c.code}-${c.name}`}
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();

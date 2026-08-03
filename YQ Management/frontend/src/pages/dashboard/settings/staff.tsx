@@ -26,7 +26,7 @@ export default function StaffDirectory() {
   const [inviteMessage, setInviteMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   React.useEffect(() => {
-    if (user && user.role !== 'TENANT_ADMIN') {
+    if (user && user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
       router.push('/dashboard');
     }
   }, [user, router]);
@@ -34,7 +34,7 @@ export default function StaffDirectory() {
   const { data: staff = [], isLoading, isError } = useQuery<StaffMember[]>({
     queryKey: ['staff'],
     queryFn: () => fetchApi('/users'),
-    enabled: user?.role === 'TENANT_ADMIN',
+    enabled: user?.role === 'TENANT_ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN',
     staleTime: 30000,
   });
 
@@ -106,7 +106,7 @@ export default function StaffDirectory() {
   const adminCount = displayStaff.filter((s) => s.role === 'TENANT_ADMIN').length;
   const isLastAdmin = adminCount <= 1;
 
-  if (!user || user.role !== 'TENANT_ADMIN') return null;
+  if (!user || (user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN')) return null;
 
   return (
     <SettingsLayout pageTitle="Staff Directory" pageSubtitle="Manage roles and permissions for your team">
@@ -177,14 +177,14 @@ export default function StaffDirectory() {
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-white/5">
-                {isLoading ? (
-                  <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Loading...</td></tr>
-                ) : isError ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">Could not load staff list. Showing your account.</td>
-                  </tr>
-                ) : displayStaff.map((s: StaffMember) => {
+            <tbody className="divide-y divide-gray-200 dark:divide-white/5">
+              {isLoading ? (
+                <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Loading...</td></tr>
+              ) : isError ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">Could not load staff list. Showing your account.</td>
+                </tr>
+              ) : displayStaff.map((s: StaffMember) => {
                 const isCurrentUser = s.email === currentUserEmail;
                 const isAdmin = s.role === 'TENANT_ADMIN';
                 const canRemove = !isCurrentUser && !(isAdmin && isLastAdmin);
@@ -222,11 +222,10 @@ export default function StaffDirectory() {
                       <button
                         onClick={() => handleDelete(s.id, s.email)}
                         disabled={!canRemove}
-                        className={`p-2 rounded-lg transition-colors ${
-                          !canRemove
+                        className={`p-2 rounded-lg transition-colors ${!canRemove
                             ? 'text-gray-300 dark:text-zinc-600 cursor-not-allowed'
                             : 'text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10'
-                        }`}
+                          }`}
                         title={!canRemove ? (isCurrentUser ? 'Cannot remove yourself' : 'At least one admin is required') : 'Remove staff member'}
                       >
                         <Trash2 className="w-4 h-4" />

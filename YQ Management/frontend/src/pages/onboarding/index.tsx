@@ -125,7 +125,7 @@ export default function Onboarding() {
       // Assuming we patch user settings here
       return fetchApi('/auth/personal-settings', {
         method: 'PATCH',
-        body: JSON.stringify({ fullName, phone }),
+        body: JSON.stringify({ fullName, phone, companyName }),
       });
     },
     onSuccess: () => {

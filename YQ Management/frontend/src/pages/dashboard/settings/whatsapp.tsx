@@ -6,7 +6,7 @@ import { fetchApi } from '../../../lib/api';
 import { toast } from 'sonner';
 import { MessageSquare, QrCode, Smartphone, Loader2, Send, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react'; // Wait, let's just use an img or whatever was there. Actually, let's use the provided qrcode or standard img. 
-
+import PhoneInput from '../../../components/PhoneInput';
 export default function WhatsAppSettingsPage() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
@@ -14,11 +14,13 @@ export default function WhatsAppSettingsPage() {
   const [connectionMode, setConnectionMode] = useState<'qr' | 'code'>('qr');
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [pairingPhoneNumber, setPairingPhoneNumber] = useState('');
+  const [pairingCountryCode, setPairingCountryCode] = useState('+1');
   const [generatingPairingCode, setGeneratingPairingCode] = useState(false);
 
   const [savingTemplate, setSavingTemplate] = useState<string | null>(null);
   const [testingWhatsApp, setTestingWhatsApp] = useState(false);
   const [testPhone, setTestPhone] = useState('');
+  const [testCountryCode, setTestCountryCode] = useState('+1');
   const [testMessage, setTestMessage] = useState('Test message from QMover');
   const [templateDrafts, setTemplateDrafts] = useState<Record<string, string>>({});
 
@@ -194,15 +196,16 @@ export default function WhatsAppSettingsPage() {
                         ) : (
                           <div className="w-full flex flex-col gap-3 mb-6">
                             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Enter WhatsApp Phone Number</label>
-                            <input 
-                              type="text" 
+                            <PhoneInput 
                               value={pairingPhoneNumber}
-                              onChange={(e) => setPairingPhoneNumber(e.target.value)}
-                              placeholder="e.g. +1234567890"
-                              className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-gray-900 dark:text-white"
+                              onChange={setPairingPhoneNumber}
+                              countryCode={pairingCountryCode}
+                              onCountryCodeChange={setPairingCountryCode}
+                              placeholder="234 567 8900"
+                              className="w-full"
                             />
                             <button 
-                              onClick={() => generatePairingCodeMutation.mutate(pairingPhoneNumber)}
+                              onClick={() => generatePairingCodeMutation.mutate(`${pairingCountryCode}${pairingPhoneNumber}`)}
                               disabled={generatePairingCodeMutation.isPending || !pairingPhoneNumber}
                               className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                             >
@@ -231,15 +234,16 @@ export default function WhatsAppSettingsPage() {
           <section className="pt-8 border-t border-gray-200 dark:border-zinc-800">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Send a Test Message</h3>
             <div className="flex gap-4 items-start">
-               <input 
-                 type="text" 
+               <PhoneInput 
                  value={testPhone} 
-                 onChange={e => setTestPhone(e.target.value)} 
-                 placeholder="WhatsApp Number (e.g., +123456789)"
-                 className="flex-1 px-4 py-3 bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded-xl" 
+                 onChange={setTestPhone} 
+                 countryCode={testCountryCode}
+                 onCountryCodeChange={setTestCountryCode}
+                 placeholder="234 567 8900"
+                 className="flex-1" 
                />
                <button 
-                  onClick={() => testWhatsAppMutation.mutate({ phone: testPhone, message: testMessage })}
+                  onClick={() => testWhatsAppMutation.mutate({ phone: `${testCountryCode}${testPhone}`, message: testMessage })}
                   disabled={testWhatsAppMutation.isPending || !testPhone}
                   className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl flex items-center gap-2"
                >

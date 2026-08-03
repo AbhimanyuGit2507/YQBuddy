@@ -20,23 +20,8 @@ async function bootstrap() {
   app.use(cookieParser());
   app.use(passport.initialize());
 
-  const allowedOrigins = [
-    process.env.FRONTEND_URL,
-    'http://localhost:3001',
-    'http://localhost:3000',
-  ].filter(Boolean);
-
   app.enableCors({
-    origin: (
-      origin: string | undefined,
-      callback: (err: Error | null, allow?: boolean) => void,
-    ) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: true,
     credentials: true,
     maxAge: 86400,
   });

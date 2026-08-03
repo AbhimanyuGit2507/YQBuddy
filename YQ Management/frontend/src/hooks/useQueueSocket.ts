@@ -40,6 +40,7 @@ export function useQueueSocket(options: UseQueueSocketOptions = {}) {
     if (socketRef.current?.connected) return;
 
     const socket = io(SOCKET_URL, {
+      transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
       reconnectionDelay: BASE_RECONNECT_DELAY,

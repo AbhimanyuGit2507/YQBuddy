@@ -14,7 +14,7 @@ interface SettingsLayoutProps {
 export default function SettingsLayout({ children, pageTitle = 'Settings', pageSubtitle = 'Manage your workspace preferences' }: SettingsLayoutProps) {
   const router = useRouter();
   const { user } = useAuth();
-  
+
   // Only admins can see all settings
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'TENANT_ADMIN';
 
@@ -39,7 +39,7 @@ export default function SettingsLayout({ children, pageTitle = 'Settings', pageS
   return (
     <AdminLayout pageTitle={pageTitle} pageSubtitle={pageSubtitle}>
       <div className="flex flex-col md:flex-row gap-6 lg:gap-8 max-w-7xl mx-auto h-full min-h-[calc(100vh-120px)] p-4 sm:p-6 lg:p-8">
-        
+
         {/* Secondary Sidebar for Settings */}
         <div className="w-full md:w-64 shrink-0">
           <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-2 sticky top-24">
@@ -47,18 +47,17 @@ export default function SettingsLayout({ children, pageTitle = 'Settings', pageS
               {visibleTabs.map((tab) => {
                 const active = isActive(tab.href);
                 return (
-                  <Link
+                  <button
                     key={tab.href}
-                    href={tab.href}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm ${
-                      active 
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' 
+                    onClick={() => router.push(tab.href)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm w-full text-left ${active
+                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                         : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-zinc-200'
-                    }`}
+                      }`}
                   >
                     <tab.icon className={`w-5 h-5 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-zinc-500'}`} />
                     {tab.label}
-                  </Link>
+                  </button>
                 );
               })}
             </nav>
