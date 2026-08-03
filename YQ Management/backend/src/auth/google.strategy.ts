@@ -12,12 +12,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   ) {
     const isProduction = process.env.NODE_ENV === 'production';
 
-    let callbackURL: string;
-    if (isProduction) {
-      callbackURL = 'https://qmover.vercel.app/auth/google/callback';
-    } else {
-      callbackURL = 'http://localhost:3000/auth/google/callback';
-    }
+    const backendUrl = process.env.BACKEND_URL || (isProduction ? 'https://qmova-backend.onrender.com' : 'http://localhost:3000');
+    const callbackURL = `${backendUrl}/auth/google/callback`;
 
     super({
       clientID:
