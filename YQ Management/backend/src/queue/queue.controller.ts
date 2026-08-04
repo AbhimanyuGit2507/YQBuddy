@@ -8,6 +8,7 @@ import {
   UseGuards,
   Req,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { QueueService } from './queue.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -73,6 +74,16 @@ export class QueueController {
     },
   ) {
     return this.queueService.updateQueueForTenant(id, req.user.tenantId, body);
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
+  @Delete(':id')
+  async deleteQueue(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return this.queueService.deleteQueueForTenant(id, req.user.tenantId);
   }
 
   @UseGuards(AuthGuard('jwt'))

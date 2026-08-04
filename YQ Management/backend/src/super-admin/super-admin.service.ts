@@ -41,7 +41,12 @@ export class SuperAdminService {
     return this.prisma.tenant.findMany({
       where,
       include: {
-        _count: { select: { users: true, queues: true } },
+        _count: {
+          select: {
+            users: true,
+            queues: { where: { status: { not: 'CLOSED' } } },
+          },
+        },
         workspaces: { select: { id: true, name: true, subscriptionStatus: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -116,13 +121,18 @@ export class SuperAdminService {
   async getPlatformAnalytics() {
     const totalTenants = await this.prisma.tenant.count();
     const totalUsers = await this.prisma.user.count();
-    const totalQueues = await this.prisma.queue.count();
+    const totalQueues = await this.prisma.queue.count({ where: { status: { not: 'CLOSED' } } });
+    const activeQueues = await this.prisma.queue.count({ where: { status: 'ACTIVE' } });
     const totalTokens = await this.prisma.token.count();
+    const waitingTokens = await this.prisma.token.count({ where: { status: 'WAITING' } });
+    const servedTokens = await this.prisma.token.count({ where: { status: 'SERVING' } });
+    const completedTokens = await this.prisma.token.count({ where: { status: 'COMPLETED' } });
+    const missedTokens = await this.prisma.token.count({ where: { status: 'MISSED' } });
 
     const recentTenants = await this.prisma.tenant.findMany({
       where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
       select: { createdAt: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'asc' },
     });
 
     const subscriptionStats = await this.prisma.subscription.aggregate({
@@ -132,10 +142,40 @@ export class SuperAdminService {
 
     const topTenants = await this.prisma.tenant.findMany({
       include: {
-        _count: { select: { queues: true, users: true } },
+        _count: { select: { queues: { where: { status: { not: 'CLOSED' } } }, users: true } },
       },
       orderBy: { createdAt: 'desc' },
       take: 10,
+    });
+
+    // Group recent tenants by day (YYYY-MM-DD), single entry per day
+    const trendsMap = new Map<string, number>();
+    const now = new Date();
+    for (let i = 14; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const dateStr = d.toISOString().split('T')[0];
+      trendsMap.set(dateStr, 0);
+    }
+
+    recentTenants.forEach((t) => {
+      const dateStr = new Date(t.createdAt).toISOString().split('T')[0];
+      if (trendsMap.has(dateStr)) {
+        trendsMap.set(dateStr, (trendsMap.get(dateStr) || 0) + 1);
+      } else {
+        trendsMap.set(dateStr, 1);
+      }
+    });
+
+    const sortedDates = Array.from(trendsMap.keys()).sort();
+    let cumulative = Math.max(0, totalTenants - recentTenants.length);
+    const trends = sortedDates.map((date) => {
+      const count = trendsMap.get(date) || 0;
+      cumulative += count;
+      return {
+        date,
+        newTenants: count,
+        totalTenants: cumulative,
+      };
     });
 
     return {
@@ -143,14 +183,15 @@ export class SuperAdminService {
         totalTenants,
         totalUsers,
         totalQueues,
+        activeQueues,
         totalTokens,
+        waitingTokens,
+        servedTokens,
+        completedTokens,
+        missedTokens,
         totalSubscriptions: subscriptionStats._count.status,
       },
-      trends: recentTenants.map((t) => ({
-        date: t.createdAt,
-        newTenants: 1,
-        totalTenants,
-      })),
+      trends,
       topTenants: topTenants.map((t) => ({
         id: t.id,
         name: t.name,

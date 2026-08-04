@@ -101,6 +101,15 @@ export class QueueService {
     });
   }
 
+  async deleteQueueForTenant(queueId: string, tenantId: string) {
+    await this.getQueueByIdForTenant(queueId, tenantId);
+    await this.redisService.client.del(`queue:${queueId}:state`);
+    await this.prisma.queue.delete({
+      where: { id: queueId },
+    });
+    return { success: true };
+  }
+
   async getQueuesForTenant(tenantId: string) {
     return this.prisma.queue.findMany({
       where: { tenantId },
