@@ -8,34 +8,42 @@ export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
   async log(
-    userId: string,
+    userId: string | null,
+    tenantId: string | null,
+    customerId: string | null,
     action: string,
-    resource: string,
-    resourceId?: string,
+    resource: string | null,
+    resourceId?: string | null,
+    endpoint?: string | null,
+    method?: string | null,
+    statusCode?: number | null,
+    durationMs?: number | null,
     details?: Record<string, unknown>,
-    ipAddress?: string,
-    userAgent?: string,
+    ipAddress?: string | null,
+    userAgent?: string | null,
   ) {
     try {
       await this.prisma.auditLog.create({
         data: {
+          tenantId,
           userId,
+          customerId,
           action,
           resource,
           resourceId,
+          endpoint,
+          method,
+          statusCode,
+          durationMs,
           details: details as any,
           ipAddress,
           userAgent,
         },
       });
-      this.logger.log(
-        `Audit: ${action} ${resource} ${resourceId || ''} by ${userId}`,
-      );
+      this.logger.log(`Audit: ${action} ${resource || ''} ${resourceId || ''}`);
     } catch (error) {
-      this.logger.error(
-        `Failed to create audit log: ${action} ${resource}`,
-        error,
-      );
+      this.logger.error(`Failed to create audit log: ${action} ${resource}`, error);
     }
   }
 }
+

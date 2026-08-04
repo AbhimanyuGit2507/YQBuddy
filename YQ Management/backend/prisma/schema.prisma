@@ -104,16 +104,27 @@ model PasswordReset {
 
 model AuditLog {
   id         String   @id @default(uuid())
-  userId     String
+  tenantId   String?
+  userId     String?
+  customerId String?
+  
   action     String
-  resource   String
+  resource   String?
   resourceId String?
+  
+  endpoint   String?
+  method     String?
+  statusCode Int?
+  durationMs Int?
+  
   details    Json?
   ipAddress  String?
   userAgent  String?
   createdAt  DateTime @default(now())
 
+  @@index([tenantId])
   @@index([userId])
+  @@index([customerId])
   @@index([action])
   @@index([resource])
 }

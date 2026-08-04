@@ -29,6 +29,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { MessagesModule } from './messages/messages.module';
 import { AuditInterceptor } from './audit/audit.interceptor';
+import { AuditModule } from './audit/audit.module';
 import { WorkspaceModule } from './workspace/workspace.module';
 
 @Module({
@@ -71,6 +72,7 @@ import { WorkspaceModule } from './workspace/workspace.module';
     AnalyticsModule,
     MessagesModule,
     WorkspaceModule,
+    AuditModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

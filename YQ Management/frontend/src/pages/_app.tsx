@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AuthProvider } from '../components/AuthContext';
 import { ThemeProvider } from '../components/ThemeProvider';
+import { TrackingProvider } from '../components/TrackingProvider';
 import { setApiRouter } from '../lib/api';
 import { useRouter } from 'next/router';
 
@@ -20,10 +21,13 @@ export default function App({ Component, pageProps }: AppProps) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <AppRouterSetter />
-          <Component {...pageProps} />
+          <TrackingProvider>
+            <AppRouterSetter />
+            <Component {...pageProps} />
+          </TrackingProvider>
         </AuthProvider>
       </ThemeProvider>
+
     </QueryClientProvider>
   );
 }
