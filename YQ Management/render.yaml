@@ -1,70 +1,13 @@
 services:
-  - type: redis
-    name: qmova-redis
-    ipAllowList: []
-    plan: free
-
   - type: web
-    name: qmova-backend
-    env: node
-    plan: free
-    rootDir: "YQ Management/backend"
-    buildCommand: npm install --include=dev && npx prisma generate && npm run build
-    startCommand: npx prisma db push --accept-data-loss && npx prisma db seed && npm run start:prod
+    name: qmova-evolution-api
+    runtime: image
+    image:
+      url: atender/evolution-api:latest
     envVars:
-      - key: NODE_VERSION
-        value: "20.x"
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: qmova-db
-          property: connectionString
-      - key: REDIS_HOST
-        fromService:
-          type: redis
-          name: qmova-redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          type: redis
-          name: qmova-redis
-          property: port
-      - key: PORT
-        value: "10000"
-      - key: JWT_SECRET
-        generateValue: true
-      - key: FRONTEND_URL
-        sync: false
-      - key: BACKEND_URL
-        sync: false
-      - key: APP_URL
-        sync: false
-      - key: GOOGLE_CLIENT_ID
-        sync: false
-      - key: GOOGLE_CLIENT_SECRET
-        sync: false
-      - key: BREVO_API_KEY
-        sync: false
-      - key: BREVO_LIST_ID
-        sync: false
-      - key: EVOLUTION_API_URL
-        sync: false
-      - key: EVOLUTION_API_KEY
-        sync: false
-      - key: EVOLUTION_INSTANCE_NAME
-        sync: false
-      - key: WEBHOOK_SECRET
-        sync: false
-      - key: OZOW_SITE_CODE
-        sync: false
-      - key: OZOW_PRIVATE_KEY
-        sync: false
-      - key: OZOW_API_KEY
-        sync: false
-
-databases:
-  - name: qmova-db
-    databaseName: yq_queue
-    user: qmova
-    plan: free
+      - key: SERVER_PORT
+        value: 8080
+      - key: AUTHENTICATION_TYPE
+        value: apikey
+      - key: AUTHENTICATION_API_KEY
+        value: yq_secret_evolution_key_123
