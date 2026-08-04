@@ -31,7 +31,6 @@ jobs:
           NEXT_PUBLIC_WS_URL: https://qmova-backend.onrender.com
           NEXT_PUBLIC_SUPER_ADMIN_EMAIL: yqbuddysa@gmail.com
 
-  # ─── 2. Build & Type-check Backend ─────────────────────────────────────────
   build-backend:
     name: Build Backend
     runs-on: ubuntu-latest
@@ -46,6 +45,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: "YQ Management/backend/package-lock.json"
       - run: npm ci
+      - name: Generate Prisma Client
+        run: npx prisma generate
       - run: npm run build
 
   # ─── 3. Deploy Frontend to Vercel ──────────────────────────────────────────
@@ -68,8 +69,9 @@ jobs:
           cache-dependency-path: "YQ Management/frontend/package-lock.json"
       - run: npm ci
       - name: Deploy to Vercel Production
-        run: npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
+        run: npx vercel --prod --yes
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: team_acxidrsTp5kixziMsxFV8BEs
           VERCEL_PROJECT_ID: prj_mQSw7aO5jy5MXpY8wJcK8lJS5NOa
 
