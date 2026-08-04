@@ -9,7 +9,7 @@ import { format, parseISO } from 'date-fns';
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { subdomain, queueId } = context.params as { subdomain: string, queueId: string };
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+  const baseUrl = 'https://qmova-backend.onrender.com' || 'http://localhost:3000/api';
   
   try {
     const tenantRes = await fetch(`${baseUrl}/tenant/public/${subdomain}`);

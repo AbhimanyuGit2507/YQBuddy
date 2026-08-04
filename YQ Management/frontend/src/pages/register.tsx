@@ -219,7 +219,7 @@ export default function Register() {
 
               <div className="mt-8">
                 <a 
-                  href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/auth/google`}
+                  href={`${'https://qmova-backend.onrender.com' || 'http://localhost:3000'}/auth/google`}
                   className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-zinc-900 border border-white/10 rounded-xl hover:bg-zinc-800 transition-colors font-medium text-zinc-300"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">

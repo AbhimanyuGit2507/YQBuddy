@@ -57,7 +57,7 @@ async function fetchWithRetry(
 }
 
 export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  const baseUrl = 'https://qmova-backend.onrender.com' || 'http://localhost:3000';
 
   const headers = new Headers(options.headers || {});
   if (!headers.has('Accept')) {

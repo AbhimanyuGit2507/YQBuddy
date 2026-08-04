@@ -11,7 +11,7 @@ import { io } from 'socket.io-client';
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { subdomain, tokenId } = context.params as { subdomain: string, tokenId: string };
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+  const baseUrl = 'https://qmova-backend.onrender.com' || 'http://localhost:3000/api';
   
   try {
     const tenantRes = await fetch(`${baseUrl}/tenant/public/${subdomain}`);
@@ -54,7 +54,7 @@ export default function TenantStatusPage({ tenant, tokenId }: { tenant: any, tok
   useEffect(() => {
     if (!queueId) return;
     
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000';
+    const backendUrl = 'https://qmova-backend.onrender.com'?.replace('/api', '') || 'http://localhost:3000';
     const socket = io(backendUrl);
 
     socket.on('connect', () => {
