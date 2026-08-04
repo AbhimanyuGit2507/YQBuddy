@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
+import compression from 'compression';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './redis/redis-io.adapter';
@@ -17,11 +18,19 @@ async function bootstrap() {
 
   app.useLogger(app.get(Logger));
   app.use(helmet());
+  app.use(compression());
   app.use(cookieParser());
   app.use(passport.initialize());
 
+  const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    process.env.APP_URL,
+    'http://localhost:3000',
+    'http://localhost:3001'
+  ].filter(Boolean) as string[];
+
   app.enableCors({
-    origin: true,
+    origin: allowedOrigins,
     credentials: true,
     maxAge: 86400,
   });
