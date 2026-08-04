@@ -10,6 +10,11 @@ export class KeepAliveService {
   // Run every 14 minutes to prevent Render's 15-minute inactivity spin-down
   @Cron('0 */14 * * * *')
   handleCron() {
+    this.pingBackend();
+    this.pingWhatsAppEvolutionApi();
+  }
+
+  private pingBackend() {
     const backendUrl = process.env.BACKEND_URL;
     if (!backendUrl) {
       this.logger.warn('BACKEND_URL is not defined, skipping keep-alive ping');
@@ -18,14 +23,37 @@ export class KeepAliveService {
 
     // Ping our own health endpoint
     const pingUrl = `${backendUrl.replace(/\/$/, '')}/health`;
-    this.logger.log(`Pinging ${pingUrl} to keep service awake...`);
+    this.logger.log(`Pinging ${pingUrl} to keep backend service awake...`);
 
     const client = pingUrl.startsWith('https') ? https : http;
     
     client.get(pingUrl, (res) => {
-      this.logger.log(`Keep-alive ping responded with status: ${res.statusCode}`);
+      this.logger.log(`Backend keep-alive ping responded with status: ${res.statusCode}`);
     }).on('error', (err) => {
-      this.logger.error(`Keep-alive ping failed: ${err.message}`);
+      this.logger.error(`Backend keep-alive ping failed: ${err.message}`);
     });
+  }
+
+  private pingWhatsAppEvolutionApi() {
+    const evoUrl = process.env.EVOLUTION_API_URL;
+    const evoApiKey = process.env.EVOLUTION_API_KEY || '';
+
+    if (!evoUrl) {
+      this.logger.debug('EVOLUTION_API_URL is not defined, skipping WhatsApp keep-alive ping');
+      return;
+    }
+
+    const pingUrl = `${evoUrl.replace(/\/$/, '')}/instance/fetchInstances`;
+    this.logger.log(`Pinging ${pingUrl} to keep WhatsApp Evolution API awake...`);
+
+    fetch(pingUrl, {
+      headers: { apikey: evoApiKey },
+    })
+      .then((res) => {
+        this.logger.log(`WhatsApp Evolution API keep-alive ping responded with status: ${res.status}`);
+      })
+      .catch((err) => {
+        this.logger.error(`WhatsApp Evolution API keep-alive ping failed: ${err instanceof Error ? err.message : String(err)}`);
+      });
   }
 }
