@@ -206,12 +206,14 @@ export default function Onboarding() {
   const { data: whatsappStatus } = useQuery({
     queryKey: ['whatsapp-status'],
     queryFn: () => fetchApi('/whatsapp/status'),
-    refetchInterval: (data: any) => {
+    refetchInterval: (query: any) => {
+      if (query?.state?.error) return false;
+      const data = query?.state?.data;
       if (!data) return 3000;
       if (data.state === 'open' || data.state === 'close' || data.state === 'unconfigured') return false;
       return 3000;
     },
-    enabled: step === 2,
+    enabled: step === 3,
   });
 
   useEffect(() => {
@@ -305,7 +307,7 @@ export default function Onboarding() {
                       type="text"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                       placeholder="Jane Doe"
                     />
                   </div>
@@ -315,7 +317,7 @@ export default function Onboarding() {
                       type="text"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                       placeholder="Acme Corp"
                     />
                   </div>
@@ -325,7 +327,7 @@ export default function Onboarding() {
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                       placeholder="+1 (555) 000-0000"
                     />
                   </div>
