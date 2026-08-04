@@ -16,6 +16,25 @@ export default function ForgotPassword() {
   const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  const handleResendOtp = async () => {
+    setResending(true);
+    setError('');
+    setSuccessMsg('');
+    try {
+      await fetchApi('/auth/resend-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, purpose: 'reset' }),
+      });
+      setSuccessMsg('A new verification code has been sent to your email.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend OTP');
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,13 +187,23 @@ export default function ForgotPassword() {
                 Continue
                 <ArrowRight className="w-4 h-4" />
               </button>
-              <button 
-                type="button" 
-                onClick={() => setStep('email')}
-                className="w-full text-zinc-400 hover:text-white text-sm transition-colors mt-2"
-              >
-                Change Email
-              </button>
+              <div className="flex items-center justify-between mt-4">
+                <button 
+                  type="button" 
+                  disabled={resending}
+                  onClick={handleResendOtp}
+                  className="text-sm text-indigo-400 hover:text-indigo-300 disabled:opacity-50 font-medium"
+                >
+                  {resending ? 'Sending...' : 'Resend OTP Code'}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => { setStep('email'); setSuccessMsg(''); }}
+                  className="text-sm text-zinc-400 hover:text-white font-medium"
+                >
+                  Change Email
+                </button>
+              </div>
             </form>
           )}
 

@@ -15,6 +15,8 @@ export default function Login() {
   const [step, setStep] = useState<'credentials' | 'otp'>('credentials');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resending, setResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +39,24 @@ export default function Login() {
       setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setResending(true);
+    setError('');
+    setResendSuccess('');
+    try {
+      await fetchApi('/auth/resend-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, purpose: 'login' }),
+      });
+      setResendSuccess('A new verification code has been sent to your email.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend OTP');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -191,13 +211,28 @@ export default function Login() {
                 {!loading && <ArrowRight className="w-4 h-4" />}
               </button>
               
-              <button 
-                type="button" 
-                onClick={() => setStep('credentials')}
-                className="text-sm text-zinc-400 hover:text-white text-center w-full mt-4"
-              >
-                Back to Password
-              </button>
+              {resendSuccess && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-sm text-center">
+                  {resendSuccess}
+                </div>
+              )}
+              <div className="flex items-center justify-between mt-4">
+                <button 
+                  type="button" 
+                  disabled={resending}
+                  onClick={handleResendOtp}
+                  className="text-sm text-indigo-400 hover:text-indigo-300 disabled:opacity-50 font-medium"
+                >
+                  {resending ? 'Sending...' : 'Resend OTP Code'}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => { setStep('credentials'); setResendSuccess(''); }}
+                  className="text-sm text-zinc-400 hover:text-white font-medium"
+                >
+                  Back to Password
+                </button>
+              </div>
             </form>
           )}
 
