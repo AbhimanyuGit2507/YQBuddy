@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
   /* config options */
   reactStrictMode: true,
   turbopack: {},
+  env: {
+    NEXT_PUBLIC_API_URL: 'https://qmova-backend.onrender.com',
+    NEXT_PUBLIC_BACKEND_URL: 'https://qmova-backend.onrender.com',
+    NEXT_PUBLIC_WS_URL: 'https://qmova-backend.onrender.com',
+    NEXT_PUBLIC_SUPER_ADMIN_EMAIL: 'yqbuddysa@gmail.com'
+  }
 };
 
 export default nextConfig;
