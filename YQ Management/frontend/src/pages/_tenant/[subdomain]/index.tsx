@@ -19,7 +19,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     // In getServerSideProps, fetchApi uses absolute URL if needed, but since we are server-side,
     // we need to pass the full URL or handle it properly.
     // Assuming fetchApi handles relative/absolute correctly, or we can use the env var
-    const baseUrl = 'https://qmova-backend.onrender.com' || 'http://localhost:3000/api';
+    const baseUrl = 'https://qmova-backend.onrender.com';
     
     const tenantRes = await fetch(`${baseUrl}/tenant/public/${subdomain}`);
     if (!tenantRes.ok) {
