@@ -4,9 +4,13 @@ import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private readonly apiKey: string;
+  private readonly senderEmail: string;
+  private readonly senderName: string;
 
   constructor() {
     this.apiKey = process.env.BREVO_API_KEY || '';
+    this.senderEmail = process.env.BREVO_SENDER_EMAIL || 'yqbuddysa@gmail.com';
+    this.senderName = process.env.BREVO_SENDER_NAME || 'Qmova';
   }
 
   async sendOTP(email: string, otpCode: string, purpose: 'signup' | 'login' | 'reset') {
@@ -40,8 +44,8 @@ export class EmailService {
         },
         body: JSON.stringify({
           sender: {
-            name: 'Qmova Authentication',
-            email: 'no-reply@qmova.com',
+            name: `${this.senderName} Authentication`,
+            email: this.senderEmail,
           },
           to: [{ email }],
           subject,
@@ -73,7 +77,7 @@ export class EmailService {
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          sender: { name: 'Qmova Security', email: 'security@qmova.com' },
+          sender: { name: `${this.senderName} Security`, email: this.senderEmail },
           to: [{ email }],
           subject: 'New login to your Qmova Account',
           htmlContent: `<html><body><p>We detected a new login to your Qmova account at ${new Date().toLocaleString()}.</p></body></html>`,

@@ -32,8 +32,8 @@ export class BrevoProvider implements EmailProvider {
         },
         body: JSON.stringify({
           sender: message.from || {
-            name: 'Qmova',
-            email: 'no-reply@qmova.com',
+            name: process.env.BREVO_SENDER_NAME || 'Qmova',
+            email: process.env.BREVO_SENDER_EMAIL || 'yqbuddysa@gmail.com',
           },
           to: [{ email: message.to }],
           subject: message.subject,
