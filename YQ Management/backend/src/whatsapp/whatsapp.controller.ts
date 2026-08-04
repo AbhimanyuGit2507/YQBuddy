@@ -81,10 +81,14 @@ export class WhatsappController {
     );
   }
 
-  @UseGuards(AuthGuard('jwt'), WorkspaceGuard)
+  @UseGuards(AuthGuard('jwt'))
   @Get('status')
   status(@Req() req: AuthenticatedRequest) {
-    return this.whatsappService.status(req.user.tenantId);
+    const targetId = req.user.tenantId || (req.user as any).workspaceId;
+    if (!targetId) {
+      return { state: 'unconfigured' };
+    }
+    return this.whatsappService.status(targetId);
   }
 
   @Post('webhook/:instanceName')
