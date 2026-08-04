@@ -101,7 +101,7 @@ export default function QueuesList() {
   return (
     <AdminLayout pageTitle="Queues" pageSubtitle="Manage all your queues in one place">
       <Head>
-        <title>Manage Queues | QMover</title>
+        <title>Manage Queues | Qmova</title>
       </Head>
 
       <div className="max-w-6xl mx-auto space-y-8 p-4 sm:p-6 lg:p-8">

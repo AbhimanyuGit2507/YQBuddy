@@ -62,7 +62,7 @@ export class PaymentsService {
       currencyCode: plan.currency || 'ZAR',
       amount: formattedAmount,
       transactionReference: transaction.transactionRef,
-      bankReference: `QMOVER-${transaction.transactionRef.substring(4, 12)}`,
+      bankReference: `QMOVA-${transaction.transactionRef.substring(4, 12)}`,
       cancelUrl: `${this.frontendUrl}/dashboard/settings/billing?status=cancelled`,
       errorUrl: `${this.frontendUrl}/dashboard/settings/billing?status=error`,
       successUrl: `${this.frontendUrl}/dashboard/settings/billing?status=success`,

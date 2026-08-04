@@ -57,18 +57,18 @@ export class CommunicationController {
   async testEmail(@Request() req: any, @Body() body: TestEmailDto) {
     const result = await this.emailProvider.send({
       to: body.to,
-      subject: body.subject || 'QMover Test Email',
+      subject: body.subject || 'Qmova Test Email',
       htmlContent:
-        '<h1>Test Email</h1><p>This is a test email from QMover.</p>',
-      textContent: 'Test Email - This is a test email from QMover.',
+        '<h1>Test Email</h1><p>This is a test email from Qmova.</p>',
+      textContent: 'Test Email - This is a test email from Qmova.',
     });
 
     await this.communicationLogService.log({
       channel: CommunicationChannel.EMAIL,
       type: 'test',
       recipient: body.to,
-      subject: body.subject || 'QMover Test Email',
-      body: 'Test Email - This is a test email from QMover.',
+      subject: body.subject || 'Qmova Test Email',
+      body: 'Test Email - This is a test email from Qmova.',
       status: result.success
         ? CommunicationStatus.SENT
         : CommunicationStatus.FAILED,
@@ -100,14 +100,14 @@ export class CommunicationController {
   ) {
     const result = await this.whatsappProvider.sendText(
       body.phone,
-      body.message || 'Test message from QMover',
+      body.message || 'Test message from Qmova',
     );
 
     await this.communicationLogService.log({
       channel: CommunicationChannel.WHATSAPP,
       type: 'test',
       recipient: body.phone,
-      body: body.message || 'Test message from QMover',
+      body: body.message || 'Test message from Qmova',
       status: result.success
         ? CommunicationStatus.SENT
         : CommunicationStatus.FAILED,

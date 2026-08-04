@@ -31,7 +31,7 @@ export default function QueueConfirmation() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white flex flex-col items-center justify-center p-6 relative overflow-hidden transition-colors">
       <Head>
-        <title>You're in line! | QMover</title>
+        <title>You're in line! | Qmova</title>
       </Head>
 
       {/* Decorative Glow */}

@@ -109,7 +109,7 @@ export default function Settings() {
   return (
     <AdminLayout>
       <Head>
-        <title>Settings | QMover</title>
+        <title>Settings | Qmova</title>
       </Head>
 
       <div className="max-w-4xl mx-auto space-y-8 pb-12">
@@ -315,7 +315,7 @@ export default function Settings() {
                       <label className="block font-bold text-gray-900 dark:text-white">OTP Message Template</label>
                       <textarea 
                         rows={4}
-                        defaultValue="Your Qmover verification code is {{otp}}."
+                        defaultValue="Your Qmova verification code is {{otp}}."
                         className="w-full bg-white dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors resize-none"
                       ></textarea>
                       <p className="text-xs text-zinc-500">Available tags: <span className="text-emerald-600 dark:text-emerald-400/80 font-mono bg-emerald-400/10 px-1 rounded">{"{{otp}}"}</span> <span className="text-emerald-600 dark:text-emerald-400/80 font-mono bg-emerald-400/10 px-1 rounded">{"{{tenant_name}}"}</span></p>

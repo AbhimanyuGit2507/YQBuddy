@@ -61,7 +61,7 @@ export default function Register() {
   return (
     <div className="min-h-screen bg-black text-white flex">
       <Head>
-        <title>Sign Up | YQ Queue</title>
+        <title>Sign Up | Qmova</title>
       </Head>
 
       {/* Left Panel - Visual */}
@@ -71,8 +71,11 @@ export default function Register() {
         <div className="absolute bottom-0 -left-4 w-96 h-96 bg-pink-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-blob animation-delay-4000"></div>
 
         <div className="relative z-10 max-w-md p-12">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-pink-600 flex items-center justify-center font-bold text-white text-xl shadow-[0_0_25px_rgba(236,72,153,0.5)] mb-8">
-            YQ
+          <div className="flex items-center gap-2.5 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-pink-600 flex items-center justify-center font-black text-white text-lg shadow-[0_0_25px_rgba(236,72,153,0.5)] tracking-tighter">
+              Q
+            </div>
+            <span className="font-extrabold text-2xl tracking-tight text-white">Qmova</span>
           </div>
           <h2 className="text-4xl font-bold tracking-tight mb-6 leading-tight">
             Start orchestrating your spaces today.
@@ -105,8 +108,11 @@ export default function Register() {
       {/* Right Panel - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12">
         <div className="w-full max-w-md">
-          <div className="lg:hidden w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-pink-600 flex items-center justify-center font-bold text-white mb-8 shadow-[0_0_15px_rgba(236,72,153,0.5)]">
-            YQ
+          <div className="lg:hidden flex items-center gap-2.5 mb-8">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-pink-600 flex items-center justify-center font-black text-white text-base shadow-[0_0_15px_rgba(236,72,153,0.5)] tracking-tighter">
+              Q
+            </div>
+            <span className="font-extrabold text-xl tracking-tight text-white">Qmova</span>
           </div>
           
           <h1 className="text-3xl font-bold mb-2">

@@ -69,11 +69,11 @@ export default function SuperAdminLayout({
         }`}
       >
         <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-white/10 bg-white dark:bg-zinc-950 shrink-0">
-          <Link href="/super-admin" className="flex items-center gap-3 text-indigo-600 dark:text-indigo-400">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white text-sm shadow-[0_0_12px_rgba(99,102,241,0.4)]">
-              YQ
+          <Link href="/super-admin" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-black text-white text-base shadow-[0_0_12px_rgba(99,102,241,0.4)] tracking-tighter">
+              Q
             </div>
-            <span className="font-bold text-lg tracking-wide">Admin</span>
+            <span className="font-extrabold text-xl tracking-tight text-zinc-900 dark:text-white">Qmova <span className="text-xs uppercase px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold ml-1">God Mode</span></span>
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}

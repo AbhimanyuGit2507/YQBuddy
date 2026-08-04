@@ -125,7 +125,7 @@ export class CommunicationService {
 
     const result = await this.emailProvider.send({
       to: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       htmlContent: template.html,
       textContent: template.text,
       tags: [{ name: 'type', value: 'marketing' }],
@@ -135,7 +135,7 @@ export class CommunicationService {
       channel: CommunicationChannel.EMAIL,
       type: 'welcome',
       recipient: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       body: template.text || '',
       status: result.success
         ? CommunicationStatus.SENT
@@ -154,7 +154,7 @@ export class CommunicationService {
     const template = this.templateService.renderEmail('login_otp', { otp });
     const result = await this.emailProvider.send({
       to: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       htmlContent: template.html,
       textContent: template.text,
       tags: [{ name: 'type', value: 'auth' }],
@@ -164,7 +164,7 @@ export class CommunicationService {
       channel: CommunicationChannel.EMAIL,
       type: 'login_otp',
       recipient: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       body: template.text || '',
       status: result.success
         ? CommunicationStatus.SENT
@@ -183,7 +183,7 @@ export class CommunicationService {
     const template = this.templateService.renderEmail('signup_otp', { otp });
     const result = await this.emailProvider.send({
       to: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       htmlContent: template.html,
       textContent: template.text,
       tags: [{ name: 'type', value: 'auth' }],
@@ -193,7 +193,7 @@ export class CommunicationService {
       channel: CommunicationChannel.EMAIL,
       type: 'signup_otp',
       recipient: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       body: template.text || '',
       status: result.success
         ? CommunicationStatus.SENT
@@ -215,7 +215,7 @@ export class CommunicationService {
     });
     const result = await this.emailProvider.send({
       to: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       htmlContent: template.html,
       textContent: template.text,
       tags: [{ name: 'type', value: 'auth' }],
@@ -225,7 +225,7 @@ export class CommunicationService {
       channel: CommunicationChannel.EMAIL,
       type: 'password_reset',
       recipient: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       body: template.text || '',
       status: result.success
         ? CommunicationStatus.SENT
@@ -248,7 +248,7 @@ export class CommunicationService {
     });
     const result = await this.emailProvider.send({
       to: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       htmlContent: template.html,
       textContent: template.text,
       tags: [{ name: 'type', value: 'invitation' }],
@@ -258,7 +258,7 @@ export class CommunicationService {
       channel: CommunicationChannel.EMAIL,
       type: 'workspace_invite',
       recipient: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       body: template.text || '',
       status: result.success
         ? CommunicationStatus.SENT
@@ -537,7 +537,7 @@ export class CommunicationService {
     });
     const result = await this.emailProvider.send({
       to: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       htmlContent: template.html,
       textContent: template.text,
       tags: [{ name: 'type', value: 'billing' }],
@@ -547,7 +547,7 @@ export class CommunicationService {
       channel: CommunicationChannel.EMAIL,
       type: 'payment_success',
       recipient: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       body: template.text || '',
       status: result.success
         ? CommunicationStatus.SENT
@@ -568,7 +568,7 @@ export class CommunicationService {
     });
     const result = await this.emailProvider.send({
       to: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       htmlContent: template.html,
       textContent: template.text,
       tags: [{ name: 'type', value: 'billing' }],
@@ -578,7 +578,7 @@ export class CommunicationService {
       channel: CommunicationChannel.EMAIL,
       type: 'payment_failed',
       recipient: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       body: template.text || '',
       status: result.success
         ? CommunicationStatus.SENT
@@ -600,7 +600,7 @@ export class CommunicationService {
     });
     const result = await this.emailProvider.send({
       to: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       htmlContent: template.html,
       textContent: template.text,
       tags: [{ name: 'type', value: 'billing' }],
@@ -610,7 +610,7 @@ export class CommunicationService {
       channel: CommunicationChannel.EMAIL,
       type: 'trial_ending',
       recipient: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       body: template.text || '',
       status: result.success
         ? CommunicationStatus.SENT
@@ -634,7 +634,7 @@ export class CommunicationService {
     });
     const result = await this.emailProvider.send({
       to: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       htmlContent: template.html,
       textContent: template.text,
       tags: [{ name: 'type', value: 'billing' }],
@@ -644,7 +644,7 @@ export class CommunicationService {
       channel: CommunicationChannel.EMAIL,
       type: 'subscription_renewed',
       recipient: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       body: template.text || '',
       status: result.success
         ? CommunicationStatus.SENT
@@ -668,7 +668,7 @@ export class CommunicationService {
     );
     const result = await this.emailProvider.send({
       to: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       htmlContent: template.html,
       textContent: template.text,
       tags: [{ name: 'type', value: 'billing' }],
@@ -678,7 +678,7 @@ export class CommunicationService {
       channel: CommunicationChannel.EMAIL,
       type: 'subscription_cancelled',
       recipient: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       body: template.text || '',
       status: result.success
         ? CommunicationStatus.SENT
@@ -699,7 +699,7 @@ export class CommunicationService {
     });
     const result = await this.emailProvider.send({
       to: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       htmlContent: template.html,
       textContent: template.text,
       tags: [{ name: 'type', value: 'billing' }],
@@ -709,7 +709,7 @@ export class CommunicationService {
       channel: CommunicationChannel.EMAIL,
       type: 'subscription_expired',
       recipient: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       body: template.text || '',
       status: result.success
         ? CommunicationStatus.SENT
@@ -732,7 +732,7 @@ export class CommunicationService {
     });
     const result = await this.emailProvider.send({
       to: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       htmlContent: template.html,
       textContent: template.text,
       tags: [{ name: 'type', value: 'billing' }],
@@ -742,7 +742,7 @@ export class CommunicationService {
       channel: CommunicationChannel.EMAIL,
       type: 'payment_reminder',
       recipient: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       body: template.text || '',
       status: result.success
         ? CommunicationStatus.SENT
@@ -764,7 +764,7 @@ export class CommunicationService {
     });
     const result = await this.emailProvider.send({
       to: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       htmlContent: template.html,
       textContent: template.text,
       tags: [{ name: 'type', value: 'marketing' }],
@@ -774,7 +774,7 @@ export class CommunicationService {
       channel: CommunicationChannel.EMAIL,
       type: 'marketing_welcome',
       recipient: email,
-      subject: template.subject || 'QMover Notification',
+      subject: template.subject || 'Qmova Notification',
       body: template.text || '',
       status: result.success
         ? CommunicationStatus.SENT

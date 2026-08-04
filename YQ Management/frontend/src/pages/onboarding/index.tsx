@@ -263,16 +263,16 @@ export default function Onboarding() {
   return (
     <div className="min-h-screen flex font-sans">
       <Head>
-        <title>Onboarding | QMover</title>
+        <title>Onboarding | Qmova</title>
       </Head>
 
       {/* LEFT PANEL */}
       <div className="w-1/3 min-h-screen bg-gradient-to-br from-[#1E3A8A] to-[#0F172A] p-12 flex flex-col text-white">
-        <div className="flex items-center gap-2 mb-24">
-          <div className="w-6 h-6 border-2 border-white rounded-sm flex items-center justify-center">
-            <div className="w-2 h-2 bg-white rounded-sm"></div>
+        <div className="flex items-center gap-2.5 mb-24">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center font-black text-white text-base shadow-[0_0_15px_rgba(255,255,255,0.2)] tracking-tighter">
+            Q
           </div>
-          <span className="font-bold text-xl tracking-wide">Qmover</span>
+          <span className="font-extrabold text-xl tracking-tight text-white">Qmova</span>
         </div>
 
         <div className="max-w-md">

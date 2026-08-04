@@ -111,7 +111,7 @@ export default function StaffDirectory() {
   return (
     <SettingsLayout pageTitle="Staff Directory" pageSubtitle="Manage roles and permissions for your team">
       <Head>
-        <title>Staff Directory | QMover</title>
+        <title>Staff Directory | Qmova</title>
       </Head>
 
       <div className="max-w-4xl space-y-8 pb-12">

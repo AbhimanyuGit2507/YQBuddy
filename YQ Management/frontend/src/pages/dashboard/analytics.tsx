@@ -31,7 +31,7 @@ export default function AnalyticsDashboard() {
   return (
     <AdminLayout pageTitle="Analytics" pageSubtitle="Queue performance and insights">
       <Head>
-        <title>Analytics | YQ Dashboard</title>
+        <title>Analytics | Qmova</title>
       </Head>
 
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">

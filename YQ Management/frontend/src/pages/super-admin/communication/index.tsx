@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 
 export default function SuperAdminCommunication() {
   const [testEmailTo, setTestEmailTo] = useState('');
-  const [testEmailSubject, setTestEmailSubject] = useState('QMover Test Email');
+  const [testEmailSubject, setTestEmailSubject] = useState('Qmova Test Email');
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
   const [checkingConnection, setCheckingConnection] = useState(false);
   const [emailConnectionStatus, setEmailConnectionStatus] = useState<boolean | null>(null);

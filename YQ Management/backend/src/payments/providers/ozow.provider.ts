@@ -38,7 +38,7 @@ export class OzowProvider implements PaymentProvider {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     const sandboxMode = provider.sandboxEnabled !== false;
 
-    const bankReference = `QMOVER-${internalRef.substring(4, 12)}`;
+    const bankReference = `QMOVA-${internalRef.substring(4, 12)}`;
     const amount = input.amount.toFixed(2);
     const countryCode = 'ZA';
     const currencyCode = input.currency || 'ZAR';

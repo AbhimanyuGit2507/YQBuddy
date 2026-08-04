@@ -69,7 +69,7 @@ export default function HistoryPage() {
   return (
     <AdminLayout pageTitle="Analytics & Records" pageSubtitle="Queue history and analytics">
       <Head>
-        <title>Analytics & History | QMover</title>
+        <title>Analytics & History | Qmova</title>
       </Head>
 
       <div className="max-w-6xl mx-auto space-y-8 pb-12 p-4 sm:p-6 lg:p-8">

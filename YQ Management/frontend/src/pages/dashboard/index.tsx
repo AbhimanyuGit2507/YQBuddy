@@ -21,7 +21,7 @@ export default function Dashboard() {
   return (
     <AdminLayout pageTitle="Overview" pageSubtitle="Here is what is happening in your queues right now.">
       <Head>
-        <title>Dashboard | QMover</title>
+        <title>Dashboard | Qmova</title>
       </Head>
 
       <div className="max-w-6xl mx-auto space-y-8 p-4 sm:p-6 lg:p-8">

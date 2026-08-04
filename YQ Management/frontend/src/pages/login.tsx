@@ -64,7 +64,7 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-black text-white flex">
       <Head>
-        <title>Login | YQ Queue</title>
+        <title>Login | Qmova</title>
       </Head>
 
       {/* Left Panel - Visual */}
@@ -74,8 +74,11 @@ export default function Login() {
         <div className="absolute bottom-0 -right-4 w-96 h-96 bg-indigo-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-blob animation-delay-2000"></div>
 
         <div className="relative z-10 max-w-md p-12">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white text-xl shadow-[0_0_25px_rgba(99,102,241,0.5)] mb-8">
-            YQ
+          <div className="flex items-center gap-2.5 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-black text-white text-lg shadow-[0_0_25px_rgba(99,102,241,0.5)] tracking-tighter">
+              Q
+            </div>
+            <span className="font-extrabold text-2xl tracking-tight text-white">Qmova</span>
           </div>
           <h2 className="text-4xl font-bold tracking-tight mb-6 leading-tight">
             Welcome back to the future of waiting.
@@ -89,8 +92,11 @@ export default function Login() {
       {/* Right Panel - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12">
         <div className="w-full max-w-md">
-          <div className="lg:hidden w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white mb-8 shadow-[0_0_15px_rgba(99,102,241,0.5)]">
-            YQ
+          <div className="lg:hidden flex items-center gap-2.5 mb-8">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-black text-white text-base shadow-[0_0_15px_rgba(99,102,241,0.5)] tracking-tighter">
+              Q
+            </div>
+            <span className="font-extrabold text-xl tracking-tight text-white">Qmova</span>
           </div>
           
           <h1 className="text-3xl font-bold mb-2">Log in</h1>
@@ -116,7 +122,7 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-zinc-900 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                    placeholder="admin@yqqueue.com"
+                    placeholder="admin@qmova.com"
                   />
                 </div>
               </div>

@@ -25,9 +25,9 @@ export class EmailService {
       }
 
       let subject = '';
-      if (purpose === 'signup') subject = 'Verify your QMover Account';
-      else if (purpose === 'login') subject = 'Your QMover Login Code';
-      else subject = 'Reset your QMover Password';
+      if (purpose === 'signup') subject = 'Verify your Qmova Account';
+      else if (purpose === 'login') subject = 'Your Qmova Login Code';
+      else subject = 'Reset your Qmova Password';
 
       const htmlContent = `<html><body><h2>Your OTP Code is: <strong>${otpCode}</strong></h2><p>This code will expire in 10 minutes.</p></body></html>`;
 
@@ -40,8 +40,8 @@ export class EmailService {
         },
         body: JSON.stringify({
           sender: {
-            name: 'QMover Authentication',
-            email: 'no-reply@qmover.com',
+            name: 'Qmova Authentication',
+            email: 'no-reply@qmova.com',
           },
           to: [{ email }],
           subject,
@@ -73,10 +73,10 @@ export class EmailService {
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          sender: { name: 'QMover Security', email: 'security@qmover.com' },
+          sender: { name: 'Qmova Security', email: 'security@qmova.com' },
           to: [{ email }],
-          subject: 'New login to your QMover Account',
-          htmlContent: `<html><body><p>We detected a new login to your QMover account at ${new Date().toLocaleString()}.</p></body></html>`,
+          subject: 'New login to your Qmova Account',
+          htmlContent: `<html><body><p>We detected a new login to your Qmova account at ${new Date().toLocaleString()}.</p></body></html>`,
         }),
         signal: AbortSignal.timeout(10000),
       });

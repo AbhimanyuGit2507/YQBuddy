@@ -150,16 +150,16 @@ export class SuperAdminController {
     this.checkSuperAdmin(req);
     const result = await this.emailProvider.send({
       to: body.to,
-      subject: body.subject || 'QMover Test Email',
-      htmlContent: '<h1>Test Email</h1><p>This is a test email from QMover.</p>',
-      textContent: 'Test Email - This is a test email from QMover.',
+      subject: body.subject || 'Qmova Test Email',
+      htmlContent: '<h1>Test Email</h1><p>This is a test email from Qmova.</p>',
+      textContent: 'Test Email - This is a test email from Qmova.',
     });
     await this.communicationLogService.log({
       channel: CommunicationChannel.EMAIL,
       type: 'test',
       recipient: body.to,
-      subject: body.subject || 'QMover Test Email',
-      body: 'Test Email - This is a test email from QMover.',
+      subject: body.subject || 'Qmova Test Email',
+      body: 'Test Email - This is a test email from Qmova.',
       status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,

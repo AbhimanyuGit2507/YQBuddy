@@ -31,7 +31,7 @@ describe('TemplateService', () => {
 
   it('should render email template with variables', () => {
     const result = service.renderEmail('login_otp', { otp: '123456' });
-    expect(result.subject).toBe('Your QMover Login Code');
+    expect(result.subject).toBe('Your Qmova Login Code');
     expect(result.html).toContain('123456');
     expect(result.text).toContain('123456');
   });
@@ -39,7 +39,7 @@ describe('TemplateService', () => {
   it('should render WhatsApp template with variables', () => {
     const result = service.renderWhatsApp('otp', { otp: '654321' });
     expect(result).toBe(
-      'Your Qmover verification code is 654321. It expires in 5 minutes.',
+      'Your Qmova verification code is 654321. It expires in 5 minutes.',
     );
   });
 
@@ -59,7 +59,7 @@ describe('TemplateService', () => {
 
   it('should fallback for unknown email template', () => {
     const result = service.renderEmail('unknown_template', {});
-    expect(result.subject).toBe('QMover Notification');
+    expect(result.subject).toBe('Qmova Notification');
   });
 
   it('should fallback for unknown WhatsApp template', () => {

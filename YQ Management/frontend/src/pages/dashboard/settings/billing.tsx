@@ -80,7 +80,7 @@ export default function BillingSettings() {
   return (
     <SettingsLayout pageTitle="Billing & Subscriptions" pageSubtitle="Manage your plan and payment methods">
       <Head>
-        <title>Billing | QMover</title>
+        <title>Billing | Qmova</title>
       </Head>
 
       <div className="max-w-6xl space-y-8 pb-12">

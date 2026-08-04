@@ -66,7 +66,7 @@ export default function CustomerWaitScreen() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col p-6">
-      <Head><title>Your Token - YQ Queue</title></Head>
+      <Head><title>Your Token - Qmova</title></Head>
       
       <header className="text-center py-6">
         <h1 className="text-2xl font-bold text-gray-900">General Consultation</h1>

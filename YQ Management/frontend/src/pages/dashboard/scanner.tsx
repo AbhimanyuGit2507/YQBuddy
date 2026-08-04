@@ -557,7 +557,7 @@ export default function AdminScanner() {
   return (
     <AdminLayout pageTitle="Scanner" pageSubtitle="Scan and manage queues">
       <Head>
-        <title>QR Scanner | QMover</title>
+        <title>QR Scanner | Qmova</title>
       </Head>
 
       <div className="min-h-screen bg-gray-50/50 dark:bg-black/20 p-4 sm:p-6">

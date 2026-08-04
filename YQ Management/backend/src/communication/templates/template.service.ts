@@ -20,11 +20,11 @@ export class TemplateService {
 
   private readonly emailTemplates: Record<string, Template> = {
     signup_otp: {
-      subject: 'Verify your QMover Account',
+      subject: 'Verify your Qmova Account',
       html: `<html>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
   <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">QMover</h1>
+    <h1 style="color: white; margin: 0; font-size: 28px;">Qmova</h1>
   </div>
   <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
     <h2 style="color: #111827; margin-top: 0;">Verify Your Email</h2>
@@ -33,68 +33,68 @@ export class TemplateService {
       <span style="font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 8px;">{{otp}}</span>
     </div>
     <p style="color: #4b5563; line-height: 1.6;">This code will expire in <strong>10 minutes</strong>. If you did not request this, please ignore this email.</p>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The QMover Team</p>
+    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Team</p>
   </div>
 </body>
 </html>`,
-      text: `Your QMover verification code is: {{otp}}\n\nThis code will expire in 10 minutes.`,
+      text: `Your Qmova verification code is: {{otp}}\n\nThis code will expire in 10 minutes.`,
     },
     login_otp: {
-      subject: 'Your QMover Login Code',
+      subject: 'Your Qmova Login Code',
       html: `<html>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
   <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">QMover</h1>
+    <h1 style="color: white; margin: 0; font-size: 28px;">Qmova</h1>
   </div>
   <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
     <h2 style="color: #111827; margin-top: 0;">Your Login Code</h2>
-    <p style="color: #4b5563; line-height: 1.6;">Use the following code to sign in to your QMover account:</p>
+    <p style="color: #4b5563; line-height: 1.6;">Use the following code to sign in to your Qmova account:</p>
     <div style="background: #ffffff; border: 2px dashed #667eea; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
       <span style="font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 8px;">{{otp}}</span>
     </div>
     <p style="color: #4b5563; line-height: 1.6;">This code will expire in <strong>10 minutes</strong>. If you did not request this, please ignore this email.</p>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The QMover Team</p>
+    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Team</p>
   </div>
 </body>
 </html>`,
-      text: `Your QMover login code is: {{otp}}\n\nThis code will expire in 10 minutes.`,
+      text: `Your Qmova login code is: {{otp}}\n\nThis code will expire in 10 minutes.`,
     },
     login_notification: {
-      subject: 'New login to your QMover Account',
+      subject: 'New login to your Qmova Account',
       html: `<html>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
   <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">QMover Security</h1>
+    <h1 style="color: white; margin: 0; font-size: 28px;">Qmova Security</h1>
   </div>
   <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
     <h2 style="color: #111827; margin-top: 0;">New Login Detected</h2>
-    <p style="color: #4b5563; line-height: 1.6;">We detected a new login to your QMover account at <strong>{{timestamp}}</strong>.</p>
+    <p style="color: #4b5563; line-height: 1.6;">We detected a new login to your Qmova account at <strong>{{timestamp}}</strong>.</p>
     <p style="color: #4b5563; line-height: 1.6;">If this was you, no action is needed. If you did not sign in, please secure your account immediately.</p>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The QMover Security Team</p>
+    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Security Team</p>
   </div>
 </body>
 </html>`,
-      text: `We detected a new login to your QMover account at {{timestamp}}.`,
+      text: `We detected a new login to your Qmova account at {{timestamp}}.`,
     },
     welcome: {
-      subject: 'Welcome to QMover!',
+      subject: 'Welcome to Qmova!',
       html: `<html>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
   <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to QMover</h1>
+    <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Qmova</h1>
   </div>
   <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
     <h2 style="color: #111827; margin-top: 0;">Hello {{name}}, welcome aboard!</h2>
-    <p style="color: #4b5563; line-height: 1.6;">We're excited to have you on board. QMover helps you manage queues efficiently and keep your customers informed.</p>
+    <p style="color: #4b5563; line-height: 1.6;">We're excited to have you on board. Qmova helps you manage queues efficiently and keep your customers informed.</p>
     <p style="color: #4b5563; line-height: 1.6;">Get started by setting up your first queue and connecting your WhatsApp account.</p>
     <div style="text-align: center; margin: 30px 0;">
       <a href="{{dashboard_url}}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;">Go to Dashboard</a>
     </div>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The QMover Team</p>
+    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Team</p>
   </div>
 </body>
 </html>`,
-      text: `Welcome to QMover, {{name}}!\n\nWe're excited to have you on board.`,
+      text: `Welcome to Qmova, {{name}}!\n\nWe're excited to have you on board.`,
     },
     payment_success: {
       subject: 'Payment Successful',
@@ -106,8 +106,8 @@ export class TemplateService {
   <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
     <h2 style="color: #111827; margin-top: 0;">Thank You for Your Payment</h2>
     <p style="color: #4b5563; line-height: 1.6;">Your payment of <strong>{{amount}} {{currency}}</strong> for workspace <strong>"{{workspace}}"</strong> has been processed successfully.</p>
-    <p style="color: #4b5563; line-height: 1.6;">Your subscription is now active. You can continue using all features of QMover.</p>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The QMover Billing Team</p>
+    <p style="color: #4b5563; line-height: 1.6;">Your subscription is now active. You can continue using all features of Qmova.</p>
+    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Billing Team</p>
   </div>
 </body>
 </html>`,
@@ -126,7 +126,7 @@ export class TemplateService {
     <div style="text-align: center; margin: 30px 0;">
       <a href="{{dashboard_url}}" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;">Update Payment Method</a>
     </div>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The QMover Billing Team</p>
+    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Billing Team</p>
   </div>
 </body>
 </html>`,
@@ -145,7 +145,7 @@ export class TemplateService {
     <div style="text-align: center; margin: 30px 0;">
       <a href="{{dashboard_url}}" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;">Choose a Plan</a>
     </div>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The QMover Billing Team</p>
+    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Billing Team</p>
   </div>
 </body>
 </html>`,
@@ -161,7 +161,7 @@ export class TemplateService {
   <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
     <h2 style="color: #111827; margin-top: 0;">Your Subscription Has Been Renewed</h2>
     <p style="color: #4b5563; line-height: 1.6;">Your subscription for workspace <strong>"{{workspace}}"</strong> has been renewed. Next billing date: <strong>{{next_billing_date}}</strong>.</p>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The QMover Billing Team</p>
+    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Billing Team</p>
   </div>
 </body>
 </html>`,
@@ -177,7 +177,7 @@ export class TemplateService {
   <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
     <h2 style="color: #111827; margin-top: 0;">Your Subscription Has Been Cancelled</h2>
     <p style="color: #4b5563; line-height: 1.6;">Your subscription for workspace <strong>"{{workspace}}"</strong> has been cancelled. You can still use the service until the end of your current billing period.</p>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The QMover Billing Team</p>
+    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Billing Team</p>
   </div>
 </body>
 </html>`,
@@ -196,7 +196,7 @@ export class TemplateService {
     <div style="text-align: center; margin: 30px 0;">
       <a href="{{dashboard_url}}" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;">Renew Now</a>
     </div>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The QMover Billing Team</p>
+    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Billing Team</p>
   </div>
 </body>
 </html>`,
@@ -215,7 +215,7 @@ export class TemplateService {
     <div style="text-align: center; margin: 30px 0;">
       <a href="{{dashboard_url}}" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;">Make Payment</a>
     </div>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The QMover Billing Team</p>
+    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Billing Team</p>
   </div>
 </body>
 </html>`,
@@ -224,7 +224,7 @@ export class TemplateService {
   };
 
   private readonly whatsappTemplates: Record<string, string> = {
-    otp: 'Your Qmover verification code is {{otp}}. It expires in 5 minutes.',
+    otp: 'Your Qmova verification code is {{otp}}. It expires in 5 minutes.',
     queue_joined:
       'Hello {{name}}! You have successfully joined the queue. You are #{{position}} in line. Track your status here: {{link}}',
     position_update:
@@ -257,7 +257,7 @@ export class TemplateService {
         `Email template "${templateKey}" not found, falling back to generic`,
       );
       return {
-        subject: 'QMover Notification',
+        subject: 'Qmova Notification',
         html: `<p>{{message}}</p>`,
         text: '{{message}}',
       };
@@ -265,7 +265,7 @@ export class TemplateService {
 
     let html = template.html;
     let text = template.text || '';
-    let subject = template.subject || 'QMover Notification';
+    let subject = template.subject || 'Qmova Notification';
 
     for (const [key, value] of Object.entries(variables)) {
       const placeholder = new RegExp(`{{${key}}}`, 'g');

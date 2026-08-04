@@ -41,18 +41,18 @@ export default function LandingPage() {
   return (
     <div className={`min-h-screen bg-black text-zinc-50 ${geistSans.className} overflow-hidden`}>
       <Head>
-        <title>YQ Queue | Eliminate Waiting. Elevate Experience.</title>
+        <title>Qmova | Eliminate Waiting. Elevate Experience.</title>
         <meta name="description" content="White-label B2B SaaS Queue Management Platform" />
       </Head>
 
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/50 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]">
-              YQ
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-black text-white text-base shadow-[0_0_15px_rgba(99,102,241,0.5)] tracking-tighter">
+              Q
             </div>
-            <span className="text-xl font-bold tracking-tight">Queue</span>
+            <span className="font-extrabold text-xl tracking-tight text-white">Qmova</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
             <a href="#features" className="hover:text-white transition-colors">Features</a>
@@ -103,7 +103,7 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm text-sm font-medium text-zinc-300 mb-8">
             <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-            YQ Queue 2.0 is now live
+            Qmova 2.0 is now live
           </div>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 leading-[1.1]">
             Eliminate Waiting.<br />
@@ -329,7 +329,7 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-indigo-500/10"></div>
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <h2 className="text-4xl md:text-5xl font-bold mb-8">Ready to transform your waiting experience?</h2>
-          <p className="text-xl text-zinc-300 mb-10 max-w-2xl mx-auto">Join hundreds of businesses using YQ Queue to manage their physical spaces intelligently.</p>
+          <p className="text-xl text-zinc-300 mb-10 max-w-2xl mx-auto">Join hundreds of businesses using Qmova to manage their physical spaces intelligently.</p>
           <Link 
             href="/register" 
             className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white text-black text-lg font-medium hover:scale-105 transition-transform"
@@ -343,11 +343,11 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="py-12 px-6 border-t border-white/10 bg-zinc-950">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white text-xs">
-              YQ
+          <div className="flex items-center gap-2.5">
+            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-black text-white text-xs tracking-tighter">
+              Q
             </div>
-            <span className="text-lg font-bold tracking-tight">Queue</span>
+            <span className="font-extrabold text-lg tracking-tight text-white">Qmova</span>
           </div>
           <div className="flex gap-8 text-sm text-zinc-500">
             <Link href="/login" className="hover:text-white transition-colors">Admin Login</Link>
@@ -355,7 +355,7 @@ export default function LandingPage() {
             <Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link>
             <Link href="#" className="hover:text-white transition-colors">Terms of Service</Link>
           </div>
-          <p className="text-sm text-zinc-600">© 2026 YQ Queue Inc. All rights reserved.</p>
+          <p className="text-sm text-zinc-600">© 2026 Qmova Inc. All rights reserved.</p>
         </div>
       </footer>
     </div>

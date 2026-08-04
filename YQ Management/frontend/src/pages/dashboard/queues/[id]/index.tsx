@@ -139,7 +139,7 @@ export default function QueueWorkspace() {
     <ErrorBoundary>
       <AdminLayout pageTitle={queue?.name || 'Queue'} pageSubtitle="Queue workspace">
         <Head>
-          <title>Manage {queueName || 'Queue'} | QMover</title>
+          <title>Manage {queueName || 'Queue'} | Qmova</title>
         </Head>
 
         {isOffline && (

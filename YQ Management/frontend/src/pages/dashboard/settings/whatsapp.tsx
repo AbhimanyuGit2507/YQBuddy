@@ -21,7 +21,7 @@ export default function WhatsAppSettingsPage() {
   const [testingWhatsApp, setTestingWhatsApp] = useState(false);
   const [testPhone, setTestPhone] = useState('');
   const [testCountryCode, setTestCountryCode] = useState('+1');
-  const [testMessage, setTestMessage] = useState('Test message from QMover');
+  const [testMessage, setTestMessage] = useState('Test message from Qmova');
   const [templateDrafts, setTemplateDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {

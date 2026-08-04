@@ -62,7 +62,7 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen bg-black text-white flex">
       <Head>
-        <title>Forgot Password | YQ Queue</title>
+        <title>Forgot Password | Qmova</title>
       </Head>
 
       {/* Left Panel - Visual */}

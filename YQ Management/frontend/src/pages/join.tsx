@@ -88,11 +88,14 @@ export default function JoinPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
-        <Head><title>Join Workspace | QMover</title></Head>
+        <Head><title>Join Workspace | Qmova</title></Head>
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white text-xl shadow-[0_0_25px_rgba(99,102,241,0.5)] mx-auto mb-6">
-              YQ
+            <div className="flex items-center justify-center gap-2.5 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-black text-white text-lg shadow-[0_0_25px_rgba(99,102,241,0.5)] tracking-tighter">
+                Q
+              </div>
+              <span className="font-extrabold text-2xl tracking-tight text-white">Qmova</span>
             </div>
             <h1 className="text-2xl font-bold mb-2">Join Workspace</h1>
             <p className="text-zinc-400">Sign in or create an account to join</p>
@@ -121,11 +124,14 @@ export default function JoinPage() {
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
-      <Head><title>Join Workspace | QMover</title></Head>
+      <Head><title>Join Workspace | Qmova</title></Head>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white text-xl shadow-[0_0_25px_rgba(99,102,241,0.5)] mx-auto mb-6">
-            YQ
+          <div className="flex items-center justify-center gap-2.5 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-black text-white text-lg shadow-[0_0_25px_rgba(99,102,241,0.5)] tracking-tighter">
+              Q
+            </div>
+            <span className="font-extrabold text-2xl tracking-tight text-white">Qmova</span>
           </div>
           <h1 className="text-2xl font-bold mb-2">Join Workspace</h1>
           <p className="text-zinc-400">Enter the invitation code to join</p>
