@@ -6,6 +6,20 @@ import { toast } from 'sonner';
 import { QrCode, Loader2, ArrowRight, Store, Activity, Pizza, Briefcase, Check, Keyboard, Copy, CheckCircle2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
+const COUNTRY_CODES = [
+  { code: '+27', label: '🇿🇦 +27 (ZA)' },
+  { code: '+1', label: '🇺🇸 +1 (US/CA)' },
+  { code: '+44', label: '🇬🇧 +44 (UK)' },
+  { code: '+91', label: '🇮🇳 +91 (IN)' },
+  { code: '+61', label: '🇦🇺 +61 (AU)' },
+  { code: '+49', label: '🇩🇪 +49 (DE)' },
+  { code: '+33', label: '🇫🇷 +33 (FR)' },
+  { code: '+55', label: '🇧🇷 +55 (BR)' },
+  { code: '+971', label: '🇦🇪 +971 (AE)' },
+  { code: '+234', label: '🇳🇬 +234 (NG)' },
+  { code: '+254', label: '🇰🇪 +254 (KE)' },
+];
+
 const BUSINESS_TEMPLATES = [
   {
     id: 'general',
@@ -111,6 +125,7 @@ export default function Onboarding() {
   const [fullName, setFullName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+27');
 
   // WhatsApp State
   const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
@@ -122,10 +137,11 @@ export default function Onboarding() {
 
   const savePersonalInfoMutation = useMutation({
     mutationFn: () => {
-      // Assuming we patch user settings here
+      // Clean phone and combine with country code
+      const formattedPhone = phone.trim().startsWith('+') ? phone.trim() : `${countryCode} ${phone.trim().replace(/^0/, '')}`;
       return fetchApi('/auth/personal-settings', {
         method: 'PATCH',
-        body: JSON.stringify({ fullName, phone, companyName }),
+        body: JSON.stringify({ fullName, phone: formattedPhone, companyName }),
       });
     },
     onSuccess: () => {
@@ -323,13 +339,26 @@ export default function Onboarding() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                      placeholder="+1 (555) 000-0000"
-                    />
+                    <div className="flex rounded-xl shadow-sm bg-gray-50 border border-gray-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:bg-white transition-all overflow-hidden">
+                      <select
+                        value={countryCode}
+                        onChange={(e) => setCountryCode(e.target.value)}
+                        className="bg-transparent text-gray-800 font-medium px-3 py-3 border-r border-gray-200 focus:outline-none cursor-pointer text-sm"
+                      >
+                        {COUNTRY_CODES.map((c) => (
+                          <option key={c.code} value={c.code}>
+                            {c.label}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full px-4 py-3 bg-transparent text-gray-900 placeholder:text-gray-400 font-medium outline-none"
+                        placeholder="71 234 5678"
+                      />
+                    </div>
                   </div>
                 </div>
                 <button
