@@ -20,9 +20,23 @@ export function setApiRouter(r: NextRouter) {
 }
 
 export const AuthStorage = {
+  set: (token: string) => {
+    if (typeof window !== 'undefined' && token) {
+      localStorage.setItem('qmover_auth_token', token);
+      document.cookie = `token=${token}; path=/; max-age=604800; SameSite=Lax`;
+    }
+  },
+  get: (): string | null => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('qmover_auth_token');
+    }
+    return null;
+  },
   clear: () => {
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('qmover_auth_token');
       sessionStorage.removeItem('qmover_auth_token');
+      document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     }
   },
 };
@@ -69,6 +83,10 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
     !(options.body instanceof FormData)
   ) {
     headers.set('Content-Type', 'application/json');
+  }
+  const token = AuthStorage.get();
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   const controller = new AbortController();

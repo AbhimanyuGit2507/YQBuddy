@@ -37,8 +37,28 @@ export class AuthController {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    const isSuperAdmin = user.role === 'SUPER_ADMIN' || user.email?.toLowerCase() === 'yqbuddysa@gmail.com' || user.email?.toLowerCase() === process.env.SUPER_ADMIN_EMAIL?.toLowerCase();
+    if (isSuperAdmin) {
+      const { access_token } = await this.authService.login(user);
+      res.cookie('token', access_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+      return { success: true, requiresOtp: false, user, access_token };
+    }
+
     await this.authService.generateAndSendOTP(body.email, 'login');
     return { success: true, requiresOtp: true, email: body.email };
+  }
+
+  @UseGuards(ThrottlerGuard)
+  @Post('resend-otp')
+  async resendOtp(@Body() body: { email: string; purpose: 'signup' | 'login' | 'reset' }) {
+    await this.authService.generateAndSendOTP(body.email, body.purpose || 'login');
+    return { success: true, message: 'A new verification code has been sent to your email.' };
   }
 
   @UseGuards(ThrottlerGuard)
@@ -138,12 +158,15 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    const isNewUser = req.user.isNewUser || !req.user.workspaceId;
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.email?.toLowerCase() === 'yqbuddysa@gmail.com' || req.user?.email?.toLowerCase() === process.env.SUPER_ADMIN_EMAIL?.toLowerCase();
+    const isNewUser = req.user.isNewUser || (!req.user.workspaceId && !isSuperAdmin);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-    if (isNewUser) {
-      res.redirect(`${frontendUrl}/onboarding`);
+    if (isSuperAdmin) {
+      res.redirect(`${frontendUrl}/super-admin?token=${access_token}`);
+    } else if (isNewUser) {
+      res.redirect(`${frontendUrl}/onboarding?token=${access_token}`);
     } else {
-      res.redirect(`${frontendUrl}/dashboard`);
+      res.redirect(`${frontendUrl}/dashboard?token=${access_token}`);
     }
   }
 

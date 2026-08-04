@@ -30,7 +30,7 @@ export default function Settings() {
   const { data: whatsappStatus } = useQuery({
     queryKey: ['whatsapp-status'],
     queryFn: () => fetchApi('/whatsapp/status'),
-    refetchInterval: (data: any) => (data?.state === 'connecting' || qrCode) && data?.state !== 'open' ? 3000 : false,
+    refetchInterval: (data: any) => (data?.state === 'connecting' || qrCode) && data?.state !== 'open' ? 1500 : false,
   });
 
   const { data: webhooks = [], refetch: refetchWebhooks } = useQuery({

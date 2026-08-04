@@ -39,10 +39,9 @@ export default function WhatsAppSettingsPage() {
     queryKey: ['whatsapp-status'],
     queryFn: () => fetchApi('/whatsapp/status'),
     refetchInterval: (data: any) => {
-      if (data?.state === 'open' || data?.state === 'close' || data?.state === 'unconfigured') {
-        return false;
-      }
-      return 2000;
+      if (data?.state === 'open') return false;
+      if (qrCode || pairingCode || data?.state === 'connecting') return 1500;
+      return 5000;
     },
   });
 

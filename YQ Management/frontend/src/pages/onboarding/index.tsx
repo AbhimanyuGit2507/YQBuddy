@@ -135,6 +135,39 @@ export default function Onboarding() {
   const [pairingPhoneNumber, setPairingPhoneNumber] = useState('');
   const [pairingCopied, setPairingCopied] = useState(false);
 
+  const updateStep = (newStep: 1 | 2 | 3) => {
+    setStep(newStep);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('onboarding_step', newStep.toString());
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedStep = localStorage.getItem('onboarding_step');
+      if (savedStep) {
+        const parsed = parseInt(savedStep, 10);
+        if (parsed === 1 || parsed === 2 || parsed === 3) setStep(parsed as 1 | 2 | 3);
+      }
+      const savedData = localStorage.getItem('onboarding_form_data');
+      if (savedData) {
+        try {
+          const parsed = JSON.parse(savedData);
+          if (parsed.fullName) setFullName(parsed.fullName);
+          if (parsed.companyName) setCompanyName(parsed.companyName);
+          if (parsed.phone) setPhone(parsed.phone);
+          if (parsed.selectedType) setSelectedType(parsed.selectedType);
+        } catch (e) {}
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('onboarding_form_data', JSON.stringify({ fullName, companyName, phone, selectedType }));
+    }
+  }, [fullName, companyName, phone, selectedType]);
+
   const savePersonalInfoMutation = useMutation({
     mutationFn: () => {
       // Clean phone and combine with country code
@@ -145,7 +178,7 @@ export default function Onboarding() {
       });
     },
     onSuccess: () => {
-      setStep(2);
+      updateStep(2);
       toast.success('Information saved');
     },
     onError: () => {
@@ -162,7 +195,7 @@ export default function Onboarding() {
         })
       )),
     onSuccess: () => {
-      setStep(3);
+      updateStep(3);
       queryClient.invalidateQueries({ queryKey: ['queues'] });
       toast.success('Queues setup successfully');
     },
@@ -177,6 +210,7 @@ export default function Onboarding() {
     mutationFn: () => fetchApi('/whatsapp/connect', { method: 'POST' }),
     onSuccess: (res) => {
       if (res.qr) setQrCode(res.qr);
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] });
       if (res.state === 'open') {
         setIsWhatsAppConnected(true);
         toast.success('WhatsApp connected');
@@ -202,6 +236,7 @@ export default function Onboarding() {
     onSuccess: (res) => {
       setPairingCode(res.pairingCode);
       setPairingCopied(false);
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-status'] });
       toast.success('Pairing code generated. Enter it in WhatsApp.');
     },
     onError: () => {
@@ -223,11 +258,9 @@ export default function Onboarding() {
     queryKey: ['whatsapp-status'],
     queryFn: () => fetchApi('/whatsapp/status'),
     refetchInterval: (query: any) => {
-      if (query?.state?.error) return false;
       const data = query?.state?.data;
-      if (!data) return 3000;
-      if (data.state === 'open' || data.state === 'close' || data.state === 'unconfigured') return false;
-      return 3000;
+      if (data?.state === 'open') return false;
+      return 1500;
     },
     enabled: step === 3,
   });
@@ -257,6 +290,10 @@ export default function Onboarding() {
   };
 
   const finishOnboarding = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('onboarding_step');
+      localStorage.removeItem('onboarding_form_data');
+    }
     router.push('/dashboard');
   };
 
@@ -418,11 +455,18 @@ export default function Onboarding() {
                 })}
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex gap-4">
+                <button 
+                  type="button"
+                  onClick={() => updateStep(1)}
+                  className="w-1/3 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors"
+                >
+                  Back
+                </button>
                 <button 
                   onClick={handleSetupQueues}
-disabled={setupQueuesMutation.isPending}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
+                  disabled={setupQueuesMutation.isPending}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
                 >
                   {setupQueuesMutation.isPending && <Loader2 className="w-5 h-5 animate-spin" />}
                   {setupQueuesMutation.isPending ? 'Setting up queues...' : 'Continue'}
@@ -573,6 +617,15 @@ disabled={setupQueuesMutation.isPending}
                 </div>
               )}
 
+              <div className="mt-6 pt-4 border-t border-gray-100 flex justify-start">
+                <button
+                  type="button"
+                  onClick={() => updateStep(2)}
+                  className="text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1"
+                >
+                  ← Back to Queues
+                </button>
+              </div>
             </div>
           )}
 
