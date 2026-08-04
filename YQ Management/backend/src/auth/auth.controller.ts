@@ -179,16 +179,56 @@ export class AuthController {
 
     if (body.companyName && (req.user.role === 'ADMIN' || req.user.role === 'SUPER_ADMIN' || req.user.role === 'TENANT_ADMIN')) {
       if (req.user.tenantId) {
-        await this.usersService['prisma'].tenant.update({
-          where: { id: req.user.tenantId },
-          data: { name: body.companyName }
-        });
+        try {
+          const tenant = await this.usersService['prisma'].tenant.findUnique({ where: { id: req.user.tenantId } });
+          if (tenant) {
+            await this.usersService['prisma'].tenant.update({
+              where: { id: req.user.tenantId },
+              data: { name: body.companyName },
+            });
+          }
+        } catch (error) {
+          new Logger(AuthController.name).warn(`Could not update tenant name: ${error}`);
+        }
       }
       if (req.user.workspaceId) {
-        await this.usersService['prisma'].workspace.update({
-          where: { id: req.user.workspaceId },
-          data: { name: body.companyName }
-        });
+        try {
+          const existingWs = await this.usersService['prisma'].workspace.findUnique({
+            where: { id: req.user.workspaceId },
+          });
+          if (existingWs) {
+            await this.usersService['prisma'].workspace.update({
+              where: { id: req.user.workspaceId },
+              data: { name: body.companyName },
+            });
+          } else if (req.user.tenantId) {
+            const tenantWs = await this.usersService['prisma'].workspace.findFirst({
+              where: { tenantId: req.user.tenantId },
+            });
+            if (tenantWs) {
+              await this.usersService['prisma'].workspace.update({
+                where: { id: tenantWs.id },
+                data: { name: body.companyName },
+              });
+            } else {
+              const newWs = await this.usersService['prisma'].workspace.create({
+                data: {
+                  id: req.user.workspaceId !== req.user.tenantId ? req.user.workspaceId : undefined,
+                  name: body.companyName,
+                  subdomain: `${body.companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}-${Date.now()}`,
+                  ownerId: req.user.sub,
+                  tenantId: req.user.tenantId,
+                },
+              });
+              await this.usersService['prisma'].user.update({
+                where: { id: req.user.sub },
+                data: { workspaceId: newWs.id },
+              });
+            }
+          }
+        } catch (error) {
+          new Logger(AuthController.name).error(`Error updating or creating workspace: ${error}`);
+        }
       }
     }
 

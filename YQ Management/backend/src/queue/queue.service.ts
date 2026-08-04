@@ -28,10 +28,20 @@ export class QueueService {
     formConfig?: any,
     tokenDisplayConfig?: any,
   ) {
+    let resolvedWorkspaceId = workspaceId;
+    if (workspaceId) {
+      const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId } });
+      if (!ws && tenantId) {
+        const tenantWs = await this.prisma.workspace.findFirst({ where: { tenantId } });
+        if (tenantWs) resolvedWorkspaceId = tenantWs.id;
+        else resolvedWorkspaceId = undefined;
+      }
+    }
+
     const queue = await this.prisma.queue.create({
       data: {
         tenantId,
-        workspaceId,
+        workspaceId: resolvedWorkspaceId,
         name,
         status: QueueStatus.ACTIVE,
         formConfig,
