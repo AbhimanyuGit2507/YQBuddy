@@ -132,7 +132,7 @@ export class AuthService {
       sub: user.id,
       role: user.role,
       tenantId: user.tenantId,
-      workspaceId: user.workspaceId,
+      workspaceId: user.workspaceId || user.tenantId,
       personalSettings: user.personalSettings,
       jti: require('crypto').randomUUID(),
     };
