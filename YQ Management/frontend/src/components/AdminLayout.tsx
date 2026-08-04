@@ -25,6 +25,7 @@ import { DashboardTour } from './DashboardTour';
 import { WhatsAppStatusIndicator } from './WhatsAppStatusIndicator';
 import { useAuth } from './AuthContext';
 import { fetchApi } from '../lib/api';
+import NotificationsModal, { useNotifications } from './NotificationsModal';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -38,6 +39,8 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle }: Admin
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const { unreadCount } = useNotifications();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const initials = user?.email ? user.email.substring(0, 2).toUpperCase() : '??';
@@ -200,9 +203,15 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle }: Admin
           <div className="flex items-center gap-1 shrink-0">
             <WhatsAppStatusIndicator />
 
-            <button className="hidden sm:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors text-gray-500 dark:text-zinc-400 relative">
+            <button
+              onClick={() => setNotifOpen(!notifOpen)}
+              className="flex w-8 h-8 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors text-gray-500 dark:text-zinc-400 relative"
+              title="Notifications & System Alerts"
+            >
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 border-2 border-white dark:border-black"></span>
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 border-2 border-white dark:border-zinc-900 animate-pulse"></span>
+              )}
             </button>
 
             {/* User Dropdown */}
@@ -258,6 +267,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle }: Admin
         <main className="flex-1 overflow-y-auto p-4 lg:p-8 z-10 relative">
           {children}
         </main>
+        <NotificationsModal open={notifOpen} onClose={() => setNotifOpen(false)} />
       </div>
     </div>
   );

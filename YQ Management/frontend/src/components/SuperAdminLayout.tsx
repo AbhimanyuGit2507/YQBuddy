@@ -20,6 +20,7 @@ import {
 import { useTheme } from './ThemeProvider';
 import { useAuth } from './AuthContext';
 import { fetchApi } from '../lib/api';
+import NotificationsModal, { useNotifications } from './NotificationsModal';
 
 interface SuperAdminLayoutProps {
   children: React.ReactNode;
@@ -36,6 +37,8 @@ export default function SuperAdminLayout({
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const { unreadCount } = useNotifications();
 
   const navItems = [
     { label: 'Overview', href: '/super-admin', icon: LayoutDashboard },
@@ -142,9 +145,15 @@ export default function SuperAdminLayout({
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors relative">
+            <button
+              onClick={() => setNotifOpen(!notifOpen)}
+              className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors relative"
+              title="Notifications & System Alerts"
+            >
               <Bell className="w-4 h-4 text-gray-500 dark:text-zinc-400" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-indigo-500 rounded-full" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+              )}
             </button>
             <button
               onClick={toggleTheme}
@@ -169,6 +178,7 @@ export default function SuperAdminLayout({
         <main className="flex-1 overflow-y-auto p-6 lg:p-8 z-10 relative">
           {children}
         </main>
+        <NotificationsModal open={notifOpen} onClose={() => setNotifOpen(false)} />
       </div>
     </div>
   );

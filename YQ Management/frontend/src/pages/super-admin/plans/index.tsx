@@ -249,25 +249,25 @@ export default function SuperAdminPlans() {
                   </div>
                 </div>
                 
-                <div className="pt-4 border-t border-gray-100 dark:border-white/5 space-y-3">
+                <div className="pt-4 border-t border-gray-100 dark:border-white/5 space-y-4">
                   <h3 className="text-sm font-bold text-gray-900 dark:text-white">Features</h3>
                   
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-sm text-gray-600 dark:text-zinc-400">Text-to-Speech Announcements</span>
-                    <input type="checkbox" checked={formData.features.textToSpeech} onChange={(e) => setFormData({ ...formData, features: { ...formData.features, textToSpeech: e.target.checked } })} className="sr-only peer" />
-                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500 rounded-full peer dark:bg-zinc-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                  <label className="flex items-center justify-between cursor-pointer py-1">
+                    <span className="text-sm text-gray-700 dark:text-zinc-300 font-medium">Text-to-Speech Announcements</span>
+                    <input type="checkbox" checked={formData.features?.textToSpeech || false} onChange={(e) => setFormData({ ...formData, features: { ...formData.features, textToSpeech: e.target.checked } })} className="sr-only peer" />
+                    <div className="relative w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500 rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                   </label>
 
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-sm text-gray-600 dark:text-zinc-400">WhatsApp Notifications</span>
-                    <input type="checkbox" checked={formData.features.whatsappNotifications} onChange={(e) => setFormData({ ...formData, features: { ...formData.features, whatsappNotifications: e.target.checked } })} className="sr-only peer" />
-                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500 rounded-full peer dark:bg-zinc-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                  <label className="flex items-center justify-between cursor-pointer py-1">
+                    <span className="text-sm text-gray-700 dark:text-zinc-300 font-medium">WhatsApp Notifications</span>
+                    <input type="checkbox" checked={formData.features?.whatsappNotifications || false} onChange={(e) => setFormData({ ...formData, features: { ...formData.features, whatsappNotifications: e.target.checked } })} className="sr-only peer" />
+                    <div className="relative w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500 rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                   </label>
 
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-sm text-gray-600 dark:text-zinc-400">Custom Branding</span>
-                    <input type="checkbox" checked={formData.features.customBranding} onChange={(e) => setFormData({ ...formData, features: { ...formData.features, customBranding: e.target.checked } })} className="sr-only peer" />
-                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500 rounded-full peer dark:bg-zinc-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                  <label className="flex items-center justify-between cursor-pointer py-1">
+                    <span className="text-sm text-gray-700 dark:text-zinc-300 font-medium">Custom Branding</span>
+                    <input type="checkbox" checked={formData.features?.customBranding || false} onChange={(e) => setFormData({ ...formData, features: { ...formData.features, customBranding: e.target.checked } })} className="sr-only peer" />
+                    <div className="relative w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500 rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                   </label>
                 </div>
               </div>
