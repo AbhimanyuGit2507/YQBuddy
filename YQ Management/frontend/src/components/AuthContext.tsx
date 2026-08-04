@@ -31,6 +31,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .then((data) => {
         setUser(data);
         setLoading(false);
+        if (!data?.workspaceId && router.pathname.startsWith('/dashboard')) {
+          router.push('/onboarding');
+        }
       })
       .catch(() => {
         setUser(null);

@@ -138,7 +138,7 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    const isNewUser = req.user.isNewUser;
+    const isNewUser = req.user.isNewUser || !req.user.workspaceId;
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     if (isNewUser) {
       res.redirect(`${frontendUrl}/onboarding`);

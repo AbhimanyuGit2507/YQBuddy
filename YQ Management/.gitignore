@@ -53,3 +53,12 @@ backend/prisma/migrations/*.sql
 tmp/
 temp/
 *.tmp
+.env.deployment
+update_render_env.js
+deploy_evolution.js
+get_owner.js
+get_render_env.js
+keep_alive.js
+fix_dead_code.js
+login.html
+render.yaml

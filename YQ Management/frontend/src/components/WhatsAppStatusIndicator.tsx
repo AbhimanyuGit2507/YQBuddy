@@ -7,11 +7,11 @@ export function WhatsAppStatusIndicator() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['whatsapp-status'],
     queryFn: () => fetchApi('/whatsapp/status'),
-    refetchInterval: 10000,
+    refetchInterval: (query: any) => (query.state.error ? false : 10000),
     retry: false,
   });
 
-  const isAuthError = error instanceof ApiError && error.status === 401;
+  const isAuthError = error instanceof ApiError && (error.status === 401 || error.status === 404);
   const isConnected = data?.state === 'open' || data?.state === 'CONNECTED';
 
   if (isLoading) {
@@ -25,10 +25,10 @@ export function WhatsAppStatusIndicator() {
 
   if (isAuthError) {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700" title="Authentication required">
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700" title="WhatsApp service unconfigured or authentication required">
         <div className="w-2 h-2 rounded-full bg-gray-400"></div>
         <MessageCircle className="w-3.5 h-3.5 text-gray-500 dark:text-zinc-400" />
-        <span className="text-xs font-medium text-gray-500 dark:text-zinc-400">Auth Required</span>
+        <span className="text-xs font-medium text-gray-500 dark:text-zinc-400">Not Configured</span>
       </div>
     );
   }
