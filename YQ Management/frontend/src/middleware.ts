@@ -52,16 +52,17 @@ export async function middleware(req: NextRequest) {
 
   // Authenticate super-admin routes
   if (req.nextUrl.pathname.startsWith('/super-admin')) {
-    const token = req.cookies.get('access_token')?.value || req.cookies.get('token')?.value;
+    const token = req.cookies.get('access_token')?.value || req.cookies.get('token')?.value || req.nextUrl.searchParams.get('token');
     
     if (!token) {
       return NextResponse.redirect(new URL('/login', req.url));
     }
     
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://qmova-backend.onrender.com';
       const res = await fetch(`${backendUrl}/auth/me`, {
         headers: {
+          Authorization: `Bearer ${token}`,
           cookie: `token=${token}`,
         },
       });
@@ -82,5 +83,14 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  const ssoToken = req.nextUrl.searchParams.get('token');
+  if (ssoToken) {
+    response.cookies.set('token', ssoToken, {
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60,
+      sameSite: 'lax',
+    });
+  }
+  return response;
 }
