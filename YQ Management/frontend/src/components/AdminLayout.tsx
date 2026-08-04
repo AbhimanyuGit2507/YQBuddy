@@ -18,8 +18,8 @@ import {
   Sun,
   Moon,
   Hash,
+  Shield,
 } from 'lucide-react';
-
 import { useTheme } from './ThemeProvider';
 import { DashboardTour } from './DashboardTour';
 import { WhatsAppStatusIndicator } from './WhatsAppStatusIndicator';
@@ -58,7 +58,10 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle }: Admin
     { label: 'QR Display', href: '/dashboard/display-picker', icon: QrCode },
   ];
 
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.email?.toLowerCase() === 'yqbuddysa@gmail.com';
+
   const bottomItems = [
+    ...(isSuperAdmin ? [{ label: 'Super Admin', href: '/super-admin', icon: Shield, adminOnly: true }] : []),
     { label: 'Team Members', href: '/dashboard/settings/staff', icon: Users, adminOnly: true },
     { label: 'Billing & Plans', href: '/dashboard/settings/billing', icon: CreditCard, adminOnly: true },
     { label: 'Settings', href: '/dashboard/settings', icon: Settings, id: 'tour-settings-nav', adminOnly: true },

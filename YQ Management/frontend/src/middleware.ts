@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || '';
+const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'yqbuddysa@gmail.com';
 
 export const config = {
   matcher: [
@@ -68,7 +68,10 @@ export async function middleware(req: NextRequest) {
 
       if (res.ok) {
         const data = await res.json();
-        if (data.email !== SUPER_ADMIN_EMAIL) {
+        const isSuper = data.role === 'SUPER_ADMIN' ||
+                        data.email?.toLowerCase() === 'yqbuddysa@gmail.com' ||
+                        (SUPER_ADMIN_EMAIL && data.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase());
+        if (!isSuper) {
           return NextResponse.redirect(new URL('/dashboard', req.url));
         }
       } else if (res.status === 401) {

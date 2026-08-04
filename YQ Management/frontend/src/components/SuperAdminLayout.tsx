@@ -45,6 +45,7 @@ export default function SuperAdminLayout({
     { label: 'Analytics', href: '/super-admin/analytics', icon: TrendingUp },
     { label: 'Users', href: '/super-admin/users', icon: Users },
     { label: 'Notifications', href: '/super-admin/communication', icon: Mail },
+    { label: 'Tenant Dashboard', href: '/dashboard', icon: Activity },
   ];
 
   const isActive = (path: string) => {

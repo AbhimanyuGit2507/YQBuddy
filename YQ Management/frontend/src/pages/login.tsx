@@ -29,8 +29,8 @@ export default function Login() {
       if (data?.requiresOtp) {
         setStep('otp');
       } else {
-        // Fallback if no OTP required for some reason
-        router.push('/dashboard');
+        const isSuper = data?.user?.role === 'SUPER_ADMIN' || email.trim().toLowerCase() === 'yqbuddysa@gmail.com';
+        router.push(isSuper ? '/super-admin' : '/dashboard');
       }
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -53,7 +53,8 @@ export default function Login() {
       if (data?.access_token) {
         // Token is stored as httpOnly cookie by the backend
       }
-      router.push('/dashboard');
+      const isSuper = data?.user?.role === 'SUPER_ADMIN' || email.trim().toLowerCase() === 'yqbuddysa@gmail.com';
+      router.push(isSuper ? '/super-admin' : '/dashboard');
     } catch (err: any) {
       setError(err.message || 'Invalid OTP');
     } finally {
