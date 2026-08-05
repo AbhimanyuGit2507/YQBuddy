@@ -8,6 +8,7 @@ import { EmailService } from '../email/email.service';
 import { WorkspaceService } from '../workspace/workspace.service';
 import { PasswordResetService } from './password-reset.service';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { RedisService } from '../redis/redis.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -24,6 +25,7 @@ describe('AuthController', () => {
         { provide: EmailService, useValue: { sendOTP: jest.fn(), sendLoginNotification: jest.fn(), addContactToMarketingList: jest.fn() } },
         { provide: WorkspaceService, useValue: { createWorkspace: jest.fn() } },
         { provide: PasswordResetService, useValue: { requestReset: jest.fn(), resetPassword: jest.fn() } },
+        { provide: RedisService, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() } },
       ],
     }).compile();
 

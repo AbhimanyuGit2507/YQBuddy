@@ -22,7 +22,7 @@ import { PasswordResetService } from './password-reset.service';
         }
         return {
           secret,
-          signOptions: { expiresIn: '60m' },
+          signOptions: { expiresIn: '30d' },
         };
       },
     }),

@@ -23,7 +23,7 @@ export const AuthStorage = {
   set: (token: string) => {
     if (typeof window !== 'undefined' && token) {
       localStorage.setItem('qmover_auth_token', token);
-      document.cookie = `token=${token}; path=/; max-age=604800; SameSite=Lax`;
+      document.cookie = `token=${token}; path=/; max-age=2592000; SameSite=Lax`;
     }
   },
   get: (): string | null => {
