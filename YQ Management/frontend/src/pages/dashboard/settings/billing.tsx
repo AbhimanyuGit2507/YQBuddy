@@ -59,6 +59,7 @@ export default function BillingSettings() {
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = paymentData.paymentUrl;
+      form.target = '_self';
 
       const fields = ['siteCode', 'countryCode', 'currencyCode', 'amount', 'transactionReference', 'bankReference', 'cancelUrl', 'errorUrl', 'successUrl', 'notifyUrl', 'isTest', 'hashCheck'];
       
@@ -71,7 +72,17 @@ export default function BillingSettings() {
       });
 
       document.body.appendChild(form);
-      form.submit();
+      
+      // Auto submit, but provide a fallback if blocked
+      const submitTimer = setTimeout(() => {
+        try {
+          form.submit();
+        } catch (e) {
+          console.error("Auto-submit failed", e);
+        }
+      }, 100);
+
+      return () => clearTimeout(submitTimer);
     }
   }, [paymentData]);
 
@@ -96,6 +107,24 @@ export default function BillingSettings() {
               <h3 className="font-bold">{statusMessage.type === 'success' ? 'Payment Successful' : 'Payment Failed'}</h3>
               <p className="text-sm opacity-90">{statusMessage.text}</p>
             </div>
+          </div>
+        )}
+
+        {paymentData && (
+          <div className="bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 p-6 rounded-2xl flex flex-col items-center justify-center text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-indigo-600 dark:text-indigo-400 mb-4" />
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Redirecting to Secure Payment...</h3>
+            <p className="text-sm text-gray-600 dark:text-zinc-400 mb-6 max-w-md mx-auto">
+              You are being securely redirected to Ozow to complete your payment. If the redirect doesn't happen automatically in a few seconds, please click the button below.
+            </p>
+            <form action={paymentData.paymentUrl} method="POST">
+              {['siteCode', 'countryCode', 'currencyCode', 'amount', 'transactionReference', 'bankReference', 'cancelUrl', 'errorUrl', 'successUrl', 'notifyUrl', 'isTest', 'hashCheck'].map(field => (
+                <input key={field} type="hidden" name={field.charAt(0).toUpperCase() + field.slice(1)} value={paymentData[field]} />
+              ))}
+              <button type="submit" className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-md">
+                Proceed to Payment Manually
+              </button>
+            </form>
           </div>
         )}
 
