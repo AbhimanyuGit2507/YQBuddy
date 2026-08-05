@@ -27,7 +27,7 @@ export default function SuperAdminDashboard() {
       <div className="max-w-6xl mx-auto space-y-8 pb-12 animate-in fade-in duration-500">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white uppercase">Command Center</h1>
-          <p className="text-gray-500 dark:text-rose-200/60 mt-2">God Mode overview of the entire Qmova platform.</p>
+          <p className="text-gray-500 dark:text-zinc-400 mt-2">God Mode overview of the entire Qmova platform.</p>
         </div>
 
         {/* Top level stats */}
@@ -35,13 +35,13 @@ export default function SuperAdminDashboard() {
           {stats.map((stat, i) => (
             <div key={i} className={`rounded-2xl border ${stat.bg} p-6 flex flex-col`}>
               <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-xl bg-white dark:bg-[#120005]/50 border border-white/20 shadow-sm ${stat.color}`}>
+                <div className={`p-3 rounded-xl bg-white dark:bg-zinc-900 border border-white/20 shadow-sm ${stat.color}`}>
                   <stat.icon className="w-6 h-6" />
                 </div>
               </div>
-              <h3 className="text-sm font-bold text-gray-600 dark:text-rose-100/70 uppercase tracking-wider mb-1">{stat.name}</h3>
+              <h3 className="text-sm font-bold text-gray-600 dark:text-zinc-400 uppercase tracking-wider mb-1">{stat.name}</h3>
               <div className="text-4xl font-black text-gray-900 dark:text-white">
-                {isLoading ? <div className="h-10 w-24 bg-gray-200 dark:bg-rose-900/20 rounded animate-pulse" /> : stat.value}
+                {isLoading ? <div className="h-10 w-24 bg-gray-200 dark:bg-white/10 rounded animate-pulse" /> : stat.value}
               </div>
             </div>
           ))}
@@ -52,25 +52,25 @@ export default function SuperAdminDashboard() {
           <div className="lg:col-span-1 space-y-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
             <div className="space-y-3">
-              <button className="w-full flex items-center justify-between p-4 rounded-xl bg-white dark:bg-[#120005] border border-gray-200 dark:border-rose-900/30 hover:border-rose-400 dark:hover:border-rose-500/50 transition-colors group">
-                <span className="font-bold text-gray-700 dark:text-rose-100">Add New Tenant</span>
-                <ArrowUpRight className="w-5 h-5 text-gray-400 dark:text-rose-500 group-hover:text-rose-600 transition-colors" />
+              <button className="w-full flex items-center justify-between p-4 rounded-xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 hover:border-indigo-500 dark:hover:border-indigo-500/50 transition-colors group">
+                <span className="font-bold text-gray-700 dark:text-zinc-200">Add New Tenant</span>
+                <ArrowUpRight className="w-5 h-5 text-gray-400 dark:text-zinc-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
               </button>
-              <button className="w-full flex items-center justify-between p-4 rounded-xl bg-white dark:bg-[#120005] border border-gray-200 dark:border-rose-900/30 hover:border-rose-400 dark:hover:border-rose-500/50 transition-colors group">
-                <span className="font-bold text-gray-700 dark:text-rose-100">System Logs</span>
-                <ArrowUpRight className="w-5 h-5 text-gray-400 dark:text-rose-500 group-hover:text-rose-600 transition-colors" />
+              <button className="w-full flex items-center justify-between p-4 rounded-xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 hover:border-indigo-500 dark:hover:border-indigo-500/50 transition-colors group">
+                <span className="font-bold text-gray-700 dark:text-zinc-200">System Logs</span>
+                <ArrowUpRight className="w-5 h-5 text-gray-400 dark:text-zinc-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
               </button>
             </div>
           </div>
 
           {/* System Health */}
-          <div className="lg:col-span-2 bg-white dark:bg-[#120005] border border-gray-200 dark:border-rose-900/30 rounded-2xl p-6">
+          <div className="lg:col-span-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 rounded-2xl p-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Platform Health</h2>
             <div className="space-y-6">
-              <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-black/40 border border-gray-100 dark:border-rose-900/20">
+              <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-zinc-950 border border-gray-100 dark:border-white/10">
                 <div>
                   <h3 className="font-bold text-gray-900 dark:text-white">Redis & BullMQ</h3>
-                  <p className="text-sm text-gray-500 dark:text-rose-200/50">Background job processing</p>
+                  <p className="text-sm text-gray-500 dark:text-zinc-400">Background job processing</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="relative flex h-3 w-3">
@@ -81,10 +81,10 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-black/40 border border-gray-100 dark:border-rose-900/20">
+              <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-zinc-950 border border-gray-100 dark:border-white/10">
                 <div>
                   <h3 className="font-bold text-gray-900 dark:text-white">Evolution API (WhatsApp)</h3>
-                  <p className="text-sm text-gray-500 dark:text-rose-200/50">External messaging gateway</p>
+                  <p className="text-sm text-gray-500 dark:text-zinc-400">External messaging gateway</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="relative flex h-3 w-3">

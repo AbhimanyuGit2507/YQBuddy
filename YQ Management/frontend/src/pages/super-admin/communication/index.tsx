@@ -134,10 +134,10 @@ export default function SuperAdminCommunication() {
       <div className="max-w-7xl mx-auto space-y-8 pb-16">
         {/* Top Title Bar with Refresh Action */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-gray-900 via-zinc-900 to-black p-8 rounded-3xl border border-gray-800 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-rose-400 tracking-wider uppercase">
-              <Zap className="w-4 h-4 fill-rose-500 animate-pulse" /> Live Production Infrastructure
+            <div className="flex items-center gap-2 text-xs font-bold text-indigo-400 tracking-wider uppercase">
+              <Zap className="w-4 h-4 fill-indigo-500 animate-pulse" /> Live Production Infrastructure
             </div>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white uppercase drop-shadow-sm">
               System Diagnostics &amp; Telemetry
@@ -149,7 +149,7 @@ export default function SuperAdminCommunication() {
           <button
             onClick={handleRefreshStatus}
             disabled={checkingConnection || statusLoading}
-            className="relative z-10 shrink-0 px-6 py-3.5 bg-rose-600 hover:bg-rose-500 active:scale-95 disabled:opacity-50 text-white rounded-2xl font-semibold shadow-lg shadow-rose-600/30 flex items-center justify-center gap-2.5 transition-all"
+            className="relative z-10 shrink-0 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 disabled:opacity-50 text-white rounded-2xl font-semibold shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2.5 transition-all"
           >
             <RefreshCw className={`w-5 h-5 ${checkingConnection || statusLoading ? 'animate-spin' : ''}`} />
             <span>{checkingConnection ? 'Pinging Servers...' : 'Refresh Status'}</span>
@@ -159,10 +159,10 @@ export default function SuperAdminCommunication() {
         {/* 4-Column Live System Telemetry Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {/* Card 1: Brevo Email */}
-          <div className="bg-white dark:bg-[#110107] p-6 rounded-2xl border border-gray-200 dark:border-rose-900/40 shadow-sm relative overflow-hidden transition-all hover:border-rose-500/60">
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm relative overflow-hidden transition-all hover:border-indigo-500/60">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-rose-500/10 rounded-xl">
-                <Mail className="w-6 h-6 text-rose-500" />
+              <div className="p-3 bg-indigo-500/10 rounded-xl">
+                <Mail className="w-6 h-6 text-indigo-500 dark:text-indigo-400" />
               </div>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
                 systemStatus?.email?.connected ? 'bg-emerald-500/15 text-emerald-500' : 'bg-amber-500/15 text-amber-500'
@@ -172,11 +172,11 @@ export default function SuperAdminCommunication() {
             </div>
             <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Email Engine</h3>
             <p className="text-lg font-black text-gray-900 dark:text-white mt-1">Brevo SMTP Relay</p>
-            <p className="text-xs text-zinc-400 mt-2 truncate">Sender: <span className="font-mono text-rose-400">{systemStatus?.email?.sender || 'yqbuddysa@gmail.com'}</span></p>
+            <p className="text-xs text-zinc-400 mt-2 truncate">Sender: <span className="font-mono text-indigo-400">{systemStatus?.email?.sender || 'yqbuddysa@gmail.com'}</span></p>
           </div>
 
           {/* Card 2: WhatsApp Evolution */}
-          <div className="bg-white dark:bg-[#110107] p-6 rounded-2xl border border-gray-200 dark:border-rose-900/40 shadow-sm relative overflow-hidden transition-all hover:border-emerald-500/60">
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm relative overflow-hidden transition-all hover:border-emerald-500/60">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-emerald-500/10 rounded-xl">
                 <Smartphone className="w-6 h-6 text-emerald-500" />
@@ -193,7 +193,7 @@ export default function SuperAdminCommunication() {
           </div>
 
           {/* Card 3: Redis OTP */}
-          <div className="bg-white dark:bg-[#110107] p-6 rounded-2xl border border-gray-200 dark:border-rose-900/40 shadow-sm relative overflow-hidden transition-all hover:border-indigo-500/60">
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm relative overflow-hidden transition-all hover:border-indigo-500/60">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-indigo-500/10 rounded-xl">
                 <Key className="w-6 h-6 text-indigo-500" />
@@ -208,7 +208,7 @@ export default function SuperAdminCommunication() {
           </div>
 
           {/* Card 4: Ozow Payments */}
-          <div className="bg-white dark:bg-[#110107] p-6 rounded-2xl border border-gray-200 dark:border-rose-900/40 shadow-sm relative overflow-hidden transition-all hover:border-amber-500/60">
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm relative overflow-hidden transition-all hover:border-amber-500/60">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-amber-500/10 rounded-xl">
                 <CreditCard className="w-6 h-6 text-amber-500" />
@@ -226,13 +226,13 @@ export default function SuperAdminCommunication() {
         </div>
 
         {/* Navigation Tabs for Test Suite */}
-        <div className="flex flex-wrap items-center gap-2 p-1.5 bg-gray-100 dark:bg-[#120005] border border-gray-200 dark:border-rose-900/30 rounded-2xl">
+        <div className="flex flex-wrap items-center gap-2 p-1.5 bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-white/10 rounded-2xl">
           <button
             onClick={() => setActiveTab('email')}
             className={`flex items-center gap-2.5 px-6 py-3 rounded-xl font-bold text-sm transition-all ${
               activeTab === 'email'
-                ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
-                : 'text-gray-600 dark:text-zinc-400 hover:text-white hover:bg-rose-950/40'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                : 'text-gray-600 dark:text-zinc-400 hover:text-white hover:bg-white/10'
             }`}
           >
             <Mail className="w-4 h-4" />
@@ -276,11 +276,11 @@ export default function SuperAdminCommunication() {
         {/* TAB 1: EMAIL & OTP SUITE */}
         {activeTab === 'email' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 bg-white dark:bg-[#120005] border border-gray-200 dark:border-rose-900/30 rounded-3xl p-8 shadow-xl space-y-6">
-              <div className="flex items-center justify-between border-b border-gray-200 dark:border-rose-900/30 pb-5">
+            <div className="lg:col-span-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 rounded-3xl p-8 shadow-xl space-y-6">
+              <div className="flex items-center justify-between border-b border-gray-200 dark:border-white/10 pb-5">
                 <div>
                   <h2 className="text-xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2.5">
-                    <Send className="w-6 h-6 text-rose-500" />
+                    <Send className="w-6 h-6 text-indigo-500 dark:text-indigo-400" />
                     Live Brevo Email &amp; OTP Transmission
                   </h2>
                   <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
@@ -291,7 +291,7 @@ export default function SuperAdminCommunication() {
 
               <div className="space-y-5">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-rose-300 mb-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-indigo-300 mb-2">
                     Message Type
                   </label>
                   <div className="grid grid-cols-2 gap-4">
@@ -300,11 +300,11 @@ export default function SuperAdminCommunication() {
                       onClick={() => setEmailTestType('otp')}
                       className={`p-4 rounded-2xl border-2 text-left transition-all ${
                         emailTestType === 'otp'
-                          ? 'border-rose-500 bg-rose-500/10 text-white font-bold'
+                          ? 'border-indigo-500 bg-indigo-500/10 text-white font-bold'
                           : 'border-gray-800 bg-black/30 text-zinc-400 hover:border-gray-700'
                       }`}
                     >
-                      <div className="flex items-center gap-2 text-rose-400 text-sm font-black mb-1">
+                      <div className="flex items-center gap-2 text-indigo-400 text-sm font-black mb-1">
                         <Key className="w-4 h-4" /> Live OTP Verification Email
                       </div>
                       <p className="text-xs text-zinc-400">Generates and sends an official 6-digit login verification OTP.</p>
@@ -314,11 +314,11 @@ export default function SuperAdminCommunication() {
                       onClick={() => setEmailTestType('standard')}
                       className={`p-4 rounded-2xl border-2 text-left transition-all ${
                         emailTestType === 'standard'
-                          ? 'border-rose-500 bg-rose-500/10 text-white font-bold'
+                          ? 'border-indigo-500 bg-indigo-500/10 text-white font-bold'
                           : 'border-gray-800 bg-black/30 text-zinc-400 hover:border-gray-700'
                       }`}
                     >
-                      <div className="flex items-center gap-2 text-rose-400 text-sm font-black mb-1">
+                      <div className="flex items-center gap-2 text-indigo-400 text-sm font-black mb-1">
                         <Mail className="w-4 h-4" /> Standard System Notification
                       </div>
                       <p className="text-xs text-zinc-400">Sends standard transactional system diagnostic notice.</p>
@@ -327,7 +327,7 @@ export default function SuperAdminCommunication() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-rose-300 mb-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-indigo-300 mb-2">
                     Target Recipient Email Address
                   </label>
                   <input
@@ -335,26 +335,26 @@ export default function SuperAdminCommunication() {
                     placeholder="yqbuddysa@gmail.com or customer@example.com"
                     value={testEmailTo}
                     onChange={(e) => setTestEmailTo(e.target.value)}
-                    className="w-full bg-white dark:bg-black/60 border border-gray-300 dark:border-rose-900/50 rounded-2xl py-3.5 px-5 text-gray-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all shadow-inner"
+                    className="w-full bg-white dark:bg-zinc-950 border border-gray-300 dark:border-white/10 rounded-2xl py-3.5 px-5 text-gray-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-rose-300 mb-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-indigo-300 mb-2">
                     Custom Subject Header
                   </label>
                   <input
                     type="text"
                     value={testEmailSubject}
                     onChange={(e) => setTestEmailSubject(e.target.value)}
-                    className="w-full bg-white dark:bg-black/60 border border-gray-300 dark:border-rose-900/50 rounded-2xl py-3.5 px-5 text-gray-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all shadow-inner"
+                    className="w-full bg-white dark:bg-zinc-950 border border-gray-300 dark:border-white/10 rounded-2xl py-3.5 px-5 text-gray-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner"
                   />
                 </div>
 
                 <button
                   onClick={handleTestEmail}
                   disabled={sendingTestEmail || !testEmailTo}
-                  className="w-full py-4 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 active:scale-98 disabled:opacity-50 text-white rounded-2xl font-black uppercase text-sm tracking-wider shadow-lg shadow-rose-600/30 flex items-center justify-center gap-3 transition-all"
+                  className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 active:scale-98 disabled:opacity-50 text-white rounded-2xl font-black uppercase text-sm tracking-wider shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-3 transition-all"
                 >
                   {sendingTestEmail ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                   {sendingTestEmail ? 'Relaying Through Brevo Servers...' : `Transmit Live ${emailTestType.toUpperCase()} Test`}
@@ -378,20 +378,20 @@ export default function SuperAdminCommunication() {
             </div>
 
             {/* Email Templates Sidebar */}
-            <div className="bg-white dark:bg-[#120005] border border-gray-200 dark:border-rose-900/30 rounded-3xl p-6 shadow-xl space-y-4 h-fit">
-              <div className="border-b border-gray-200 dark:border-rose-900/30 pb-4">
+            <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 rounded-3xl p-6 shadow-xl space-y-4 h-fit">
+              <div className="border-b border-gray-200 dark:border-white/10 pb-4">
                 <h3 className="font-extrabold text-lg text-white flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-rose-400" /> Active Email Templates
+                  <Sparkles className="w-5 h-5 text-indigo-400" /> Active Email Templates
                 </h3>
                 <p className="text-xs text-zinc-400 mt-1">Available system notification layouts.</p>
               </div>
               <div className="space-y-3 max-h-[450px] overflow-y-auto pr-1">
                 {emailTemplates?.map((template: any) => (
-                  <div key={template.key} className="p-3.5 rounded-2xl border border-gray-800 bg-black/40 hover:border-rose-900/60 transition-colors">
+                  <div key={template.key} className="p-3.5 rounded-2xl border border-gray-800 bg-black/40 hover:border-indigo-500/60 transition-colors">
                     <p className="font-bold text-sm text-white">{template.name}</p>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-xs text-zinc-500 font-mono">{template.key}</span>
-                      <span className="text-[10px] bg-rose-500/20 text-rose-300 font-semibold px-2 py-0.5 rounded-full">HTML &amp; Text</span>
+                      <span className="text-[10px] bg-indigo-500/20 text-indigo-300 font-semibold px-2 py-0.5 rounded-full">HTML &amp; Text</span>
                     </div>
                   </div>
                 ))}
@@ -402,8 +402,8 @@ export default function SuperAdminCommunication() {
 
         {/* TAB 2: WHATSAPP & SMS SUITE */}
         {activeTab === 'whatsapp' && (
-          <div className="bg-white dark:bg-[#07130f] border border-gray-200 dark:border-emerald-900/30 rounded-3xl p-8 shadow-xl max-w-4xl space-y-6">
-            <div className="border-b border-gray-200 dark:border-emerald-900/30 pb-5">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 rounded-3xl p-8 shadow-xl max-w-4xl space-y-6">
+            <div className="border-b border-gray-200 dark:border-white/10 pb-5">
               <h2 className="text-xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2.5">
                 <Smartphone className="w-6 h-6 text-emerald-500" />
                 Live Evolution API WhatsApp &amp; OTP Testing
@@ -459,7 +459,7 @@ export default function SuperAdminCommunication() {
                   placeholder="+27821234567"
                   value={testPhone}
                   onChange={(e) => setTestPhone(e.target.value)}
-                  className="w-full bg-white dark:bg-black/60 border border-gray-300 dark:border-emerald-900/50 rounded-2xl py-3.5 px-5 text-gray-900 dark:text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-inner"
+                  className="w-full bg-white dark:bg-zinc-950 border border-gray-300 dark:border-white/10 rounded-2xl py-3.5 px-5 text-gray-900 dark:text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-inner"
                 />
               </div>
 
@@ -472,7 +472,7 @@ export default function SuperAdminCommunication() {
                     rows={4}
                     value={testWaMessage}
                     onChange={(e) => setTestWaMessage(e.target.value)}
-                    className="w-full bg-white dark:bg-black/60 border border-gray-300 dark:border-emerald-900/50 rounded-2xl p-4 text-gray-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-inner"
+                    className="w-full bg-white dark:bg-zinc-950 border border-gray-300 dark:border-white/10 rounded-2xl p-4 text-gray-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-inner"
                   />
                 </div>
               )}
@@ -507,10 +507,10 @@ export default function SuperAdminCommunication() {
         {/* TAB 3: QR & SCANNER SUITE */}
         {activeTab === 'qr' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-white dark:bg-[#070513] border border-gray-200 dark:border-indigo-900/30 rounded-3xl p-8 shadow-xl space-y-6">
-              <div className="border-b border-gray-200 dark:border-indigo-900/30 pb-5">
+            <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 rounded-3xl p-8 shadow-xl space-y-6">
+              <div className="border-b border-gray-200 dark:border-white/10 pb-5">
                 <h2 className="text-xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2.5">
-                  <QrCode className="w-6 h-6 text-indigo-500" />
+                  <QrCode className="w-6 h-6 text-indigo-500 dark:text-indigo-400" />
                   Interactive QR Token &amp; Kiosk Generator
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-indigo-200/60 mt-1">
@@ -526,7 +526,7 @@ export default function SuperAdminCommunication() {
                   type="text"
                   value={qrTestValue}
                   onChange={(e) => setQrTestValue(e.target.value)}
-                  className="w-full bg-white dark:bg-black/60 border border-gray-300 dark:border-indigo-900/50 rounded-2xl py-3.5 px-5 text-gray-900 dark:text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner"
+                  className="w-full bg-white dark:bg-zinc-950 border border-gray-300 dark:border-white/10 rounded-2xl py-3.5 px-5 text-gray-900 dark:text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner"
                 />
               </div>
 
@@ -563,7 +563,7 @@ export default function SuperAdminCommunication() {
             </div>
 
             {/* QR Preview Studio */}
-            <div className="bg-white dark:bg-[#070513] border border-gray-200 dark:border-indigo-900/30 rounded-3xl p-8 shadow-xl flex flex-col items-center justify-center text-center space-y-6">
+            <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 rounded-3xl p-8 shadow-xl flex flex-col items-center justify-center text-center space-y-6">
               <div className="p-6 bg-white rounded-3xl shadow-2xl border-8 border-gray-900 flex items-center justify-center">
                 {qrTestValue ? (
                   <QRCode value={qrTestValue} size={220} />
@@ -585,8 +585,8 @@ export default function SuperAdminCommunication() {
 
         {/* TAB 4: PAYMENTS & BILLING SUITE */}
         {activeTab === 'payments' && (
-          <div className="bg-white dark:bg-[#130701] border border-gray-200 dark:border-amber-900/30 rounded-3xl p-8 shadow-xl max-w-4xl space-y-8">
-            <div className="border-b border-gray-200 dark:border-amber-900/30 pb-5">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 rounded-3xl p-8 shadow-xl max-w-4xl space-y-8">
+            <div className="border-b border-gray-200 dark:border-white/10 pb-5">
               <h2 className="text-xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2.5">
                 <CreditCard className="w-6 h-6 text-amber-500" />
                 Ozow Live Production Payments Gateway

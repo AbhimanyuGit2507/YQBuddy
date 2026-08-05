@@ -53,7 +53,7 @@ const SERVICE_CONFIGS: ToggleConfig[] = [
     name: 'Brevo Email SMTP & Relays',
     description: 'Controls automated transactional emails, registration notices, and invoice delivery.',
     icon: Mail,
-    color: 'from-rose-500 to-pink-600'
+    color: 'from-purple-500 to-indigo-600'
   },
   {
     key: 'whatsappService',
@@ -263,12 +263,12 @@ export default function SystemControlPage() {
       <div className="max-w-7xl mx-auto space-y-10 pb-20">
         {/* Banner */}
         <div className="bg-gradient-to-r from-zinc-900 via-gray-900 to-black p-8 sm:p-10 rounded-3xl border border-gray-800 shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
           
           <div className="relative z-10 space-y-3 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-500/10 border border-rose-500/20 rounded-full text-xs font-black text-rose-400 tracking-wider uppercase">
-              <Cpu className="w-4 h-4 text-rose-500 animate-pulse" /> Infrastructure Command Matrix
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-xs font-black text-indigo-400 tracking-wider uppercase">
+              <Cpu className="w-4 h-4 text-indigo-400 animate-pulse" /> Infrastructure Command Matrix
             </div>
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white uppercase drop-shadow">
               System Control Hub
@@ -313,10 +313,10 @@ export default function SystemControlPage() {
 
         {/* SECTION 1: MASTER SERVICE TOGGLES */}
         <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-gray-200 dark:border-rose-900/30 pb-4">
+          <div className="flex items-center justify-between border-b border-gray-200 dark:border-white/10 pb-4">
             <div>
               <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-3">
-                <Sliders className="w-7 h-7 text-rose-500" />
+                <Sliders className="w-7 h-7 text-indigo-500 dark:text-indigo-400" />
                 Live Service Circuit Breakers
               </h2>
               <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
@@ -337,8 +337,8 @@ export default function SystemControlPage() {
                   key={service.key}
                   className={`p-6 rounded-3xl border transition-all relative overflow-hidden flex flex-col justify-between shadow-md ${
                     isEnabled
-                      ? 'bg-white dark:bg-[#120005] border-gray-200 dark:border-rose-900/40 hover:border-rose-500/70'
-                      : 'bg-gray-100 dark:bg-black/60 border-gray-300 dark:border-gray-800 opacity-75'
+                      ? 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-white/10 hover:border-indigo-500/70'
+                      : 'bg-gray-100 dark:bg-zinc-950 border-gray-300 dark:border-white/5 opacity-75'
                   }`}
                 >
                   <div className="space-y-4">
@@ -389,9 +389,9 @@ export default function SystemControlPage() {
 
         {/* SECTION 2: INTERACTIVE TEST INJECTION SUITE */}
         <div className="space-y-6 pt-6">
-          <div className="border-b border-gray-200 dark:border-rose-900/30 pb-4">
+          <div className="border-b border-gray-200 dark:border-white/10 pb-4">
             <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-3">
-              <Zap className="w-7 h-7 text-amber-500" />
+              <Zap className="w-7 h-7 text-indigo-500 dark:text-indigo-400" />
               Live Diagnostic Trigger Suites
             </h2>
             <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
@@ -402,7 +402,7 @@ export default function SystemControlPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* CARD 1: WHATSAPP & SMS OTP TESTER */}
-            <div className="bg-white dark:bg-[#07130e] border border-gray-200 dark:border-emerald-900/40 rounded-3xl p-7 shadow-xl flex flex-col justify-between space-y-6 relative overflow-hidden group hover:border-emerald-500/60 transition-all">
+            <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 rounded-3xl p-7 shadow-xl flex flex-col justify-between space-y-6 relative overflow-hidden group hover:border-emerald-500/60 transition-all">
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
                   <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
@@ -429,7 +429,7 @@ export default function SystemControlPage() {
                       value={waPhone}
                       onChange={(e) => setWaPhone(e.target.value)}
                       placeholder="+27821234567"
-                      className="w-full bg-gray-50 dark:bg-black/60 border border-gray-300 dark:border-emerald-900/50 rounded-xl py-3 px-4 font-mono text-sm text-gray-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-300 dark:border-white/10 rounded-xl py-3 px-4 font-mono text-sm text-gray-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                     />
                   </div>
 
@@ -468,7 +468,7 @@ export default function SystemControlPage() {
                         type="text"
                         value={waCustomText}
                         onChange={(e) => setWaCustomText(e.target.value)}
-                        className="w-full bg-gray-50 dark:bg-black/60 border border-gray-300 dark:border-emerald-900/50 rounded-xl py-2.5 px-3 text-xs text-gray-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-300 dark:border-white/10 rounded-xl py-2.5 px-3 text-xs text-gray-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
                   )}
@@ -496,13 +496,13 @@ export default function SystemControlPage() {
             </div>
 
             {/* CARD 2: BREVO EMAIL OTP TESTER */}
-            <div className="bg-white dark:bg-[#120006] border border-gray-200 dark:border-rose-900/40 rounded-3xl p-7 shadow-xl flex flex-col justify-between space-y-6 relative overflow-hidden group hover:border-rose-500/60 transition-all">
+            <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 rounded-3xl p-7 shadow-xl flex flex-col justify-between space-y-6 relative overflow-hidden group hover:border-indigo-500/60 transition-all">
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
-                  <div className="p-3 bg-rose-500/10 rounded-2xl border border-rose-500/20">
-                    <Mail className="w-6 h-6 text-rose-500" />
+                  <div className="p-3 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
+                    <Mail className="w-6 h-6 text-indigo-500 dark:text-indigo-400" />
                   </div>
-                  <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300">
+                  <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300">
                     Brevo Relay Active
                   </span>
                 </div>
@@ -515,7 +515,7 @@ export default function SystemControlPage() {
 
                 <div className="space-y-4 pt-2">
                   <div>
-                    <label className="block text-[11px] font-extrabold uppercase tracking-wider text-gray-500 dark:text-rose-400 mb-1.5">
+                    <label className="block text-[11px] font-extrabold uppercase tracking-wider text-gray-500 dark:text-indigo-400 mb-1.5">
                       Recipient Email Address
                     </label>
                     <input
@@ -523,19 +523,19 @@ export default function SystemControlPage() {
                       value={emailTo}
                       onChange={(e) => setEmailTo(e.target.value)}
                       placeholder="yqbuddysa@gmail.com"
-                      className="w-full bg-gray-50 dark:bg-black/60 border border-gray-300 dark:border-rose-900/50 rounded-xl py-3 px-4 font-medium text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all"
+                      className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-300 dark:border-white/10 rounded-xl py-3 px-4 font-medium text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-extrabold uppercase tracking-wider text-gray-500 dark:text-rose-400 mb-1.5">
+                    <label className="block text-[11px] font-extrabold uppercase tracking-wider text-gray-500 dark:text-indigo-400 mb-1.5">
                       Email Subject Title
                     </label>
                     <input
                       type="text"
                       value={emailSubject}
                       onChange={(e) => setEmailSubject(e.target.value)}
-                      className="w-full bg-gray-50 dark:bg-black/60 border border-gray-300 dark:border-rose-900/50 rounded-xl py-2.5 px-3 text-xs text-gray-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-rose-500"
+                      className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-300 dark:border-white/10 rounded-xl py-2.5 px-3 text-xs text-gray-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                 </div>
@@ -554,7 +554,7 @@ export default function SystemControlPage() {
               <button
                 onClick={handleSendTestEmailOtp}
                 disabled={sendingEmail || !emailTo}
-                className="w-full py-4 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 active:scale-95 disabled:opacity-50 text-white rounded-2xl font-black uppercase tracking-wider text-xs shadow-lg shadow-rose-600/30 flex items-center justify-center gap-2.5 transition-all mt-4"
+                className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 active:scale-95 disabled:opacity-50 text-white rounded-2xl font-black uppercase tracking-wider text-xs shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2.5 transition-all mt-4"
               >
                 {sendingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 <span>{sendingEmail ? 'Relaying over SMTP...' : 'Transmit Test Email OTP'}</span>
@@ -562,7 +562,7 @@ export default function SystemControlPage() {
             </div>
 
             {/* CARD 3: OZOW PAYMENT GATEWAY REDIRECT TESTER */}
-            <div className="bg-white dark:bg-[#150702] border border-gray-200 dark:border-amber-900/40 rounded-3xl p-7 shadow-xl flex flex-col justify-between space-y-6 relative overflow-hidden group hover:border-amber-500/60 transition-all">
+            <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 rounded-3xl p-7 shadow-xl flex flex-col justify-between space-y-6 relative overflow-hidden group hover:border-amber-500/60 transition-all">
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
                   <div className="p-3 bg-amber-500/10 rounded-2xl border border-amber-500/20">
@@ -592,7 +592,7 @@ export default function SystemControlPage() {
                         step="0.01"
                         value={payAmount}
                         onChange={(e) => setPayAmount(e.target.value)}
-                        className="w-full bg-gray-50 dark:bg-black/60 border border-gray-300 dark:border-amber-900/50 rounded-xl py-3 px-3 font-mono text-sm text-gray-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-300 dark:border-white/10 rounded-xl py-3 px-3 font-mono text-sm text-gray-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
                     </div>
 
