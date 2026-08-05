@@ -24,8 +24,7 @@ import { WorkspaceGuard } from '../auth/workspace.guard';
 import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('billing/plans')
-@UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
-@Roles(Role.TENANT_ADMIN, Role.OPERATOR)
+@UseGuards(AuthGuard('jwt'))
 export class PlansController {
   constructor(private readonly plansService: PlansService) {}
 
@@ -44,13 +43,15 @@ export class PlansController {
   }
 
   @Post()
-  @Roles(Role.TENANT_ADMIN)
+  @UseGuards(RolesGuard, WorkspaceGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   async createPlan(@Body() dto: CreatePlanDto) {
     return this.plansService.createPlan(dto);
   }
 
   @Put(':id')
-  @Roles(Role.TENANT_ADMIN)
+  @UseGuards(RolesGuard, WorkspaceGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   async updatePlan(
     @Param('id', UuidPipe) id: string,
     @Body() dto: UpdatePlanDto,
@@ -59,7 +60,8 @@ export class PlansController {
   }
 
   @Patch(':id/status')
-  @Roles(Role.TENANT_ADMIN)
+  @UseGuards(RolesGuard, WorkspaceGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   async changePlanStatus(
     @Param('id', UuidPipe) id: string,
     @Body() dto: ChangePlanStatusDto,
@@ -68,7 +70,8 @@ export class PlansController {
   }
 
   @Post(':id/duplicate')
-  @Roles(Role.TENANT_ADMIN)
+  @UseGuards(RolesGuard, WorkspaceGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   async duplicatePlan(
     @Param('id', UuidPipe) id: string,
     @Body() dto: DuplicatePlanDto,
@@ -77,7 +80,8 @@ export class PlansController {
   }
 
   @Delete(':id')
-  @Roles(Role.TENANT_ADMIN)
+  @UseGuards(RolesGuard, WorkspaceGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN)
   async archivePlan(@Param('id', UuidPipe) id: string) {
     return this.plansService.archivePlan(id);
   }

@@ -27,7 +27,7 @@ import type { AuthenticatedRequest } from '../auth/types/auth.types';
 
 @Controller('billing')
 @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
-@Roles(Role.TENANT_ADMIN, Role.OPERATOR)
+@Roles(Role.TENANT_ADMIN, Role.OPERATOR, Role.SUPER_ADMIN, Role.ADMIN)
 export class BillingController {
   constructor(
     private readonly subscriptionService: SubscriptionService,
@@ -38,7 +38,7 @@ export class BillingController {
 
   @Get('workspace')
   async getWorkspaceBilling(@Request() req: AuthenticatedRequest) {
-    const workspaceId = req.user.workspaceId;
+    const workspaceId = req.user.workspaceId || req.user.tenantId;
     const [subscription, transactions, usage] = await Promise.all([
       this.subscriptionService.getSubscription(workspaceId),
       this.paymentsService.getTransactionHistory(workspaceId, 0, 20),
@@ -64,9 +64,11 @@ export class BillingController {
     return this.usageService.getUsage(req.user.workspaceId, ps, pe);
   }
 
-  @Get('workspace/subscription')
+  @Get(['workspace/subscription', 'subscriptions/current'])
   async getCurrentSubscription(@Request() req: AuthenticatedRequest) {
-    return this.subscriptionService.getSubscription(req.user.workspaceId);
+    const targetId = req.user.workspaceId || req.user.tenantId;
+    if (!targetId) return null;
+    return this.subscriptionService.getSubscription(targetId);
   }
 
   @Post('workspace/subscription')

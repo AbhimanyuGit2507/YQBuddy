@@ -36,15 +36,15 @@ interface ToggleConfig {
 const SERVICE_CONFIGS: ToggleConfig[] = [
   {
     key: 'keepAliveBackend',
-    name: '14-Min Hack: Site Backend Keep-Alive',
-    description: 'Automated 14-minute cron ping to /health. Keeps Render server awake at all times; toggle off to let site sleep.',
+    name: 'Site Backend Keep-Alive Service',
+    description: 'Automated 14-minute cron ping to /health. Keeps server active at all times; toggle off during maintenance.',
     icon: Power,
     color: 'from-violet-500 to-indigo-600'
   },
   {
     key: 'keepAliveWhatsapp',
-    name: '14-Min Hack: WhatsApp Server Ping',
-    description: 'Automated 14-minute status ping to Evolution API v2 instance. Prevents messaging server spin-down or sleep.',
+    name: 'WhatsApp Server Keep-Alive Service',
+    description: 'Automated 14-minute status check to Evolution API v2 instance to ensure constant messaging readiness.',
     icon: RefreshCw,
     color: 'from-cyan-500 to-teal-600'
   },
@@ -98,7 +98,7 @@ export default function SystemControlPage() {
 
   // Test Email State
   const [emailTo, setEmailTo] = useState('yqbuddysa@gmail.com');
-  const [emailSubject, setEmailSubject] = useState('Qmova Live OTP Verification Alert');
+  const [emailSubject, setEmailSubject] = useState('Qmova Authentication Code');
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailOtpResult, setEmailOtpResult] = useState<string | null>(null);
 
@@ -172,7 +172,7 @@ export default function SystemControlPage() {
       });
       if (res.success) {
         if (res.otp) setEmailOtpResult(res.otp);
-        toast.success('Live OTP Verification Email sent via Brevo!');
+        toast.success('OTP Verification Email sent successfully via Brevo!');
       } else {
         toast.error(res.error || 'Failed to dispatch email');
       }
@@ -255,7 +255,7 @@ export default function SystemControlPage() {
   };
 
   return (
-    <SuperAdminLayout pageTitle="Master System Control" pageSubtitle="Real-time service toggles, live OTP injectors, and gateway test redirects">
+    <SuperAdminLayout pageTitle="Master System Control" pageSubtitle="Real-time service toggles, messaging diagnostics, and gateway test redirects">
       <Head>
         <title>System Control &amp; Testing | Super Admin</title>
       </Head>
@@ -274,7 +274,7 @@ export default function SystemControlPage() {
               System Control Hub
             </h1>
             <p className="text-zinc-400 text-sm leading-relaxed">
-              Instantly engage or throttle individual platform sub-systems, execute live OTP verification tests across email &amp; WhatsApp pipelines, and initiate cryptographic payment redirect sequences for live gateway verification.
+              Instantly control platform sub-systems, execute messaging diagnostics across email &amp; WhatsApp pipelines, and initiate payment gateway verification sequences.
             </p>
           </div>
 
@@ -445,7 +445,7 @@ export default function SystemControlPage() {
                           waMessageType === 'otp' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                         }`}
                       >
-                        🔐 Live OTP PIN
+                        🔐 OTP PIN
                       </button>
                       <button
                         type="button"

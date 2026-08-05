@@ -23,6 +23,7 @@ import {
   CommunicationChannel,
   CommunicationStatus,
 } from './logging/communication-log.service';
+import { createBrandEmailLayout } from '../email/email-layout';
 import { WhatsAppTemplateService } from './templates/whatsapp-template.service';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/roles.guard';
@@ -55,12 +56,18 @@ export class CommunicationController {
   @RequirePermissions(Permission.SETTINGS_WRITE)
   @Post('test-email')
   async testEmail(@Request() req: any, @Body() body: TestEmailDto) {
+    const htmlContent = createBrandEmailLayout({
+      title: 'Email Channel Verification',
+      preheader: 'Verification of mail delivery service.',
+      content: `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">Communication Service Active</h2>
+      <p style="color: #4b5563; line-height: 1.6;">This verification message confirms that your tenant email relay is operating normally and relaying messages without error.</p>`,
+    });
+
     const result = await this.emailProvider.send({
       to: body.to,
-      subject: body.subject || 'Qmova Test Email',
-      htmlContent:
-        '<h1>Test Email</h1><p>This is a test email from Qmova.</p>',
-      textContent: 'Test Email - This is a test email from Qmova.',
+      subject: body.subject || 'Qmova System Verification Notice',
+      htmlContent,
+      textContent: 'Qmova System Verification Notice: Your email service is operating normally.',
     });
 
     await this.communicationLogService.log({

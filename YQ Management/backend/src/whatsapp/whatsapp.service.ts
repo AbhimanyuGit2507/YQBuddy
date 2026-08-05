@@ -108,7 +108,7 @@ export class WhatsappService {
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), 35000);
 
     try {
       const res = await fetch(`${this.evoUrl}${path}`, {
@@ -198,23 +198,48 @@ export class WhatsappService {
     this.logger.log(`Webhook set for ${instanceName} -> ${webhookUrl}`);
   }
 
-  async connect(tenantId: string) {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
+  private async resolveTenant(targetId?: string) {
+    if (!targetId) return null;
+    let tenant = await this.prisma.tenant.findUnique({
+      where: { id: targetId },
     });
+    if (!tenant) {
+      const ws = await this.prisma.workspace.findUnique({
+        where: { id: targetId },
+      });
+      if (ws) {
+        tenant = await this.prisma.tenant.findUnique({
+          where: { id: ws.tenantId },
+        });
+      }
+    }
+    if (!tenant) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: targetId },
+        include: { tenant: true },
+      });
+      if (user?.tenant) {
+        tenant = user.tenant;
+      }
+    }
+    return tenant;
+  }
+
+  async connect(tenantId: string) {
+    const tenant = await this.resolveTenant(tenantId);
     if (!tenant) {
       throw new HttpException('Tenant not found', HttpStatus.NOT_FOUND);
     }
 
     const instanceName =
-      tenant.whatsappInstanceId || `tenant_${tenantId.substring(0, 8)}`;
+      tenant.whatsappInstanceId || `tenant_${tenant.id.substring(0, 8)}`;
     this.logger.log(
-      `WhatsApp connect requested for tenant ${tenantId} -> instance ${instanceName}`,
+      `WhatsApp connect requested for tenant ${tenant.id} -> instance ${instanceName}`,
     );
 
     if (!tenant.whatsappInstanceId) {
       await this.prisma.tenant.update({
-        where: { id: tenantId },
+        where: { id: tenant.id },
         data: { whatsappInstanceId: instanceName },
       });
     }
@@ -374,22 +399,20 @@ export class WhatsappService {
 
     const normalizedPhone = phoneNumber.replace(/[\s+-]/g, '');
 
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-    });
+    const tenant = await this.resolveTenant(tenantId);
     if (!tenant) {
       throw new HttpException('Tenant not found', HttpStatus.NOT_FOUND);
     }
 
     const instanceName =
-      tenant.whatsappInstanceId || `tenant_${tenantId.substring(0, 8)}`;
+      tenant.whatsappInstanceId || `tenant_${tenant.id.substring(0, 8)}`;
     this.logger.log(
-      `WhatsApp pairing code requested for tenant ${tenantId} -> instance ${instanceName}, phone ${normalizedPhone}`,
+      `WhatsApp pairing code requested for tenant ${tenant.id} -> instance ${instanceName}, phone ${normalizedPhone}`,
     );
 
     if (!tenant.whatsappInstanceId) {
       await this.prisma.tenant.update({
-        where: { id: tenantId },
+        where: { id: tenant.id },
         data: { whatsappInstanceId: instanceName },
       });
     }
@@ -500,9 +523,7 @@ export class WhatsappService {
   }
 
   async disconnect(tenantId: string) {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-    });
+    const tenant = await this.resolveTenant(tenantId);
     if (!tenant || !tenant.whatsappInstanceId) {
       return { success: true };
     }
@@ -513,7 +534,7 @@ export class WhatsappService {
     await this.fetchEvo(`/instance/logout/${instanceName}`, 'DELETE');
 
     await this.prisma.tenant.update({
-      where: { id: tenantId },
+      where: { id: tenant.id },
       data: { whatsappConnected: false },
     });
 
@@ -521,9 +542,7 @@ export class WhatsappService {
   }
 
   async testMessage(tenantId: string, phone: string, message: string) {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-    });
+    const tenant = await this.resolveTenant(tenantId);
     if (!tenant || !tenant.whatsappInstanceId) {
       throw new HttpException('WhatsApp is not connected', HttpStatus.BAD_REQUEST);
     }
@@ -535,9 +554,7 @@ export class WhatsappService {
   }
 
   async status(tenantId: string) {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-    });
+    const tenant = await this.resolveTenant(tenantId);
     if (!tenant || !tenant.whatsappInstanceId) {
       return { state: 'unconfigured' as InstanceState };
     }
@@ -554,24 +571,23 @@ export class WhatsappService {
           `WhatsApp instance ${instanceName} not found in Evolution API. Keeping instance name for reconnection.`,
         );
         await this.prisma.tenant.update({
-          where: { id: tenantId },
+          where: { id: tenant.id },
           data: { whatsappConnected: false },
         });
         return {
           instanceName,
           state: 'unconfigured' as InstanceState,
           whatsappConnected: false,
-          qr: null,
         };
       }
       this.logger.error(
-        `Failed to fetch WhatsApp status for ${instanceName}: ${stateResult.error.message}`,
+        `Failed to get connection state for ${instanceName}: ${stateResult.error.message}`,
       );
       return {
         instanceName,
         state: 'close' as InstanceState,
         whatsappConnected: false,
-        qr: null,
+        error: stateResult.error.message,
       };
     }
 
@@ -591,12 +607,12 @@ export class WhatsappService {
 
     if (isConnected && !tenant.whatsappConnected) {
       await this.prisma.tenant.update({
-        where: { id: tenantId },
+        where: { id: tenant.id },
         data: { whatsappConnected: true },
       });
     } else if (!isConnected && tenant.whatsappConnected) {
       await this.prisma.tenant.update({
-        where: { id: tenantId },
+        where: { id: tenant.id },
         data: { whatsappConnected: false },
       });
     }
@@ -610,8 +626,10 @@ export class WhatsappService {
   }
 
   async saveChatbotSettings(tenantId: string, settings: any) {
+    const resolvedTenant = await this.resolveTenant(tenantId);
+    if (!resolvedTenant) throw new HttpException('Tenant not found', HttpStatus.NOT_FOUND);
     const tenant = await this.prisma.tenant.update({
-      where: { id: tenantId },
+      where: { id: resolvedTenant.id },
       data: {
         chatbotEnabled: settings.enabled,
         chatbotConfig: settings.config,
@@ -870,24 +888,28 @@ export class WhatsappService {
       return { success: false, error: 'Invalid parameters' };
     }
 
+    const normalizedNumber = number.replace(/\D/g, '');
+    this.logger.debug(`Sending message on ${instanceName} to normalized number: ${normalizedNumber}`);
+
     const result = await this.fetchEvo(
       `/message/sendText/${instanceName}`,
       'POST',
       {
-        number,
-        options: { delay: 1200, presence: 'composing' },
+        number: normalizedNumber,
         text,
+        textMessage: { text },
+        options: { delay: 0, presence: 'composing', linkPreview: true },
       },
     );
 
     if (result.error) {
       this.logger.error(
-        `Failed to send WhatsApp message to ${number} on ${instanceName}: ${result.error.message}`,
+        `Failed to send WhatsApp message to ${normalizedNumber} on ${instanceName}: ${result.error.message}`,
       );
       return { success: false, error: result.error.message };
     }
 
-    this.logger.log(`Sent WhatsApp message to ${number} on ${instanceName}`);
+    this.logger.log(`Sent WhatsApp message to ${normalizedNumber} on ${instanceName}`);
     return { success: true, providerId: result.data?.key?.id };
   }
 
@@ -912,31 +934,31 @@ export class WhatsappService {
       return { success: false, error: 'Invalid parameters' };
     }
 
+    const normalizedNumber = number.replace(/\D/g, '');
+
     const result = await this.fetchEvo(
       `/message/sendButtons/${instanceName}`,
       'POST',
       {
-        number,
-        options: { delay: 1200, presence: 'composing' },
+        number: normalizedNumber,
+        options: { delay: 0, presence: 'composing' },
         buttonMessage: { text, footer, buttons },
       },
     );
 
     if (result.error) {
       this.logger.error(
-        `Failed to send WhatsApp buttons to ${number} on ${instanceName}: ${result.error.message}`,
+        `Failed to send WhatsApp buttons to ${normalizedNumber} on ${instanceName}: ${result.error.message}`,
       );
       return { success: false, error: result.error.message };
     }
 
-    this.logger.log(`Sent WhatsApp buttons to ${number} on ${instanceName}`);
+    this.logger.log(`Sent WhatsApp buttons to ${normalizedNumber} on ${instanceName}`);
     return { success: true, providerId: result.data?.key?.id };
   }
 
   async requestFeedback(tenantId: string, phone: string, language: string) {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-    });
+    const tenant = await this.resolveTenant(tenantId);
     if (!tenant || !tenant.chatbotEnabled || !tenant.whatsappInstanceId) {
       this.logger.debug(
         `Skipping feedback request for tenant ${tenantId}: not configured`,
@@ -970,9 +992,7 @@ export class WhatsappService {
   }
 
   async generateValidationCode(tenantId: string) {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-    });
+    const tenant = await this.resolveTenant(tenantId);
     if (!tenant) {
       throw new HttpException('Tenant not found', HttpStatus.NOT_FOUND);
     }
@@ -993,9 +1013,7 @@ export class WhatsappService {
   }
 
   async connectWithValidationCode(tenantId: string, validationCode: string) {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-    });
+    const tenant = await this.resolveTenant(tenantId);
     if (!tenant) {
       throw new HttpException('Tenant not found', HttpStatus.NOT_FOUND);
     }
@@ -1013,14 +1031,14 @@ export class WhatsappService {
     await this.redisService.client.del(`whatsapp:validation-code:${tenantId}`);
 
     const instanceName =
-      tenant.whatsappInstanceId || `tenant_${tenantId.substring(0, 8)}`;
+      tenant.whatsappInstanceId || `tenant_${tenant.id.substring(0, 8)}`;
     this.logger.log(
-      `WhatsApp connect with validation code for tenant ${tenantId} -> instance ${instanceName}`,
+      `WhatsApp connect with validation code for tenant ${tenant.id} -> instance ${instanceName}`,
     );
 
     if (!tenant.whatsappInstanceId) {
       await this.prisma.tenant.update({
-        where: { id: tenantId },
+        where: { id: tenant.id },
         data: { whatsappInstanceId: instanceName },
       });
     }

@@ -71,8 +71,18 @@ export default function WhatsAppSettingsPage() {
   const connectWhatsAppMutation = useMutation({
     mutationFn: () => fetchApi('/whatsapp/connect', { method: 'POST' }),
     onSuccess: (res) => {
-      if (res.qr) setQrCode(res.qr);
+      if (res.qr) {
+        setQrCode(res.qr);
+        toast.success('QR Code ready! Please scan using WhatsApp.');
+      } else if (res.state === 'open') {
+        toast.success('WhatsApp is connected!');
+      } else {
+        toast.info('Connecting to WhatsApp instance...');
+      }
       refetchWhatsAppStatus();
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Failed to initialize WhatsApp connection');
     },
   });
 
@@ -98,6 +108,9 @@ export default function WhatsAppSettingsPage() {
       setPairingCode(null);
       refetchWhatsAppStatus();
       toast.success('WhatsApp disconnected successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Failed to disconnect WhatsApp');
     },
   });
 

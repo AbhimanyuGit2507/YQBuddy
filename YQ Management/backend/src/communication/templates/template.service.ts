@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { createBrandEmailLayout, generateOtpBoxHtml, generateButtonHtml } from '../../email/email-layout';
 
 export interface TemplateVariables {
   [key: string]: string | number | undefined;
@@ -21,205 +22,160 @@ export class TemplateService {
   private readonly emailTemplates: Record<string, Template> = {
     signup_otp: {
       subject: 'Verify your Qmova Account',
-      html: `<html>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">Qmova</h1>
-  </div>
-  <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-    <h2 style="color: #111827; margin-top: 0;">Verify Your Email</h2>
-    <p style="color: #4b5563; line-height: 1.6;">Thank you for signing up! Please use the following code to verify your email address:</p>
-    <div style="background: #ffffff; border: 2px dashed #667eea; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
-      <span style="font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 8px;">{{otp}}</span>
-    </div>
-    <p style="color: #4b5563; line-height: 1.6;">This code will expire in <strong>10 minutes</strong>. If you did not request this, please ignore this email.</p>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Team</p>
-  </div>
-</body>
-</html>`,
-      text: `Your Qmova verification code is: {{otp}}\n\nThis code will expire in 10 minutes.`,
+      html: createBrandEmailLayout({
+        title: 'Account Verification',
+        preheader: 'Your email verification code for Qmova.',
+        content: `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">Verify Your Email Address</h2>
+        <p style="color: #4b5563; line-height: 1.6;">Thank you for registering with Qmova. Please use the verification code below to confirm your email address and activate your account:</p>
+        ${generateOtpBoxHtml('{{otp}}')}
+        <p style="color: #4b5563; line-height: 1.6; font-size: 14px;">This verification code will expire in <strong>10 minutes</strong>. For security purposes, never share this code with anyone. If you did not sign up for Qmova, please ignore this message.</p>`,
+      }),
+      text: 'Your Qmova verification code is: {{otp}}\n\nThis code will expire in 10 minutes.',
     },
     login_otp: {
-      subject: 'Your Qmova Login Code',
-      html: `<html>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">Qmova</h1>
-  </div>
-  <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-    <h2 style="color: #111827; margin-top: 0;">Your Login Code</h2>
-    <p style="color: #4b5563; line-height: 1.6;">Use the following code to sign in to your Qmova account:</p>
-    <div style="background: #ffffff; border: 2px dashed #667eea; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
-      <span style="font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 8px;">{{otp}}</span>
-    </div>
-    <p style="color: #4b5563; line-height: 1.6;">This code will expire in <strong>10 minutes</strong>. If you did not request this, please ignore this email.</p>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Team</p>
-  </div>
-</body>
-</html>`,
-      text: `Your Qmova login code is: {{otp}}\n\nThis code will expire in 10 minutes.`,
+      subject: 'Your Qmova Authentication Code',
+      html: createBrandEmailLayout({
+        title: 'Login Verification',
+        preheader: 'Your secure authentication code for Qmova.',
+        content: `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">Login Authentication Code</h2>
+        <p style="color: #4b5563; line-height: 1.6;">A sign-in attempt was detected for your Qmova account. Please enter the verification code below to authorize access:</p>
+        ${generateOtpBoxHtml('{{otp}}')}
+        <p style="color: #4b5563; line-height: 1.6; font-size: 14px;">This code expires in <strong>10 minutes</strong>. If you did not initiate this login request, please secure your account immediately or contact our support team.</p>`,
+      }),
+      text: 'Your Qmova authentication code is: {{otp}}\n\nThis code will expire in 10 minutes.',
+    },
+    password_reset: {
+      subject: 'Reset Your Qmova Password',
+      html: createBrandEmailLayout({
+        title: 'Password Reset Verification',
+        preheader: 'Your verification code to reset your Qmova password.',
+        content: `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">Password Reset Verification</h2>
+        <p style="color: #4b5563; line-height: 1.6;">We received a request to reset the password associated with your Qmova account. Use the verification code below to authorize this password modification:</p>
+        ${generateOtpBoxHtml('{{otp}}')}
+        <p style="color: #4b5563; line-height: 1.6; font-size: 14px;">This verification code is valid for <strong>10 minutes</strong>. If you did not request a password reset, no action is necessary and your current password remains secure.</p>`,
+      }),
+      text: 'Your Qmova password reset code is: {{otp}}\n\nThis code will expire in 10 minutes.',
+    },
+    workspace_invite: {
+      subject: 'You have been invited to join a Qmova Workspace',
+      html: createBrandEmailLayout({
+        title: 'Workspace Invitation',
+        preheader: 'You have been invited to collaborate on Qmova.',
+        content: `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">Workspace Collaboration Invitation</h2>
+        <p style="color: #4b5563; line-height: 1.6;">Hello, you have been invited by <strong>{{inviter_name}}</strong> to join the workspace <strong>"{{workspace}}"</strong> on Qmova.</p>
+        <p style="color: #4b5563; line-height: 1.6;">Click the button below to access the workspace and collaborate with your team:</p>
+        ${generateButtonHtml('Accept Invitation & View Workspace', '{{invite_url}}')}
+        <p style="color: #4b5563; line-height: 1.6; font-size: 14px;">If you do not recognize this invitation or believe it was sent to you in error, simply disregard this notice.</p>`,
+      }),
+      text: 'You have been invited to join the workspace "{{workspace}}" on Qmova by {{inviter_name}}.\n\nVisit: {{invite_url}}',
     },
     login_notification: {
-      subject: 'New login to your Qmova Account',
-      html: `<html>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">Qmova Security</h1>
-  </div>
-  <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-    <h2 style="color: #111827; margin-top: 0;">New Login Detected</h2>
-    <p style="color: #4b5563; line-height: 1.6;">We detected a new login to your Qmova account at <strong>{{timestamp}}</strong>.</p>
-    <p style="color: #4b5563; line-height: 1.6;">If this was you, no action is needed. If you did not sign in, please secure your account immediately.</p>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Security Team</p>
-  </div>
-</body>
-</html>`,
-      text: `We detected a new login to your Qmova account at {{timestamp}}.`,
+      subject: 'Security Alert: New login to your Qmova Account',
+      html: createBrandEmailLayout({
+        title: 'New Login Detected',
+        preheader: 'A login was recorded on your Qmova account.',
+        content: `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">New Login Detected</h2>
+        <p style="color: #4b5563; line-height: 1.6;">We recorded a new successful sign-in to your Qmova account on <strong>{{timestamp}}</strong>.</p>
+        <p style="color: #4b5563; line-height: 1.6;">If this login was authorized by you, no action is required. If you do not recognize this activity, please review your active sessions and reset your account password immediately.</p>`,
+      }),
+      text: 'We detected a new sign-in to your Qmova account at {{timestamp}}.',
     },
     welcome: {
-      subject: 'Welcome to Qmova!',
-      html: `<html>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Qmova</h1>
-  </div>
-  <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-    <h2 style="color: #111827; margin-top: 0;">Hello {{name}}, welcome aboard!</h2>
-    <p style="color: #4b5563; line-height: 1.6;">We're excited to have you on board. Qmova helps you manage queues efficiently and keep your customers informed.</p>
-    <p style="color: #4b5563; line-height: 1.6;">Get started by setting up your first queue and connecting your WhatsApp account.</p>
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="{{dashboard_url}}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;">Go to Dashboard</a>
-    </div>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Team</p>
-  </div>
-</body>
-</html>`,
-      text: `Welcome to Qmova, {{name}}!\n\nWe're excited to have you on board.`,
+      subject: 'Welcome to Qmova - Account Established',
+      html: createBrandEmailLayout({
+        title: 'Welcome to Qmova',
+        preheader: 'Your Qmova organization workspace is ready.',
+        content: `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">Welcome Aboard, {{name}}!</h2>
+        <p style="color: #4b5563; line-height: 1.6;">We are pleased to welcome you to Qmova. Our platform empowers enterprise organizations to seamlessly orchestrate customer traffic, queue management, and high-conversion omnichannel communication.</p>
+        <p style="color: #4b5563; line-height: 1.6;">Your workspace is fully provisioned and ready for operation. Access your dashboard below to configure your digital queues and connect your official communication channels:</p>
+        ${generateButtonHtml('Launch Command Dashboard', '{{dashboard_url}}')}
+        <p style="color: #4b5563; line-height: 1.6; font-size: 14px;">Should you require technical guidance or platform assistance, our support organization remains at your disposal.</p>`,
+      }),
+      text: 'Welcome to Qmova, {{name}}!\n\nYour workspace is ready. Access your dashboard at {{dashboard_url}}',
     },
     payment_success: {
-      subject: 'Payment Successful',
-      html: `<html>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">Payment Successful</h1>
-  </div>
-  <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-    <h2 style="color: #111827; margin-top: 0;">Thank You for Your Payment</h2>
-    <p style="color: #4b5563; line-height: 1.6;">Your payment of <strong>{{amount}} {{currency}}</strong> for workspace <strong>"{{workspace}}"</strong> has been processed successfully.</p>
-    <p style="color: #4b5563; line-height: 1.6;">Your subscription is now active. You can continue using all features of Qmova.</p>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Billing Team</p>
-  </div>
-</body>
-</html>`,
-      text: `Your payment of {{amount}} {{currency}} for workspace "{{workspace}}" has been processed successfully.`,
+      subject: 'Qmova Billing Notice: Payment Successful',
+      html: createBrandEmailLayout({
+        title: 'Payment Successful',
+        preheader: 'Receipt for your Qmova subscription payment.',
+        content: `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">Payment Confirmation</h2>
+        <p style="color: #4b5563; line-height: 1.6;">We are pleased to confirm that your payment of <strong>{{amount}} {{currency}}</strong> for workspace <strong>"{{workspace}}"</strong> has been processed successfully.</p>
+        <p style="color: #4b5563; line-height: 1.6;">Your subscription entitlements are active and all platform utilities remain fully operational for your organization.</p>
+        ${generateButtonHtml('View Billing & Invoices', '{{dashboard_url}}')}`,
+      }),
+      text: 'Your payment of {{amount}} {{currency}} for workspace "{{workspace}}" has been processed successfully.',
     },
     payment_failed: {
-      subject: 'Payment Failed',
-      html: `<html>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">Payment Failed</h1>
-  </div>
-  <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-    <h2 style="color: #111827; margin-top: 0;">Action Required</h2>
-    <p style="color: #4b5563; line-height: 1.6;">Your payment for workspace <strong>"{{workspace}}"</strong> has failed. Please update your payment method to avoid service interruption.</p>
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="{{dashboard_url}}" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;">Update Payment Method</a>
-    </div>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Billing Team</p>
-  </div>
-</body>
-</html>`,
-      text: `Your payment for workspace "{{workspace}}" has failed. Please update your payment method.`,
+      subject: 'Qmova Billing Alert: Payment Attempt Unsuccessful',
+      html: createBrandEmailLayout({
+        title: 'Payment Action Required',
+        preheader: 'Urgent notice regarding your Qmova subscription billing.',
+        content: `<h2 style="color: #ef4444; margin-top: 0; font-size: 22px; font-weight: 700;">Billing Action Required</h2>
+        <p style="color: #4b5563; line-height: 1.6;">We encountered an issue attempting to process your recent payment for workspace <strong>"{{workspace}}"</strong>. Your current billing method may require verification or updating.</p>
+        <p style="color: #4b5563; line-height: 1.6;">To prevent any unexpected service interruptions to your digital queues and communication channels, please update your payment credentials:</p>
+        ${generateButtonHtml('Update Payment Method', '{{dashboard_url}}')}`,
+      }),
+      text: 'Your payment for workspace "{{workspace}}" was unsuccessful. Please update your payment method in your dashboard.',
     },
     trial_ending: {
-      subject: 'Trial Ending Soon',
-      html: `<html>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">Trial Ending Soon</h1>
-  </div>
-  <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-    <h2 style="color: #111827; margin-top: 0;">Your Trial Ends in {{days}} Days</h2>
-    <p style="color: #4b5563; line-height: 1.6;">Your trial for workspace <strong>"{{workspace}}"</strong> will end in <strong>{{days}}</strong> days. Please select a plan to continue using the service.</p>
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="{{dashboard_url}}" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;">Choose a Plan</a>
-    </div>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Billing Team</p>
-  </div>
-</body>
-</html>`,
-      text: `Your trial for workspace "{{workspace}}" will end in {{days}} days.`,
+      subject: 'Qmova Notice: Free Trial Period Ending Soon',
+      html: createBrandEmailLayout({
+        title: 'Trial Expiration Reminder',
+        preheader: 'Your Qmova trial concludes in {{days}} days.',
+        content: `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">Trial Expiration Reminder</h2>
+        <p style="color: #4b5563; line-height: 1.6;">This notification serves as a courtesy reminder that your promotional trial for workspace <strong>"{{workspace}}"</strong> will conclude in <strong>{{days}}</strong> days.</p>
+        <p style="color: #4b5563; line-height: 1.6;">To ensure uninterrupted access to real-time queue orchestration and customer messaging, please select a subscription tier that fits your operational growth:</p>
+        ${generateButtonHtml('Select Subscription Plan', '{{dashboard_url}}')}`,
+      }),
+      text: 'Your trial for workspace "{{workspace}}" concludes in {{days}} days. Please select a plan to continue service.',
     },
     subscription_renewed: {
-      subject: 'Subscription Renewed',
-      html: `<html>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">Subscription Renewed</h1>
-  </div>
-  <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-    <h2 style="color: #111827; margin-top: 0;">Your Subscription Has Been Renewed</h2>
-    <p style="color: #4b5563; line-height: 1.6;">Your subscription for workspace <strong>"{{workspace}}"</strong> has been renewed. Next billing date: <strong>{{next_billing_date}}</strong>.</p>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Billing Team</p>
-  </div>
-</body>
-</html>`,
-      text: `Your subscription for workspace "{{workspace}}" has been renewed.`,
+      subject: 'Qmova Confirmation: Subscription Renewed',
+      html: createBrandEmailLayout({
+        title: 'Subscription Renewed',
+        preheader: 'Your Qmova subscription has been renewed automatically.',
+        content: `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">Subscription Renewed</h2>
+        <p style="color: #4b5563; line-height: 1.6;">Your active subscription for workspace <strong>"{{workspace}}"</strong> has been successfully renewed for the upcoming service cycle.</p>
+        <p style="color: #4b5563; line-height: 1.6;">Your next scheduled billing renewal is set for <strong>{{next_billing_date}}</strong>. All platform utilities remain active without interruption.</p>
+        ${generateButtonHtml('Review Subscription Status', '{{dashboard_url}}')}`,
+      }),
+      text: 'Your subscription for workspace "{{workspace}}" has been renewed. Next billing date: {{next_billing_date}}.',
     },
     subscription_cancelled: {
-      subject: 'Subscription Cancelled',
-      html: `<html>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">Subscription Cancelled</h1>
-  </div>
-  <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-    <h2 style="color: #111827; margin-top: 0;">Your Subscription Has Been Cancelled</h2>
-    <p style="color: #4b5563; line-height: 1.6;">Your subscription for workspace <strong>"{{workspace}}"</strong> has been cancelled. You can still use the service until the end of your current billing period.</p>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Billing Team</p>
-  </div>
-</body>
-</html>`,
-      text: `Your subscription for workspace "{{workspace}}" has been cancelled.`,
+      subject: 'Qmova Notice: Subscription Cancellation',
+      html: createBrandEmailLayout({
+        title: 'Subscription Cancelled',
+        preheader: 'Acknowledgment of your Qmova subscription cancellation.',
+        content: `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">Subscription Cancellation</h2>
+        <p style="color: #4b5563; line-height: 1.6;">We have processed your request to cancel the recurring subscription for workspace <strong>"{{workspace}}"</strong>.</p>
+        <p style="color: #4b5563; line-height: 1.6;">Your organization retains full platform access until the conclusion of your current billing period. Should you choose to reactivate your subscription in the future, your existing configurations will remain preserved.</p>
+        ${generateButtonHtml('Reactivate Subscription', '{{dashboard_url}}')}`,
+      }),
+      text: 'Your subscription for workspace "{{workspace}}" has been cancelled. Service will continue until the end of your current billing period.',
     },
     subscription_expired: {
-      subject: 'Subscription Expired',
-      html: `<html>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">Subscription Expired</h1>
-  </div>
-  <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-    <h2 style="color: #111827; margin-top: 0;">Renew Your Subscription</h2>
-    <p style="color: #4b5563; line-height: 1.6;">Your subscription for workspace <strong>"{{workspace}}"</strong> has expired. Please renew to continue using the service.</p>
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="{{dashboard_url}}" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;">Renew Now</a>
-    </div>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Billing Team</p>
-  </div>
-</body>
-</html>`,
-      text: `Your subscription for workspace "{{workspace}}" has expired.`,
+      subject: 'Qmova Alert: Subscription Expired',
+      html: createBrandEmailLayout({
+        title: 'Subscription Expired',
+        preheader: 'Your subscription for Qmova has reached its expiration date.',
+        content: `<h2 style="color: #ef4444; margin-top: 0; font-size: 22px; font-weight: 700;">Subscription Expired</h2>
+        <p style="color: #4b5563; line-height: 1.6;">The active billing cycle for workspace <strong>"{{workspace}}"</strong> has expired, and premium service capabilities are temporarily suspended.</p>
+        <p style="color: #4b5563; line-height: 1.6;">To immediately reactivate your workspace queues and customer messaging infrastructure, please renew your subscription:</p>
+        ${generateButtonHtml('Renew Subscription Now', '{{dashboard_url}}')}`,
+      }),
+      text: 'Your subscription for workspace "{{workspace}}" has expired. Please renew in your dashboard to restore full service.',
     },
     payment_reminder: {
-      subject: 'Payment Reminder',
-      html: `<html>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-  <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">Payment Reminder</h1>
-  </div>
-  <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-    <h2 style="color: #111827; margin-top: 0;">Payment Due Soon</h2>
-    <p style="color: #4b5563; line-height: 1.6;">This is a reminder that your payment of <strong>{{amount}} {{currency}}</strong> for workspace <strong>"{{workspace}}"</strong> is due soon.</p>
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="{{dashboard_url}}" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;">Make Payment</a>
-    </div>
-    <p style="color: #9ca3af; font-size: 14px; margin-top: 30px;">Best regards,<br/>The Qmova Billing Team</p>
-  </div>
-</body>
-</html>`,
-      text: `Your payment of {{amount}} {{currency}} for workspace "{{workspace}}" is due soon.`,
+      subject: 'Qmova Courtesy Reminder: Upcoming Invoice Due',
+      html: createBrandEmailLayout({
+        title: 'Payment Reminder',
+        preheader: 'An upcoming invoice is due for your Qmova account.',
+        content: `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">Upcoming Payment Reminder</h2>
+        <p style="color: #4b5563; line-height: 1.6;">This notice serves as a courtesy reminder that your scheduled subscription invoice of <strong>{{amount}} {{currency}}</strong> for workspace <strong>"{{workspace}}"</strong> will become due shortly.</p>
+        <p style="color: #4b5563; line-height: 1.6;">To verify your payment profile or process an immediate manual payment, please visit your account billing center:</p>
+        ${generateButtonHtml('Manage Billing & Payments', '{{dashboard_url}}')}`,
+      }),
+      text: 'Reminder: Your payment of {{amount}} {{currency}} for workspace "{{workspace}}" is due soon.',
     },
   };
 

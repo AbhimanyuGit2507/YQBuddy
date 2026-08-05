@@ -31,7 +31,7 @@ describe('TemplateService', () => {
 
   it('should render email template with variables', () => {
     const result = service.renderEmail('login_otp', { otp: '123456' });
-    expect(result.subject).toBe('Your Qmova Login Code');
+    expect(result.subject).toBe('Your Qmova Authentication Code');
     expect(result.html).toContain('123456');
     expect(result.text).toContain('123456');
   });

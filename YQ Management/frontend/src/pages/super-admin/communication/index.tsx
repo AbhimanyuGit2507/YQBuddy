@@ -29,7 +29,7 @@ export default function SuperAdminCommunication() {
   
   // Email & OTP Test States
   const [testEmailTo, setTestEmailTo] = useState('yqbuddysa@gmail.com');
-  const [testEmailSubject, setTestEmailSubject] = useState('Qmova Live Production Verification');
+  const [testEmailSubject, setTestEmailSubject] = useState('Qmova Account Verification Code');
   const [emailTestType, setEmailTestType] = useState<'standard' | 'otp'>('otp');
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
   const [lastSentEmailOtp, setLastSentEmailOtp] = useState<string | null>(null);
@@ -137,13 +137,13 @@ export default function SuperAdminCommunication() {
           <div className="absolute top-0 right-0 -mr-16 -mt-16 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10 space-y-2">
             <div className="flex items-center gap-2 text-xs font-bold text-indigo-400 tracking-wider uppercase">
-              <Zap className="w-4 h-4 fill-indigo-500 animate-pulse" /> Live Production Infrastructure
+              <Zap className="w-4 h-4 fill-indigo-500 animate-pulse" /> Production Infrastructure
             </div>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white uppercase drop-shadow-sm">
               System Diagnostics &amp; Telemetry
             </h1>
             <p className="text-zinc-400 text-sm max-w-2xl">
-              Execute live end-to-end transmissions across Brevo Email Relays, Evolution WhatsApp pipelines, Redis OTP engines, and Ozow payment gateways.
+              Execute diagnostic transmissions across Brevo Email Relays, Evolution WhatsApp pipelines, Redis OTP engines, and Ozow payment gateways.
             </p>
           </div>
           <button
@@ -305,9 +305,9 @@ export default function SuperAdminCommunication() {
                       }`}
                     >
                       <div className="flex items-center gap-2 text-indigo-400 text-sm font-black mb-1">
-                        <Key className="w-4 h-4" /> Live OTP Verification Email
+                        <Key className="w-4 h-4" /> OTP Verification Email
                       </div>
-                      <p className="text-xs text-zinc-400">Generates and sends an official 6-digit login verification OTP.</p>
+                      <p className="text-xs text-zinc-400">Generates and transmits an official 6-digit verification OTP.</p>
                     </button>
                     <button
                       type="button"
@@ -357,7 +357,7 @@ export default function SuperAdminCommunication() {
                   className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 active:scale-98 disabled:opacity-50 text-white rounded-2xl font-black uppercase text-sm tracking-wider shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-3 transition-all"
                 >
                   {sendingTestEmail ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                  {sendingTestEmail ? 'Relaying Through Brevo Servers...' : `Transmit Live ${emailTestType.toUpperCase()} Test`}
+                  {sendingTestEmail ? 'Relaying Through Brevo Servers...' : `Transmit ${emailTestType.toUpperCase()} Test`}
                 </button>
 
                 {lastSentEmailOtp && (
@@ -365,7 +365,7 @@ export default function SuperAdminCommunication() {
                     <div className="flex items-center gap-3">
                       <ShieldCheck className="w-7 h-7 text-emerald-400 shrink-0" />
                       <div>
-                        <h4 className="text-sm font-bold text-white">Live OTP Verification Successfully Delivered!</h4>
+                        <h4 className="text-sm font-bold text-white">OTP Verification Code Successfully Delivered!</h4>
                         <p className="text-xs text-zinc-300">The 6-digit code sent to <b className="text-emerald-300">{testEmailTo}</b> is:</p>
                       </div>
                     </div>
@@ -589,10 +589,10 @@ export default function SuperAdminCommunication() {
             <div className="border-b border-gray-200 dark:border-white/10 pb-5">
               <h2 className="text-xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2.5">
                 <CreditCard className="w-6 h-6 text-amber-500" />
-                Ozow Live Production Payments Gateway
+                Ozow Payments Gateway
               </h2>
               <p className="text-xs text-gray-500 dark:text-amber-200/60 mt-1">
-                Real-time EFT automated bank account settlement setup for subscription checkout.
+                Automated bank account settlement setup for subscription checkout.
               </p>
             </div>
 
@@ -606,9 +606,9 @@ export default function SuperAdminCommunication() {
                 <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Environment Status</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-                  <p className="text-lg font-extrabold text-emerald-400">Live Production Acceptance</p>
+                  <p className="text-lg font-extrabold text-emerald-400">Active (Production Ready)</p>
                 </div>
-                <p className="text-xs text-zinc-400">Connected to real bank verification routes without sandbox delays.</p>
+                <p className="text-xs text-zinc-400">Connected to direct bank verification routes.</p>
               </div>
             </div>
 

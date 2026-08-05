@@ -20,62 +20,68 @@ import type { AuthenticatedRequest } from '../auth/types/auth.types';
 export class WhatsappController {
   constructor(private readonly whatsappService: WhatsappService) {}
 
-  @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN, Role.OPERATOR)
   @Post('connect')
   connect(@Req() req: AuthenticatedRequest) {
-    return this.whatsappService.connect(req.user.tenantId);
+    const targetId = req.user.tenantId || (req.user as any).workspaceId || (req.user as any).userId;
+    return this.whatsappService.connect(targetId);
   }
 
-  @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN, Role.OPERATOR)
   @Post('generate-validation-code')
   async generateValidationCode(@Req() req: AuthenticatedRequest) {
-    return this.whatsappService.generateValidationCode(req.user.tenantId);
+    const targetId = req.user.tenantId || (req.user as any).workspaceId || (req.user as any).userId;
+    return this.whatsappService.generateValidationCode(targetId);
   }
 
-  @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN, Role.OPERATOR)
   @Post('pairing-code')
   async generatePairingCode(
     @Req() req: AuthenticatedRequest,
     @Body() body: { phoneNumber: string },
   ) {
+    const targetId = req.user.tenantId || (req.user as any).workspaceId || (req.user as any).userId;
     return this.whatsappService.generatePairingCode(
-      req.user.tenantId,
+      targetId,
       body.phoneNumber,
     );
   }
 
-  @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN, Role.OPERATOR)
   @Post('connect-with-code')
   connectWithCode(
     @Req() req: AuthenticatedRequest,
     @Body() body: { validationCode: string },
   ) {
+    const targetId = req.user.tenantId || (req.user as any).workspaceId || (req.user as any).userId;
     return this.whatsappService.connectWithValidationCode(
-      req.user.tenantId,
+      targetId,
       body.validationCode,
     );
   }
 
-  @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN, Role.OPERATOR)
   @Post('disconnect')
   disconnect(@Req() req: AuthenticatedRequest) {
-    return this.whatsappService.disconnect(req.user.tenantId);
+    const targetId = req.user.tenantId || (req.user as any).workspaceId || (req.user as any).userId;
+    return this.whatsappService.disconnect(targetId);
   }
 
-  @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN, Role.OPERATOR)
   @Post('test')
   testMessage(
     @Req() req: AuthenticatedRequest,
     @Body() body: { phone: string; message: string },
   ) {
+    const targetId = req.user.tenantId || (req.user as any).workspaceId || (req.user as any).userId;
     return this.whatsappService.testMessage(
-      req.user.tenantId,
+      targetId,
       body.phone,
       body.message,
     );
@@ -107,10 +113,11 @@ export class WhatsappController {
     return this.whatsappService.handleWebhook(instanceName, body);
   }
 
-  @UseGuards(AuthGuard('jwt'), RolesGuard, WorkspaceGuard)
-  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.TENANT_ADMIN, Role.SUPER_ADMIN, Role.ADMIN, Role.OPERATOR)
   @Post('settings')
   saveChatbotSettings(@Req() req: AuthenticatedRequest, @Body() body: any) {
-    return this.whatsappService.saveChatbotSettings(req.user.tenantId, body);
+    const targetId = req.user.tenantId || (req.user as any).workspaceId || (req.user as any).userId;
+    return this.whatsappService.saveChatbotSettings(targetId, body);
   }
 }

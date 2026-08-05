@@ -20,6 +20,7 @@ import type { WhatsAppProvider } from '../communication/interfaces/whatsapp.prov
 import { CommunicationLogService, CommunicationChannel, CommunicationStatus } from '../communication/logging/communication-log.service';
 import { TemplateService } from '../communication/templates/template.service';
 import { PaymentsService } from '../payments/payments.service';
+import { createBrandEmailLayout } from '../email/email-layout';
 
 @Controller('super-admin')
 @UseGuards(AuthGuard('jwt'))
@@ -167,10 +168,10 @@ export class SuperAdminController {
         instance: process.env.EVOLUTION_INSTANCE_NAME || 'yq_instance',
       },
       payments: {
-        provider: 'Ozow Live Gateway',
+        provider: 'Ozow Payments Gateway',
         configured: !!process.env.OZOW_SITE_CODE && !!process.env.OZOW_PRIVATE_KEY,
         siteCode: process.env.OZOW_SITE_CODE || 'Not set',
-        mode: process.env.OZOW_IS_TEST === 'true' || process.env.NODE_ENV !== 'production' ? 'Sandbox / Test' : 'Live Production (Bank Direct)',
+        mode: process.env.OZOW_IS_TEST === 'true' || process.env.NODE_ENV !== 'production' ? 'Sandbox Mode' : 'Production Mode (Bank Direct)',
       },
       otp: {
         engine: 'Redis OTP Storage (5 min expiry)',
@@ -182,16 +183,22 @@ export class SuperAdminController {
   @Post('communication/test-email')
   async testEmail(@Req() req: any, @Body() body: { to: string; subject?: string; type?: 'standard' | 'otp' }) {
     this.checkSuperAdmin(req);
-    let subject = body.subject || 'Qmova Test Email';
-    let htmlContent = '<h1>Test Email</h1><p>This is a test email from Qmova.</p>';
-    let textContent = 'Test Email - This is a test email from Qmova.';
-    let logType = 'test';
+    let subject = body.subject || 'Qmova Platform Service Verification';
+    let htmlContent = createBrandEmailLayout({
+      title: 'Platform Communication Verification',
+      preheader: 'Verification of mail delivery infrastructure.',
+      content: `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">Communication Service Verification</h2>
+      <p style="color: #4b5563; line-height: 1.6;">This notification confirms that the Qmova email communication channel is operational and correctly configured with your email service provider.</p>
+      <p style="color: #4b5563; line-height: 1.6; font-size: 14px;">No further action is required from system administrators.</p>`,
+    });
+    let textContent = 'Qmova Communication Service Verification: Your email channel is operational.';
+    let logType = 'diagnostic';
     let otpCode = '';
 
     if (body.type === 'otp') {
       otpCode = Math.floor(100000 + Math.random() * 900000).toString();
       const template = this.templateService.renderEmail('login_otp', { otp: otpCode });
-      subject = body.subject || `[Qmova] Test OTP Verification Code: ${otpCode}`;
+      subject = body.subject || 'Your Qmova Authentication Code';
       htmlContent = template.html;
       textContent = template.text || '';
       logType = 'login_otp';
