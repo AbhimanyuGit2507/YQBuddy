@@ -3,7 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { ArrowRight, Lock, Mail, CheckCircle, Eye, EyeOff } from 'lucide-react';
-import { fetchApi } from '../lib/api';
+import { fetchApi, AuthStorage } from '../lib/api';
 
 export default function Login() {
   const router = useRouter();
@@ -32,6 +32,9 @@ export default function Login() {
       if (data?.requiresOtp) {
         setStep('otp');
       } else {
+        if (data?.access_token) {
+          AuthStorage.set(data.access_token);
+        }
         const isSuper = data?.user?.role === 'SUPER_ADMIN' || email.trim().toLowerCase() === 'yqbuddysa@gmail.com';
         router.push(isSuper ? '/super-admin' : '/dashboard');
       }
@@ -72,7 +75,7 @@ export default function Login() {
       });
 
       if (data?.access_token) {
-        // Token is stored as httpOnly cookie by the backend
+        AuthStorage.set(data.access_token);
       }
       const isSuper = data?.user?.role === 'SUPER_ADMIN' || email.trim().toLowerCase() === 'yqbuddysa@gmail.com';
       router.push(isSuper ? '/super-admin' : '/dashboard');

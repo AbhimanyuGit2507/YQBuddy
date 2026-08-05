@@ -50,12 +50,26 @@ export async function middleware(req: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
+  // Extract token: always prioritize fresh SSO/login tokens in URL parameters over existing browser cookies
+  const ssoToken = req.nextUrl.searchParams.get('token');
+  const token = ssoToken || req.cookies.get('access_token')?.value || req.cookies.get('token')?.value;
+
+  const response = NextResponse.next();
+  if (ssoToken) {
+    response.cookies.set('token', ssoToken, {
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60,
+      sameSite: 'lax',
+    });
+  }
+
   // Authenticate super-admin routes
   if (req.nextUrl.pathname.startsWith('/super-admin')) {
-    const token = req.cookies.get('access_token')?.value || req.cookies.get('token')?.value || req.nextUrl.searchParams.get('token');
-    
     if (!token) {
-      return NextResponse.redirect(new URL('/login', req.url));
+      const redirectRes = NextResponse.redirect(new URL('/login', req.url));
+      redirectRes.cookies.delete('token');
+      redirectRes.cookies.delete('access_token');
+      return redirectRes;
     }
     
     try {
@@ -75,22 +89,17 @@ export async function middleware(req: NextRequest) {
         if (!isSuper) {
           return NextResponse.redirect(new URL('/dashboard', req.url));
         }
-      } else if (res.status === 401) {
-        return NextResponse.redirect(new URL('/login', req.url));
+        return response;
+      } else if (res.status === 401 || res.status === 403) {
+        const redirectRes = NextResponse.redirect(new URL('/login', req.url));
+        redirectRes.cookies.delete('token');
+        redirectRes.cookies.delete('access_token');
+        return redirectRes;
       }
     } catch {
       console.error('Middleware: Unable to verify auth with backend');
     }
   }
 
-  const response = NextResponse.next();
-  const ssoToken = req.nextUrl.searchParams.get('token');
-  if (ssoToken) {
-    response.cookies.set('token', ssoToken, {
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60,
-      sameSite: 'lax',
-    });
-  }
   return response;
 }

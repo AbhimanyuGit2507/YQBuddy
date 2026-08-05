@@ -45,7 +45,7 @@ export class AuthController {
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         path: '/',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: 30 * 24 * 60 * 60 * 1000,
       });
       return { success: true, requiresOtp: false, user, access_token };
     }
@@ -76,7 +76,7 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
     return { success: true, user, access_token };
   }
@@ -133,10 +133,10 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    return { success: true, user };
+    return { success: true, user, access_token };
   }
 
   @Get('google')
@@ -155,7 +155,7 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
     const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.email?.toLowerCase() === 'yqbuddysa@gmail.com' || req.user?.email?.toLowerCase() === process.env.SUPER_ADMIN_EMAIL?.toLowerCase();

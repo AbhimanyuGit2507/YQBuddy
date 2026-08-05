@@ -3,7 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { ArrowRight, Lock, Mail, User, CheckCircle2, Eye, EyeOff } from 'lucide-react';
-import { fetchApi } from '../lib/api';
+import { fetchApi, AuthStorage } from '../lib/api';
 
 export default function Register() {
   const router = useRouter();
@@ -71,6 +71,9 @@ export default function Register() {
         body: JSON.stringify({ email, otp })
       });
 
+      if (data?.access_token) {
+        AuthStorage.set(data.access_token);
+      }
       router.push('/onboarding');
     } catch (err: any) {
       setError(err.message || 'Invalid OTP');
