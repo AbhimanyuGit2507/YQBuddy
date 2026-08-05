@@ -7,5 +7,6 @@ import { PaymentsModule } from '../payments/payments.module';
   imports: [PaymentsModule],
   controllers: [SuperAdminController],
   providers: [SuperAdminService],
+  exports: [SuperAdminService],
 })
 export class SuperAdminModule {}

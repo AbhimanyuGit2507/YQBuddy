@@ -2,16 +2,30 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as https from 'https';
 import * as http from 'http';
+import { SuperAdminService } from '../super-admin/super-admin.service';
 
 @Injectable()
 export class KeepAliveService {
   private readonly logger = new Logger(KeepAliveService.name);
 
+  constructor(private readonly superAdminService: SuperAdminService) {}
+
   // Run every 14 minutes to prevent Render's 15-minute inactivity spin-down
   @Cron('0 */14 * * * *')
   handleCron() {
-    this.pingBackend();
-    this.pingWhatsAppEvolutionApi();
+    const toggles = this.superAdminService.getSystemToggles();
+
+    if (toggles.keepAliveBackend !== false) {
+      this.pingBackend();
+    } else {
+      this.logger.warn('Backend keep-alive ping is DISABLED via Super Admin System Control switch.');
+    }
+
+    if (toggles.keepAliveWhatsapp !== false) {
+      this.pingWhatsAppEvolutionApi();
+    } else {
+      this.logger.warn('WhatsApp Evolution keep-alive ping is DISABLED via Super Admin System Control switch.');
+    }
   }
 
   private pingBackend() {

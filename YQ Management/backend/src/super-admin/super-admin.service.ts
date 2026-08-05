@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 @Injectable()
 export class SuperAdminService {
   private systemToggles: Record<string, boolean> = {
+    keepAliveBackend: true,
+    keepAliveWhatsapp: true,
     emailService: true,
     whatsappService: true,
     paymentGateway: true,

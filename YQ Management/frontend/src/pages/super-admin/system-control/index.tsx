@@ -35,6 +35,20 @@ interface ToggleConfig {
 
 const SERVICE_CONFIGS: ToggleConfig[] = [
   {
+    key: 'keepAliveBackend',
+    name: '14-Min Hack: Site Backend Keep-Alive',
+    description: 'Automated 14-minute cron ping to /health. Keeps Render server awake at all times; toggle off to let site sleep.',
+    icon: Power,
+    color: 'from-violet-500 to-indigo-600'
+  },
+  {
+    key: 'keepAliveWhatsapp',
+    name: '14-Min Hack: WhatsApp Server Ping',
+    description: 'Automated 14-minute status ping to Evolution API v2 instance. Prevents messaging server spin-down or sleep.',
+    icon: RefreshCw,
+    color: 'from-cyan-500 to-teal-600'
+  },
+  {
     key: 'emailService',
     name: 'Brevo Email SMTP & Relays',
     description: 'Controls automated transactional emails, registration notices, and invoice delivery.',
