@@ -59,12 +59,13 @@ export default function WhatsAppSettingsPage() {
       setPairingCode(null);
       setPairingPhoneNumber('');
       setInstanceName(whatsappStatus.instanceName);
-    } else if (whatsappStatus?.state === 'connecting') {
-      setInstanceName(prev => prev || whatsappStatus.instanceName || null);
-      if (whatsappStatus.qr) setQrCode(whatsappStatus.qr);
-    } else if (whatsappStatus?.state === 'close' || whatsappStatus?.state === 'unconfigured') {
-      setQrCode(null);
-      setInstanceName(null);
+    } else if (whatsappStatus) {
+      if (whatsappStatus.instanceName) {
+        setInstanceName(prev => prev || whatsappStatus.instanceName || null);
+      }
+      if (whatsappStatus.qr) {
+        setQrCode(whatsappStatus.qr);
+      }
     }
   }, [whatsappStatus]);
 

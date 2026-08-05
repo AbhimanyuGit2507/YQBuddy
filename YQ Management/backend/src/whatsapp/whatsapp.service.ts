@@ -175,9 +175,12 @@ export class WhatsappService {
 
   private extractQr(data: any): string | null {
     if (!data) return null;
+    if (typeof data === 'string' && (data.startsWith('data:image') || data.length > 100)) return data;
     if (data?.qrcode?.base64) return data.qrcode.base64;
     if (data?.base64) return data.base64;
     if (data?.instance?.qrcode?.base64) return data.instance.qrcode.base64;
+    if (typeof data?.qrcode === 'string') return data.qrcode;
+    if (typeof data?.code === 'string' && data.code.startsWith('data:image')) return data.code;
     return null;
   }
 
@@ -226,6 +229,7 @@ export class WhatsappService {
 
     const result = await this.fetchEvo(`/webhook/set/${instanceName}`, 'POST', {
       webhook: {
+        enabled: true,
         url: webhookUrl,
         webhook_by_events: false,
         webhook_base64: false,
@@ -381,13 +385,22 @@ export class WhatsappService {
     let state = this.extractState(createResult.data);
 
     if (!qr || state === 'close') {
-      const stateResult = await this.fetchEvo(
-        `/instance/connectionState/${instanceName}`,
+      const connectRes = await this.fetchEvo(
+        `/instance/connect/${instanceName}`,
         'GET',
       );
-      if (!stateResult.error) {
-        state = this.extractState(stateResult.data);
-        qr = qr || this.extractQr(stateResult.data);
+      if (!connectRes.error) {
+        qr = this.extractQr(connectRes.data) || qr;
+      }
+      if (!qr) {
+        const stateResult = await this.fetchEvo(
+          `/instance/connectionState/${instanceName}`,
+          'GET',
+        );
+        if (!stateResult.error) {
+          state = this.extractState(stateResult.data);
+          qr = qr || this.extractQr(stateResult.data);
+        }
       }
     }
 
@@ -606,7 +619,7 @@ export class WhatsappService {
     const isConnected = state === 'open';
 
     let qr: string | null = this.extractQr(stateResult.data);
-    if (!qr && state === 'connecting') {
+    if (!isConnected && !qr) {
       const connectRes = await this.fetchEvo(
         `/instance/connect/${instanceName}`,
         'GET',
@@ -628,9 +641,15 @@ export class WhatsappService {
       });
     }
 
+    const finalState = isConnected
+      ? ('open' as InstanceState)
+      : qr
+        ? ('connecting' as InstanceState)
+        : state;
+
     return {
       instanceName,
-      state,
+      state: finalState,
       whatsappConnected: isConnected,
       qr,
     };
