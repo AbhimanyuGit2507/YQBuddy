@@ -19,7 +19,8 @@ import {
   ExternalLink, 
   Sparkles,
   Server,
-  Zap
+  Zap,
+  AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import QRCode from 'react-qr-code';
@@ -56,6 +57,14 @@ export default function SuperAdminCommunication() {
   const { data: emailTemplates } = useQuery({
     queryKey: ['superadmin-email-templates'],
     queryFn: () => fetchApi('/super-admin/communication/templates/email'),
+  });
+
+  // Fetch WhatsApp Instances for Global Monitor
+  const { data: whatsappInstances, isLoading: instancesLoading, refetch: refetchInstances } = useQuery({
+    queryKey: ['superadmin-whatsapp-instances'],
+    queryFn: () => fetchApi('/super-admin/whatsapp-instances'),
+    enabled: activeTab === 'whatsapp',
+    refetchInterval: 15000,
   });
 
   const handleRefreshStatus = async () => {
@@ -500,6 +509,69 @@ export default function SuperAdminCommunication() {
                   </div>
                 </div>
               )}
+            </div>
+            
+            {/* GLOBAL WHATSAPP INSTANCE MONITOR */}
+            <div className="mt-10 border-t border-gray-200 dark:border-white/10 pt-8">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <Server className="w-5 h-5 text-emerald-500" /> Global Tenant Instance Monitor
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-1">Real-time Evolution API connection status across all tenants.</p>
+                </div>
+                <button
+                  onClick={() => refetchInstances()}
+                  disabled={instancesLoading}
+                  className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${instancesLoading ? 'animate-spin' : ''}`} /> Sync State
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-gray-400">
+                  <thead className="bg-zinc-800/50 text-xs uppercase font-bold text-gray-300 border-b border-gray-700">
+                    <tr>
+                      <th className="px-4 py-3 rounded-tl-xl">Tenant</th>
+                      <th className="px-4 py-3">Instance ID</th>
+                      <th className="px-4 py-3">DB State</th>
+                      <th className="px-4 py-3">Evo Server State</th>
+                      <th className="px-4 py-3 rounded-tr-xl">Health Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800">
+                    {whatsappInstances?.map((instance: any) => (
+                      <tr key={instance.id} className="hover:bg-zinc-800/30 transition-colors">
+                        <td className="px-4 py-3 font-medium text-white">{instance.name}</td>
+                        <td className="px-4 py-3 font-mono text-xs">{instance.instanceId || 'None'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold ${instance.dbConnected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                            {instance.dbConnected ? 'TRUE' : 'FALSE'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold ${instance.evoActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                            {instance.evoActive ? 'ACTIVE' : 'MISSING'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {instance.status === 'healthy' && <span className="text-emerald-400 text-xs font-bold flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Healthy</span>}
+                          {instance.status === 'stale_db' && <span className="text-amber-400 text-xs font-bold flex items-center gap-1"><AlertTriangle className="w-4 h-4" /> Stale DB</span>}
+                          {instance.status === 'stale_evo' && <span className="text-amber-400 text-xs font-bold flex items-center gap-1"><AlertTriangle className="w-4 h-4" /> Missing Evo Instance</span>}
+                          {instance.status === 'disconnected' && <span className="text-gray-500 text-xs font-bold flex items-center gap-1"><XCircle className="w-4 h-4" /> Disconnected</span>}
+                          {instance.status === 'unconfigured' && <span className="text-zinc-600 text-xs font-bold">Unconfigured</span>}
+                        </td>
+                      </tr>
+                    ))}
+                    {!whatsappInstances?.length && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-zinc-500 italic">No instances found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

@@ -97,6 +97,16 @@ export class WhatsappController {
     return this.whatsappService.status(targetId);
   }
 
+  @UseGuards(AuthGuard('jwt'))
+  @Get('logs')
+  getLogs(@Req() req: AuthenticatedRequest) {
+    const targetId = req.user.tenantId || (req.user as any).workspaceId;
+    if (!targetId) {
+      return [];
+    }
+    return this.whatsappService.getTenantLogs(targetId);
+  }
+
   @Post('webhook/:instanceName')
   async handleWebhook(
     @Param('instanceName') instanceName: string,

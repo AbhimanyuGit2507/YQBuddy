@@ -1,6 +1,7 @@
-import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger, HttpException, HttpStatus, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { Cron } from '@nestjs/schedule';
 
 interface EvolutionError {
   message: string;
@@ -17,7 +18,7 @@ interface FetchEvoResult {
 type InstanceState = 'connecting' | 'open' | 'close' | 'unconfigured';
 
 @Injectable()
-export class WhatsappService {
+export class WhatsappService implements OnModuleInit {
   private readonly logger = new Logger(WhatsappService.name);
   private readonly evoUrl =
     process.env.EVOLUTION_API_URL || 'http://localhost:8080';
@@ -28,6 +29,45 @@ export class WhatsappService {
     private prisma: PrismaService,
     private redisService: RedisService,
   ) { }
+
+  async onModuleInit() {
+    this.logger.log('WhatsappService initialized. Starting sync of WhatsApp instances...');
+    // We wait briefly to ensure Prisma and Redis are fully connected
+    setTimeout(() => this.syncAllInstances(), 5000);
+  }
+
+  @Cron('0 */10 * * * *')
+  async handleCronSync() {
+    this.logger.debug('Running background auto-recovery sync for WhatsApp instances...');
+    await this.syncAllInstances();
+  }
+
+  /**
+   * Syncs the database state of 'whatsappConnected: true' with the Evolution API.
+   * If a tenant is supposed to be connected but their instance is missing/down, it attempts to recreate it.
+   */
+  async syncAllInstances() {
+    try {
+      const tenants = await this.prisma.tenant.findMany({
+        where: { whatsappConnected: true, whatsappInstanceId: { not: null } },
+      });
+
+      if (tenants.length === 0) return;
+
+      const evoRes = await this.fetchEvo('/instance/fetchInstances', 'GET');
+      const activeInstances = Array.isArray(evoRes?.data) ? evoRes.data.map(i => i.instance.instanceName) : [];
+
+      for (const tenant of tenants) {
+        if (!activeInstances.includes(tenant.whatsappInstanceId)) {
+          this.logger.warn(`Tenant ${tenant.id} instance ${tenant.whatsappInstanceId} missing from Evolution API. Attempting auto-recovery.`);
+          await this.logTenantEvent(tenant.id, 'AUTO_RECOVERY_STARTED', { reason: 'Instance missing from Evolution API' });
+          await this.connect(tenant.id); // Re-run connect to re-create instance & webhooks
+        }
+      }
+    } catch (e) {
+      this.logger.error('Failed to sync WhatsApp instances during auto-recovery', e);
+    }
+  }
 
   private buildEvolutionError(status: number, raw: string): EvolutionError {
     let message = 'Evolution API request failed';
@@ -89,6 +129,35 @@ export class WhatsappService {
       status: 502,
       raw: message,
     };
+  }
+
+  async logTenantEvent(tenantId: string, action: string, details?: any) {
+    try {
+      const logEntry = {
+        timestamp: new Date().toISOString(),
+        action,
+        details: details || {},
+      };
+      
+      const key = `whatsapp:logs:${tenantId}`;
+      await this.redisService.client.lpush(key, JSON.stringify(logEntry));
+      await this.redisService.client.ltrim(key, 0, 99); // Keep last 100 logs
+      
+      this.logger.debug(`[Tenant ${tenantId}] logged action: ${action}`);
+    } catch (e) {
+      this.logger.error(`Failed to push tenant event log for ${tenantId}`, e);
+    }
+  }
+
+  async getTenantLogs(tenantId: string) {
+    try {
+      const key = `whatsapp:logs:${tenantId}`;
+      const logs = await this.redisService.client.lrange(key, 0, -1);
+      return logs.map(log => JSON.parse(log));
+    } catch (e) {
+      this.logger.error(`Failed to fetch tenant event logs for ${tenantId}`, e);
+      return [];
+    }
   }
 
   async fetchEvo(
@@ -233,7 +302,7 @@ export class WhatsappService {
         url: webhookUrl,
         webhook_by_events: false,
         webhook_base64: false,
-        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
+        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE', 'MESSAGES_UPDATE'],
       },
     });
 
@@ -276,273 +345,126 @@ export class WhatsappService {
 
   async connect(tenantId: string) {
     const tenant = await this.resolveTenant(tenantId);
-    if (!tenant) {
-      throw new HttpException('Tenant not found', HttpStatus.NOT_FOUND);
+    if (!tenant) throw new HttpException('Tenant not found', HttpStatus.NOT_FOUND);
+
+    let instanceName = tenant.whatsappInstanceId;
+    if (!instanceName) {
+      instanceName = `tenant_${tenant.id.substring(0, 8)}`;
+      await this.prisma.tenant.update({ where: { id: tenant.id }, data: { whatsappInstanceId: instanceName } });
     }
 
-    let instanceName =
-      tenant.whatsappInstanceId || `tenant_${tenant.id.substring(0, 8)}`;
-    this.logger.log(
-      `WhatsApp connect requested for tenant ${tenant.id} -> instance ${instanceName}`,
-    );
+    this.logger.log(`WhatsApp connect requested for tenant ${tenant.id} -> instance ${instanceName}`);
+    await this.logTenantEvent(tenant.id, 'CONNECT_REQUESTED', { instanceName });
 
-    const fetchResult = await this.fetchEvo('/instance/fetchInstances', 'GET');
-    const existingInstances: any[] = fetchResult.data ?? [];
-    const existingInstance = this.findInstanceByName(
-      existingInstances,
-      instanceName,
-    );
+    // Step 1: Check connection state first
+    let stateRes = await this.fetchEvo(`/instance/connectionState/${instanceName}`, 'GET');
+    let needsCreation = stateRes.error && (stateRes.status === 404 || stateRes.status === 400);
 
-    if (!fetchResult.error && existingInstance) {
-      const existingState = this.extractState(existingInstance);
-      this.logger.log(
-        `Instance ${instanceName} already exists in Evolution API with state=${existingState}. Reusing or renewing.`,
-      );
-
-      if (existingState === 'open') {
-        await this.setWebhook(instanceName).catch((err) =>
-          this.logger.warn(`Webhook error: ${err.message}`),
-        );
-        return {
-          instanceName,
-          state: 'open' as InstanceState,
-        };
-      }
-
-      let qr = this.extractQr(existingInstance);
-      if (!qr) {
-        const connectRes = await this.fetchEvo(
-          `/instance/connect/${instanceName}`,
-          'GET',
-        );
-        if (!connectRes.error) {
-          qr = this.extractQr(connectRes.data);
-        }
-      }
-
-      if (qr) {
-        await this.setWebhook(instanceName).catch(() => {});
-        return {
-          instanceName,
-          state: 'connecting' as InstanceState,
-          qr: qr,
-        };
-      }
-
-      // If existing instance has no valid QR code (whether connecting or close),
-      // we MUST generate a fresh instance ID to instantly produce a valid QR code.
-      // Evolution API v2 does not allow re-fetching QR for already connecting instances easily.
-      this.logger.warn(
-        `Existing instance ${instanceName} (state: ${existingState}) yielded no QR code. Creating fresh instance for tenant ${tenant.id}.`,
-      );
-      this.fetchEvo(`/instance/delete/${instanceName}`, 'DELETE').catch(
-        () => {},
-      );
-
-      instanceName = `tenant_${Math.random().toString(36).substring(2, 10)}`;
-      await this.prisma.tenant.update({
-        where: { id: tenant.id },
-        data: { whatsappInstanceId: instanceName, whatsappConnected: false },
+    if (needsCreation) {
+      this.logger.log(`Instance ${instanceName} not found, creating new instance for tenant ${tenant.id}.`);
+      await this.logTenantEvent(tenant.id, 'INSTANCE_CREATION_STARTED', { instanceName });
+      
+      const createResult = await this.fetchEvo('/instance/create', 'POST', {
+        instanceName,
+        qrcode: true,
+        integration: 'WHATSAPP-BAILEYS',
+        webhook: process.env.WEBHOOK_SECRET ? `${this.appUrl}/whatsapp/webhook/${instanceName}?secret=${process.env.WEBHOOK_SECRET}` : `${this.appUrl}/whatsapp/webhook/${instanceName}`,
+        webhook_by_events: false,
+        webhook_events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE', 'MESSAGES_UPDATE'],
       });
-    } else if (!tenant.whatsappInstanceId) {
-      await this.prisma.tenant.update({
-        where: { id: tenant.id },
-        data: { whatsappInstanceId: instanceName },
-      });
-    }
 
-    const createResult = await this.fetchEvo('/instance/create', 'POST', {
-      instanceName,
-      qrcode: true,
-      integration: 'WHATSAPP-BAILEYS',
-    });
-
-    if (createResult.error) {
-      if (createResult.status === 401) {
-        this.logger.error(
-          `Evolution API auth failed during instance create. Check EVOLUTION_API_KEY.`,
-        );
-        throw new HttpException(
-          'Evolution API authentication failed. Check API key configuration.',
-          HttpStatus.BAD_GATEWAY,
-        );
+      if (createResult.error) {
+        await this.logTenantEvent(tenant.id, 'INSTANCE_CREATION_FAILED', { error: createResult.error.message });
+        throw new HttpException(createResult.error.message, createResult.status === 401 ? HttpStatus.BAD_GATEWAY : HttpStatus.BAD_REQUEST);
       }
-      const status =
-        createResult.status >= 500
-          ? HttpStatus.BAD_GATEWAY
-          : HttpStatus.BAD_REQUEST;
-      throw new HttpException(createResult.error.message, status);
+      
+      await this.logTenantEvent(tenant.id, 'INSTANCE_CREATED', { instanceName });
     }
 
-    try {
-      await this.setWebhook(instanceName);
-    } catch (webhookError) {
-      this.logger.warn(
-        `Webhook setup warning for ${instanceName}, continuing...`,
-      );
+    // Step 2: Request fresh connect (this forces Evolution to generate a new QR if not open)
+    const connectRes = await this.fetchEvo(`/instance/connect/${instanceName}`, 'GET');
+    
+    if (connectRes.error) {
+      await this.logTenantEvent(tenant.id, 'CONNECT_FAILED', { error: connectRes.error.message });
+      throw new HttpException(connectRes.error.message, HttpStatus.BAD_GATEWAY);
     }
 
-    let qr = this.extractQr(createResult.data);
-    let state = this.extractState(createResult.data);
-
-    if (state === 'close') {
-      const connectRes = await this.fetchEvo(
-        `/instance/connect/${instanceName}`,
-        'GET',
-      );
-      if (!connectRes.error) {
-        qr = this.extractQr(connectRes.data) || qr;
-        state = this.extractState(connectRes.data) || state;
-      }
-      if (!qr) {
-        const stateResult = await this.fetchEvo(
-          `/instance/connectionState/${instanceName}`,
-          'GET',
-        );
-        if (!stateResult.error) {
-          state = this.extractState(stateResult.data);
-          qr = qr || this.extractQr(stateResult.data);
-        }
-      }
+    // Ensure webhook is set just in case (e.g. if instance already existed but had no webhook)
+    if (!needsCreation) {
+      try { await this.setWebhook(instanceName); } catch (e) {}
     }
 
-    this.logger.log(
-      `WhatsApp connect result for ${instanceName}: state=${state}, qr=${qr ? 'present' : 'missing'}`,
-    );
+    const qr = this.extractQr(connectRes.data);
+    const state = this.extractState(connectRes.data);
+
+    if (qr) await this.logTenantEvent(tenant.id, 'QR_GENERATED');
+    this.logger.log(`WhatsApp connect result for ${instanceName}: state=${state}, qr=${qr ? 'present' : 'missing'}`);
 
     return {
       instanceName,
-      state: state === 'open' ? ('open' as InstanceState) : ('connecting' as InstanceState),
+      state: state === 'open' ? 'open' : 'connecting',
       qr: qr || undefined,
     };
   }
 
   async generatePairingCode(tenantId: string, phoneNumber: string) {
-    if (!phoneNumber) {
-      throw new HttpException(
-        'Phone number is required for pairing code',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
+    if (!phoneNumber) throw new HttpException('Phone number is required for pairing code', HttpStatus.BAD_REQUEST);
     const normalizedPhone = phoneNumber.replace(/[\s+-]/g, '');
-
     const tenant = await this.resolveTenant(tenantId);
-    if (!tenant) {
-      throw new HttpException('Tenant not found', HttpStatus.NOT_FOUND);
+    if (!tenant) throw new HttpException('Tenant not found', HttpStatus.NOT_FOUND);
+
+    let instanceName = tenant.whatsappInstanceId;
+    if (!instanceName) {
+      instanceName = `tenant_${tenant.id.substring(0, 8)}`;
+      await this.prisma.tenant.update({ where: { id: tenant.id }, data: { whatsappInstanceId: instanceName } });
     }
 
-    const instanceName =
-      tenant.whatsappInstanceId || `tenant_${tenant.id.substring(0, 8)}`;
-    this.logger.log(
-      `WhatsApp pairing code requested for tenant ${tenant.id} -> instance ${instanceName}, phone ${normalizedPhone}`,
-    );
+    this.logger.log(`WhatsApp pairing code requested for tenant ${tenant.id} -> instance ${instanceName}, phone ${normalizedPhone}`);
+    await this.logTenantEvent(tenant.id, 'PAIRING_CODE_REQUESTED', { instanceName, phone: normalizedPhone });
 
-    if (!tenant.whatsappInstanceId) {
-      await this.prisma.tenant.update({
-        where: { id: tenant.id },
-        data: { whatsappInstanceId: instanceName },
-      });
-    }
+    let stateRes = await this.fetchEvo(`/instance/connectionState/${instanceName}`, 'GET');
+    let needsCreation = stateRes.error && (stateRes.status === 404 || stateRes.status === 400);
 
-    let createResult: FetchEvoResult;
-
-    const fetchResult = await this.fetchEvo('/instance/fetchInstances', 'GET');
-    const existingInstances: any[] = fetchResult.data ?? [];
-    const existingInstance = this.findInstanceByName(
-      existingInstances,
-      instanceName,
-    );
-
-    if (!fetchResult.error && existingInstance) {
-      const existingState = this.extractState(existingInstance);
-
-      if (existingState === 'open' || existingState === 'connecting') {
-        await this.setWebhook(instanceName);
-        return {
-          instanceName,
-          state: existingState,
-          pairingCode: null,
-          qr: null,
-        };
-      }
-
-      createResult = await this.fetchEvo(
-        `/instance/connect/${instanceName}?number=${normalizedPhone}`,
-        'GET',
-      );
-    } else {
-      createResult = await this.fetchEvo('/instance/create', 'POST', {
+    if (needsCreation) {
+      await this.logTenantEvent(tenant.id, 'INSTANCE_CREATION_STARTED', { instanceName });
+      const createResult = await this.fetchEvo('/instance/create', 'POST', {
         instanceName,
-        qrcode: true,
+        qrcode: false,
         integration: 'WHATSAPP-BAILEYS',
+        webhook: process.env.WEBHOOK_SECRET ? `${this.appUrl}/whatsapp/webhook/${instanceName}?secret=${process.env.WEBHOOK_SECRET}` : `${this.appUrl}/whatsapp/webhook/${instanceName}`,
+        webhook_by_events: false,
+        webhook_events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE', 'MESSAGES_UPDATE'],
       });
-    }
 
-    if (createResult.error) {
-      if (
-        createResult.status === 409 ||
-        createResult.status === 400 ||
-        createResult.status === 403
-      ) {
-        this.logger.warn(
-          `Instance ${instanceName} already exists or conflict, attempting connect...`,
-        );
-        createResult = await this.fetchEvo(
-          `/instance/connect/${instanceName}?number=${normalizedPhone}`,
-          'GET',
-        );
-      } else if (createResult.status === 401) {
-        this.logger.error(
-          `Evolution API auth failed during instance create. Check EVOLUTION_API_KEY.`,
-        );
-        throw new HttpException(
-          'Evolution API authentication failed. Check API key configuration.',
-          HttpStatus.BAD_GATEWAY,
-        );
+      if (createResult.error) {
+        await this.logTenantEvent(tenant.id, 'INSTANCE_CREATION_FAILED', { error: createResult.error.message });
+        throw new HttpException(createResult.error.message, createResult.status === 401 ? HttpStatus.BAD_GATEWAY : HttpStatus.BAD_REQUEST);
       }
+      await this.logTenantEvent(tenant.id, 'INSTANCE_CREATED', { instanceName });
     }
 
-    if (createResult.error) {
-      const status =
-        createResult.status >= 500
-          ? HttpStatus.BAD_GATEWAY
-          : HttpStatus.BAD_REQUEST;
-      throw new HttpException(createResult.error.message, status);
+    const connectRes = await this.fetchEvo(`/instance/connect/${instanceName}?number=${normalizedPhone}`, 'GET');
+    
+    if (connectRes.error) {
+      await this.logTenantEvent(tenant.id, 'PAIRING_CODE_FAILED', { error: connectRes.error.message });
+      throw new HttpException(connectRes.error.message, HttpStatus.BAD_GATEWAY);
     }
 
-    try {
-      await this.setWebhook(instanceName);
-    } catch (webhookError) {
-      if (
-        webhookError instanceof HttpException &&
-        webhookError.getStatus() === HttpStatus.BAD_GATEWAY
-      ) {
-        this.logger.warn(
-          `Webhook setup failed for ${instanceName}, but continuing...`,
-        );
-      }
+    if (!needsCreation) {
+      try { await this.setWebhook(instanceName); } catch (e) {}
     }
 
-    const pairingCode = this.extractPairingCode(createResult.data);
-    const qr = this.extractQr(createResult.data);
+    const pairingCode = this.extractPairingCode(connectRes.data);
+    const qr = this.extractQr(connectRes.data);
+    const state = this.extractState(connectRes.data);
 
-    const stateResult = await this.fetchEvo(
-      `/instance/connectionState/${instanceName}`,
-      'GET',
-    );
-    let state: InstanceState = 'connecting';
-    if (!stateResult.error) {
-      state = this.extractState(stateResult.data);
-    }
+    if (pairingCode) await this.logTenantEvent(tenant.id, 'PAIRING_CODE_GENERATED', { pairingCode });
 
-    this.logger.log(
-      `WhatsApp pairing code result for ${instanceName}: state=${state}, pairingCode=${pairingCode ? 'present' : 'missing'}`,
-    );
+    this.logger.log(`WhatsApp pairing code result for ${instanceName}: state=${state}, pairingCode=${pairingCode ? 'present' : 'missing'}`);
 
     return {
       instanceName,
-      state,
+      state: state === 'open' ? 'open' : 'connecting',
       pairingCode: pairingCode || undefined,
       qr: qr || undefined,
     };
@@ -701,18 +623,48 @@ export class WhatsappService {
     try {
       if (payload?.event === 'connection.update' && payload?.data) {
         const state = payload.data.state;
+        const statusCode = payload.data.statusReason || payload.data.statusCode || payload.data.reason;
+        
         if (state === 'close' || state === 'refused') {
-          await this.prisma.tenant.updateMany({
-            where: { whatsappInstanceId: instanceName },
-            data: { whatsappConnected: false }
-          });
-          this.logger.warn(`WhatsApp disconnected for instance ${instanceName}`);
+          if (statusCode === 401 || statusCode === 428 || statusCode === 403 || statusCode === '401' || statusCode === '428') {
+            await this.prisma.tenant.updateMany({
+              where: { whatsappInstanceId: instanceName },
+              data: { whatsappConnected: false }
+            });
+            this.logger.warn(`WhatsApp disconnected (Hard Logout - ${statusCode}) for instance ${instanceName}`);
+            
+            const tenant = await this.prisma.tenant.findFirst({ where: { whatsappInstanceId: instanceName } });
+            if (tenant) await this.logTenantEvent(tenant.id, 'DISCONNECTED', { reason: statusCode });
+          } else {
+             this.logger.warn(`WhatsApp connection closed temporarily (Code ${statusCode}) for instance ${instanceName}. Waiting for auto-recovery...`);
+          }
         } else if (state === 'open') {
           await this.prisma.tenant.updateMany({
             where: { whatsappInstanceId: instanceName },
             data: { whatsappConnected: true }
           });
           this.logger.log(`WhatsApp connected for instance ${instanceName}`);
+        }
+        return { success: true };
+      }
+
+      if (payload?.event === 'messages.update' && payload?.data) {
+        for (const update of payload.data) {
+          const messageId = update?.key?.id;
+          const status = update?.update?.status; // 2=SERVER_ACK, 3=DELIVERY_ACK, 4=READ
+          if (messageId && status) {
+            let statusStr = '';
+            if (status === 2) statusStr = 'SENT (1 tick)';
+            else if (status === 3) statusStr = 'DELIVERED (2 ticks)';
+            else if (status === 4) statusStr = 'READ (blue ticks)';
+            
+            if (statusStr) {
+              const tenant = await this.prisma.tenant.findFirst({ where: { whatsappInstanceId: instanceName }});
+              if (tenant) {
+                await this.logTenantEvent(tenant.id, 'MESSAGE_STATUS_UPDATE', { messageId, status: statusStr });
+              }
+            }
+          }
         }
         return { success: true };
       }
@@ -973,10 +925,14 @@ export class WhatsappService {
       this.logger.error(
         `Failed to send WhatsApp message to ${normalizedNumber} on ${instanceName}: ${result.error.message}`,
       );
+      const tenant = await this.prisma.tenant.findFirst({ where: { whatsappInstanceId: instanceName }});
+      if (tenant) await this.logTenantEvent(tenant.id, 'MESSAGE_SEND_FAILED', { number: normalizedNumber, error: result.error.message });
       return { success: false, error: result.error.message };
     }
 
     this.logger.log(`Sent WhatsApp message to ${normalizedNumber} on ${instanceName}`);
+    const tenant = await this.prisma.tenant.findFirst({ where: { whatsappInstanceId: instanceName }});
+    if (tenant) await this.logTenantEvent(tenant.id, 'MESSAGE_SENT', { number: normalizedNumber, providerId: result.data?.key?.id });
     return { success: true, providerId: result.data?.key?.id };
   }
 

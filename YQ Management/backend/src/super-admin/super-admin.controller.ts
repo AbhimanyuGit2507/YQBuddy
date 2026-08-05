@@ -58,6 +58,12 @@ export class SuperAdminController {
     return this.superAdminService.getTenantById(id);
   }
 
+  @Get('whatsapp-instances')
+  async getWhatsappInstances(@Req() req: any) {
+    this.checkSuperAdmin(req);
+    return this.superAdminService.getWhatsappInstances();
+  }
+
   @Delete('tenants/:id')
   async deleteTenant(@Req() req: any, @Param('id') id: string) {
     this.checkSuperAdmin(req);

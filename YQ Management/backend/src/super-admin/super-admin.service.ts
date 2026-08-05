@@ -27,6 +27,42 @@ export class SuperAdminService {
     return this.systemToggles;
   }
 
+  async getWhatsappInstances() {
+    const tenants = await this.prisma.tenant.findMany({
+      select: { id: true, name: true, whatsappInstanceId: true, whatsappConnected: true }
+    });
+    
+    let activeInstances = [];
+    try {
+      const evoUrl = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
+      const evoApiKey = process.env.EVOLUTION_API_KEY || '';
+      const pingUrl = `${evoUrl.replace(/\/$/, '')}/instance/fetchInstances`;
+      const res = await fetch(pingUrl, {
+        headers: { apikey: evoApiKey },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        activeInstances = Array.isArray(data) ? data.map(i => i.instance.instanceName) : [];
+      }
+    } catch (e) {
+      console.error('Failed to fetch Evolution API instances for super admin monitor', e);
+    }
+
+    return tenants.map(t => ({
+      id: t.id,
+      name: t.name,
+      instanceId: t.whatsappInstanceId,
+      dbConnected: t.whatsappConnected,
+      evoActive: activeInstances.includes(t.whatsappInstanceId),
+      status: (!t.whatsappInstanceId) ? 'unconfigured' 
+              : (t.whatsappConnected && activeInstances.includes(t.whatsappInstanceId)) ? 'healthy'
+              : (t.whatsappConnected && !activeInstances.includes(t.whatsappInstanceId)) ? 'stale_db'
+              : (!t.whatsappConnected && activeInstances.includes(t.whatsappInstanceId)) ? 'stale_evo'
+              : 'disconnected'
+    }));
+  }
+
   async getGlobalMetrics() {
     const totalTenants = await this.prisma.tenant.count();
 

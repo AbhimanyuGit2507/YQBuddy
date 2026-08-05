@@ -4,7 +4,7 @@ import SettingsLayout from '../../../components/SettingsLayout';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
 import { toast } from 'sonner';
-import { MessageSquare, QrCode, Smartphone, Loader2, Send, Save, AlertCircle, CheckCircle2, Phone, RefreshCw } from 'lucide-react';
+import { MessageSquare, QrCode, Smartphone, Loader2, Send, Save, AlertCircle, CheckCircle2, Phone, RefreshCw, Terminal } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react'; // Wait, let's just use an img or whatever was there. Actually, let's use the provided qrcode or standard img. 
 import PhoneInput from '../../../components/PhoneInput';
 export default function WhatsAppSettingsPage() {
@@ -23,6 +23,12 @@ export default function WhatsAppSettingsPage() {
   const [testCountryCode, setTestCountryCode] = useState('+1');
   const [testMessage, setTestMessage] = useState('Test message from Qmova');
   const [templateDrafts, setTemplateDrafts] = useState<Record<string, string>>({});
+  
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logsEndRef.current]);
 
   useEffect(() => {
     const saved = localStorage.getItem('templateDrafts');
@@ -45,6 +51,18 @@ export default function WhatsAppSettingsPage() {
   });
 
   const isWhatsAppConnected = whatsappStatus?.state === 'open';
+
+  const { data: logs, refetch: refetchLogs } = useQuery({
+    queryKey: ['whatsapp-logs'],
+    queryFn: () => fetchApi('/whatsapp/logs'),
+    refetchInterval: 2500,
+  });
+
+  useEffect(() => {
+    if (logs?.length) {
+      logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs]);
 
   const { data: waTemplates, refetch: refetchTemplates } = useQuery({
     queryKey: ['whatsapp-templates'],
@@ -70,6 +88,7 @@ export default function WhatsAppSettingsPage() {
 
   const connectWhatsAppMutation = useMutation({
     mutationFn: () => fetchApi('/whatsapp/connect', { method: 'POST' }),
+    onMutate: () => setQrCode(null),
     onSuccess: (res) => {
       if (res.qr) {
         setQrCode(res.qr);
@@ -91,6 +110,7 @@ export default function WhatsAppSettingsPage() {
       method: 'POST',
       body: JSON.stringify({ phoneNumber })
     }),
+    onMutate: () => setPairingCode(null),
     onSuccess: (res) => {
       if (res.pairingCode) setPairingCode(res.pairingCode);
       refetchWhatsAppStatus();
@@ -291,6 +311,33 @@ export default function WhatsAppSettingsPage() {
             </div>
           </section>
         )}
+
+        <section className="pt-8 border-t border-gray-200 dark:border-zinc-800">
+          <div className="flex items-center gap-2 mb-4">
+            <Terminal className="w-5 h-5 text-gray-500" />
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">System Logs</h3>
+          </div>
+          <div className="bg-gray-900 rounded-xl p-4 h-64 overflow-y-auto font-mono text-sm text-green-400 space-y-2 border border-gray-800">
+            {logs?.length > 0 ? (
+              logs.map((log: any, i: number) => (
+                <div key={i} className="flex gap-4">
+                  <span className="text-gray-500 whitespace-nowrap">
+                    {new Date(log.timestamp).toLocaleTimeString()}
+                  </span>
+                  <span className="text-blue-400 font-semibold w-48 shrink-0">
+                    [{log.action}]
+                  </span>
+                  <span className="text-gray-300 break-all">
+                    {Object.keys(log.details || {}).length > 0 ? JSON.stringify(log.details) : ''}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="text-gray-500 italic">No logs available. Connect WhatsApp or send a message to generate logs.</div>
+            )}
+            <div ref={logsEndRef} />
+          </div>
+        </section>
       </div>
     </SettingsLayout>
   );
