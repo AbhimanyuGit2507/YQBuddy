@@ -233,7 +233,7 @@ export class WhatsappService {
         url: webhookUrl,
         webhook_by_events: false,
         webhook_base64: false,
-        events: ['MESSAGES_UPSERT'],
+        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
       },
     });
 
@@ -686,6 +686,24 @@ export class WhatsappService {
     );
 
     try {
+      if (payload?.event === 'connection.update' && payload?.data) {
+        const state = payload.data.state;
+        if (state === 'close' || state === 'refused') {
+          await this.prisma.tenant.updateMany({
+            where: { whatsappInstanceId: instanceName },
+            data: { whatsappConnected: false }
+          });
+          this.logger.warn(`WhatsApp disconnected for instance ${instanceName}`);
+        } else if (state === 'open') {
+          await this.prisma.tenant.updateMany({
+            where: { whatsappInstanceId: instanceName },
+            data: { whatsappConnected: true }
+          });
+          this.logger.log(`WhatsApp connected for instance ${instanceName}`);
+        }
+        return { success: true };
+      }
+
       if (payload?.event !== 'messages.upsert' || !payload?.data) {
         this.logger.debug(
           `Ignoring unsupported webhook event: ${payload?.event}`,
