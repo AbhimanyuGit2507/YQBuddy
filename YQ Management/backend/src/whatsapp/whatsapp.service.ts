@@ -244,12 +244,19 @@ export class WhatsappService implements OnModuleInit {
 
   private extractQr(data: any): string | null {
     if (!data) return null;
-    if (typeof data === 'string' && (data.startsWith('data:image') || data.length > 100)) return data;
+    // Base64 image string directly
+    if (typeof data === 'string' && data.startsWith('data:image')) return data;
+    // Raw QR code text (the actual string that would be encoded in the QR)
+    // Evolution API often returns this in the `code` field
+    if (typeof data?.code === 'string' && data.code.length > 10 && !data.code.startsWith('data:image')) return data.code;
+    // Base64 image in nested qrcode object  
     if (data?.qrcode?.base64) return data.qrcode.base64;
     if (data?.base64) return data.base64;
     if (data?.instance?.qrcode?.base64) return data.instance.qrcode.base64;
+    // Fallback: any string qrcode field
     if (typeof data?.qrcode === 'string') return data.qrcode;
-    if (typeof data?.code === 'string' && data.code.startsWith('data:image')) return data.code;
+    // Raw long strings (can be a raw QR value like "2@abc123...")
+    if (typeof data === 'string' && data.length > 10) return data;
     return null;
   }
 
@@ -389,6 +396,9 @@ export class WhatsappService implements OnModuleInit {
       throw new HttpException(connectRes.error.message, HttpStatus.BAD_GATEWAY);
     }
 
+    // Log the raw connect response for debugging
+    this.logger.log(`[DEBUG] Raw connect response for ${instanceName}: ${JSON.stringify(connectRes.data)}`);
+
     // Ensure webhook is set just in case (e.g. if instance already existed but had no webhook)
     if (!needsCreation) {
       try { await this.setWebhook(instanceName); } catch (e) {}
@@ -399,11 +409,23 @@ export class WhatsappService implements OnModuleInit {
 
     if (qr) await this.logTenantEvent(tenant.id, 'QR_GENERATED');
     this.logger.log(`WhatsApp connect result for ${instanceName}: state=${state}, qr=${qr ? 'present' : 'missing'}`);
+    
+    // Log the actual QR type so we can debug rendering issues
+    if (qr) {
+      const isBase64Image = qr.startsWith('data:image');
+      this.logger.log(`QR type for ${instanceName}: ${isBase64Image ? 'base64 image' : 'raw text string (length: ' + qr.length + ')'}`);
+      await this.logTenantEvent(tenant.id, 'QR_READY', { type: isBase64Image ? 'base64' : 'text', length: qr.length });
+    } else {
+      this.logger.warn(`No QR found in connect response for ${instanceName}. Raw data: ${JSON.stringify(connectRes.data)}`);
+      await this.logTenantEvent(tenant.id, 'QR_MISSING', { rawData: JSON.stringify(connectRes.data).substring(0, 200) });
+    }
 
     return {
       instanceName,
       state: state === 'open' ? 'open' : 'connecting',
       qr: qr || undefined,
+      // Signal to frontend whether QR is a base64 image or a raw text string
+      qrType: qr ? (qr.startsWith('data:image') ? 'base64' : 'text') : undefined,
     };
   }
 

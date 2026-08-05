@@ -5,10 +5,11 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
 import { toast } from 'sonner';
 import { MessageSquare, QrCode, Smartphone, Loader2, Send, Save, AlertCircle, CheckCircle2, Phone, RefreshCw, Terminal } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react'; // Wait, let's just use an img or whatever was there. Actually, let's use the provided qrcode or standard img. 
+import { QRCodeSVG } from 'qrcode.react';
 import PhoneInput from '../../../components/PhoneInput';
 export default function WhatsAppSettingsPage() {
   const [qrCode, setQrCode] = useState<string | null>(null);
+  const [qrCodeType, setQrCodeType] = useState<'base64' | 'text' | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [instanceName, setInstanceName] = useState<string | null>(null);
   const [connectionMode, setConnectionMode] = useState<'qr' | 'code'>('qr');
@@ -73,6 +74,7 @@ export default function WhatsAppSettingsPage() {
   useEffect(() => {
     if (whatsappStatus?.state === 'open') {
       setQrCode(null);
+      setQrCodeType(null);
       setPairingCode(null);
       setPairingPhoneNumber('');
       setInstanceName(whatsappStatus.instanceName);
@@ -82,16 +84,18 @@ export default function WhatsAppSettingsPage() {
       }
       if (whatsappStatus.qr) {
         setQrCode(whatsappStatus.qr);
+        setQrCodeType(whatsappStatus.qrType || (whatsappStatus.qr.startsWith('data:image') ? 'base64' : 'text'));
       }
     }
   }, [whatsappStatus]);
 
   const connectWhatsAppMutation = useMutation({
     mutationFn: () => fetchApi('/whatsapp/connect', { method: 'POST' }),
-    onMutate: () => setQrCode(null),
+    onMutate: () => { setQrCode(null); setQrCodeType(null); },
     onSuccess: (res) => {
       if (res.qr) {
         setQrCode(res.qr);
+        setQrCodeType(res.qrType || (res.qr.startsWith('data:image') ? 'base64' : 'text'));
         toast.success('QR Code ready! Please scan using WhatsApp.');
       } else if (res.state === 'open') {
         toast.success('WhatsApp is connected!');
@@ -208,42 +212,57 @@ export default function WhatsAppSettingsPage() {
                 
                 {!qrCode && !pairingCode ? (
                   <div className="flex justify-center">
-                    {whatsappStatus?.state === 'connecting' ? (
+                    {connectWhatsAppMutation.isPending ? (
                       <div className="flex flex-col items-center p-8 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
                         <Loader2 className="w-10 h-10 animate-spin text-green-500 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Generating QR Code...</h3>
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Connecting...</h3>
                         <p className="text-sm text-gray-500 dark:text-zinc-400 mt-2 text-center max-w-xs">
-                          Please wait while we establish a secure connection to WhatsApp.
+                          Requesting QR code from WhatsApp servers.
                         </p>
-                        <div className="mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800 w-full flex justify-center">
-                          <button
-                            onClick={() => connectWhatsAppMutation.mutate()}
-                            disabled={connectWhatsAppMutation.isPending}
-                            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-all text-sm flex items-center gap-2"
-                          >
-                            {connectWhatsAppMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                            {connectWhatsAppMutation.isPending ? 'Retrying...' : 'Stuck? Regenerate QR'}
-                          </button>
-                        </div>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => connectWhatsAppMutation.mutate()}
-                        disabled={connectWhatsAppMutation.isPending}
-                        className="px-6 py-3 bg-[#25D366] hover:bg-[#1DA851] text-white font-medium rounded-xl transition-all shadow-sm flex items-center gap-2"
-                      >
-                        {connectWhatsAppMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
-                        Connect WhatsApp
-                      </button>
+                      <div className="flex flex-col items-center gap-4">
+                        <button
+                          onClick={() => connectWhatsAppMutation.mutate()}
+                          disabled={connectWhatsAppMutation.isPending}
+                          className="px-6 py-3 bg-[#25D366] hover:bg-[#1DA851] text-white font-medium rounded-xl transition-all shadow-sm flex items-center gap-2"
+                        >
+                          {connectWhatsAppMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
+                          Connect WhatsApp
+                        </button>
+                        {whatsappStatus?.state === 'connecting' && (
+                          <p className="text-xs text-amber-500 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5" /> Instance is connecting – click above to get a fresh QR
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center p-8 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
-                    {/* Simplified QR Code placeholder just to get it working in UI - in a real app, use QRCodeSVG component */}
                     {connectionMode === 'qr' && qrCode && (
-                       <div className="w-64 h-64 bg-gray-100 border flex items-center justify-center rounded-xl p-4">
-                         <img src={qrCode.startsWith('data:image') ? qrCode : `data:image/png;base64,${qrCode}`} alt="WhatsApp QR Code" className="w-full h-full object-contain" />
-                       </div>
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-64 h-64 bg-white border-4 border-gray-200 dark:border-zinc-700 flex items-center justify-center rounded-xl p-3">
+                          {/* If QR is a raw text string (e.g. "2@abc123..."), render with QRCodeSVG */}
+                          {/* If it's already a base64 image, render with <img> */}
+                          {qrCodeType === 'base64' || qrCode.startsWith('data:image') ? (
+                            <img src={qrCode} alt="WhatsApp QR Code" className="w-full h-full object-contain" />
+                          ) : (
+                            <QRCodeSVG value={qrCode} size={220} bgColor="#ffffff" fgColor="#000000" level="M" />
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-zinc-500 text-center">
+                          Open WhatsApp → Settings → Linked Devices → Link a Device
+                        </p>
+                        <button
+                          onClick={() => connectWhatsAppMutation.mutate()}
+                          disabled={connectWhatsAppMutation.isPending}
+                          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-all text-sm flex items-center gap-2"
+                        >
+                          {connectWhatsAppMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                          {connectWhatsAppMutation.isPending ? 'Refreshing...' : 'Refresh QR'}
+                        </button>
+                      </div>
                     )}
                     {connectionMode === 'code' && (
                       <div className="w-full max-w-sm flex flex-col items-center">
