@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import Head from 'next/head';
 import AdminLayout from '../../../components/AdminLayout';
-import { Plus, QrCode, X, Check, Loader2, AlertTriangle } from 'lucide-react';
+import PrintQRModal from '../../../components/PrintQRModal';
+import { Plus, QrCode, X, Check, Loader2, AlertTriangle, Printer } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
@@ -12,6 +13,7 @@ import { Card, CardContent } from '../../../components/ui/card';
 
 export default function QueuesList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [newQueueName, setNewQueueName] = useState('');
   const [includeName, setIncludeName] = useState(true);
   const [includePhone, setIncludePhone] = useState(true);
@@ -112,14 +114,23 @@ export default function QueuesList() {
             <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium tracking-wider uppercase mb-1">Manage Queues</p>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Queues</h1>
           </div>
-          <button 
-            id="tour-create-queue-btn"
-            onClick={() => setIsModalOpen(true)} 
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors shadow-[0_0_15px_rgba(79,70,229,0.3)] border border-indigo-500/50"
-          >
-            <Plus className="w-5 h-5" />
-            Create queue
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsPrintModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300 rounded-lg font-medium transition-colors border border-gray-200 dark:border-white/10 shadow-sm"
+            >
+              <Printer className="w-4 h-4" />
+              Print QRs
+            </button>
+            <button 
+              id="tour-create-queue-btn"
+              onClick={() => setIsModalOpen(true)} 
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors shadow-[0_0_15px_rgba(79,70,229,0.3)] border border-indigo-500/50"
+            >
+              <Plus className="w-5 h-5" />
+              Create queue
+            </button>
+          </div>
         </div>
 
         {/* Queues List */}
@@ -294,6 +305,7 @@ export default function QueuesList() {
         </div>,
         document.body
       )}
+      <PrintQRModal open={isPrintModalOpen} onClose={() => setIsPrintModalOpen(false)} queues={queues} />
     </AdminLayout>
   );
 }

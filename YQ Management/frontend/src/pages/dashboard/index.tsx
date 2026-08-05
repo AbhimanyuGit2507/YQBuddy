@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Head from 'next/head';
 import AdminLayout from '../../components/AdminLayout';
+import PrintQRModal from '../../components/PrintQRModal';
 import { Users, Clock, LayoutGrid, AlertTriangle, ScanLine, Printer, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
@@ -9,6 +10,7 @@ import { useRouter } from 'next/router';
 
 export default function Dashboard() {
   const router = useRouter();
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const { data: queues = [], isLoading } = useQuery({
     queryKey: ['queues'],
     queryFn: () => fetchApi('/queue'),
@@ -36,7 +38,7 @@ export default function Dashboard() {
               <ScanLine className="w-4 h-4" />
               Open Scanner
             </button>
-            <button onClick={() => router.push('/dashboard/display-picker')} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300 rounded-lg font-medium transition-colors border border-gray-200 dark:border-white/10 shadow-sm">
+            <button onClick={() => setIsPrintModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300 rounded-lg font-medium transition-colors border border-gray-200 dark:border-white/10 shadow-sm">
               <Printer className="w-4 h-4" />
               Print QRs
             </button>
@@ -161,6 +163,7 @@ export default function Dashboard() {
           </div>
         </div>
 
+        <PrintQRModal open={isPrintModalOpen} onClose={() => setIsPrintModalOpen(false)} queues={queues} />
       </div>
     </AdminLayout>
   );
