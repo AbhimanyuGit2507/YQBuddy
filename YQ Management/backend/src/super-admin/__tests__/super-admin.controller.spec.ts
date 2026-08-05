@@ -5,6 +5,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { UnauthorizedException } from '@nestjs/common';
 import { CommunicationLogService } from '../../communication/logging/communication-log.service';
 import { TemplateService } from '../../communication/templates/template.service';
+import { PaymentsService } from '../../payments/payments.service';
 
 describe('SuperAdminController', () => {
   let controller: SuperAdminController;
@@ -60,6 +61,10 @@ describe('SuperAdminController', () => {
       getWhatsAppTemplateKeys: jest.fn().mockReturnValue([]),
     };
 
+    const paymentsService = {
+      generateTestPaymentLink: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SuperAdminController],
       providers: [
@@ -68,6 +73,7 @@ describe('SuperAdminController', () => {
         { provide: 'WhatsAppProvider', useValue: whatsappProvider },
         { provide: CommunicationLogService, useValue: communicationLogService },
         { provide: TemplateService, useValue: templateService },
+        { provide: PaymentsService, useValue: paymentsService },
       ],
     })
       .overrideGuard(AuthGuard('jwt'))

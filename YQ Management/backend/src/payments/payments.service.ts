@@ -85,6 +85,38 @@ export class PaymentsService {
     };
   }
 
+  async generateTestPaymentLink(amount: number = 10.00, isTestMode: boolean = false) {
+    const formattedAmount = Number(amount).toFixed(2);
+    const txRef = `TEST-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    const payload = {
+      siteCode: this.siteCode || 'YQB-YQB-001',
+      countryCode: 'ZA',
+      currencyCode: 'ZAR',
+      amount: formattedAmount,
+      transactionReference: txRef,
+      bankReference: `QMOVA-TEST-${txRef.substring(5, 11)}`,
+      cancelUrl: `${this.frontendUrl}/super-admin/system-control?payment_status=cancelled`,
+      errorUrl: `${this.frontendUrl}/super-admin/system-control?payment_status=error`,
+      successUrl: `${this.frontendUrl}/super-admin/system-control?payment_status=success`,
+      notifyUrl: `${this.baseUrl}/payments/webhook`,
+      isTest: isTestMode ? 'true' : (process.env.OZOW_IS_TEST !== undefined ? process.env.OZOW_IS_TEST : (process.env.NODE_ENV === 'production' ? 'false' : 'true')),
+    };
+
+    const stringToHash =
+      `${payload.siteCode}${payload.countryCode}${payload.currencyCode}${payload.amount}${payload.transactionReference}${payload.bankReference}${payload.cancelUrl}${payload.errorUrl}${payload.successUrl}${payload.notifyUrl}${payload.isTest}${this.privateKey}`.toLowerCase();
+    const hashCheck = crypto
+      .createHash('sha512')
+      .update(stringToHash)
+      .digest('hex');
+
+    return {
+      ...payload,
+      hashCheck,
+      paymentUrl: 'https://pay.ozow.com/',
+    };
+  }
+
   async handleWebhook(body: any, headers: any) {
     // Note: In production, validate the HashCheck header to ensure it came from Ozow
 

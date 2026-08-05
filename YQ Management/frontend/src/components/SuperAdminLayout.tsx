@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   Bell,
+  Sliders,
 } from 'lucide-react';
 
 import { useTheme } from './ThemeProvider';
@@ -42,6 +43,7 @@ export default function SuperAdminLayout({
 
   const navItems = [
     { label: 'Overview', href: '/super-admin', icon: LayoutDashboard },
+    { label: 'System Control', href: '/super-admin/system-control', icon: Sliders },
     { label: 'Businesses', href: '/super-admin/tenants', icon: Building2 },
     { label: 'Plans', href: '/super-admin/plans', icon: Package },
     { label: 'Subscriptions', href: '/super-admin/subscriptions', icon: CreditCard },

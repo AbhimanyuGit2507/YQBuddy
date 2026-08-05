@@ -3,7 +3,27 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class SuperAdminService {
+  private systemToggles: Record<string, boolean> = {
+    emailService: true,
+    whatsappService: true,
+    paymentGateway: true,
+    otpVerification: true,
+    kioskCheckin: true,
+    automatedWebhooks: true,
+  };
+
   constructor(private prisma: PrismaService) {}
+
+  getSystemToggles() {
+    return this.systemToggles;
+  }
+
+  updateSystemToggle(service: string, enabled: boolean) {
+    if (this.systemToggles.hasOwnProperty(service)) {
+      this.systemToggles[service] = enabled;
+    }
+    return this.systemToggles;
+  }
 
   async getGlobalMetrics() {
     const totalTenants = await this.prisma.tenant.count();

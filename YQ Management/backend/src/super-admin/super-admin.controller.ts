@@ -19,6 +19,7 @@ import type { EmailProvider } from '../communication/interfaces/email.provider';
 import type { WhatsAppProvider } from '../communication/interfaces/whatsapp.provider';
 import { CommunicationLogService, CommunicationChannel, CommunicationStatus } from '../communication/logging/communication-log.service';
 import { TemplateService } from '../communication/templates/template.service';
+import { PaymentsService } from '../payments/payments.service';
 
 @Controller('super-admin')
 @UseGuards(AuthGuard('jwt'))
@@ -29,6 +30,7 @@ export class SuperAdminController {
     @Inject('WhatsAppProvider') private readonly whatsappProvider: WhatsAppProvider,
     private readonly communicationLogService: CommunicationLogService,
     private readonly templateService: TemplateService,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   private checkSuperAdmin(req: any) {
@@ -269,5 +271,23 @@ export class SuperAdminController {
   ) {
     this.checkSuperAdmin(req);
     return this.communicationLogService.getFailedLogs();
+  }
+
+  @Get('system-toggles')
+  getSystemToggles(@Req() req: any) {
+    this.checkSuperAdmin(req);
+    return this.superAdminService.getSystemToggles();
+  }
+
+  @Post('system-toggles')
+  updateSystemToggle(@Req() req: any, @Body() body: { service: string; enabled: boolean }) {
+    this.checkSuperAdmin(req);
+    return this.superAdminService.updateSystemToggle(body.service, body.enabled);
+  }
+
+  @Post('payments/test-redirect')
+  async testPaymentRedirect(@Req() req: any, @Body() body: { amount?: number; isTestMode?: boolean }) {
+    this.checkSuperAdmin(req);
+    return this.paymentsService.generateTestPaymentLink(body.amount || 10.00, body.isTestMode || false);
   }
 }
