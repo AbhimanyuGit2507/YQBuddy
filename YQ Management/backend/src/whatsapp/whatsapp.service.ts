@@ -566,15 +566,25 @@ export class WhatsappService {
   }
 
   async testMessage(tenantId: string, phone: string, message: string) {
+    this.logger.log(`Initiating test message to ${phone} for tenant ${tenantId}`);
     const tenant = await this.resolveTenant(tenantId);
     if (!tenant || !tenant.whatsappInstanceId) {
+      this.logger.warn(`Test message failed: WhatsApp not connected for tenant ${tenantId}`);
       throw new HttpException('WhatsApp is not connected', HttpStatus.BAD_REQUEST);
     }
-    const result = await this.sendMessage(tenant.whatsappInstanceId, phone, message);
-    if (!result.success) {
-      throw new HttpException(result.error || 'Failed to send message', HttpStatus.BAD_GATEWAY);
+    
+    try {
+      const result = await this.sendMessage(tenant.whatsappInstanceId, phone, message);
+      if (!result.success) {
+        this.logger.error(`Test message to ${phone} failed: ${result.error}`);
+        throw new HttpException(result.error || 'Failed to send message', HttpStatus.BAD_GATEWAY);
+      }
+      this.logger.log(`Successfully sent test message to ${phone}`);
+      return { success: true };
+    } catch (error: any) {
+      this.logger.error(`Exception during test message to ${phone}: ${error.message}`);
+      throw error instanceof HttpException ? error : new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
-    return { success: true };
   }
 
   async status(tenantId: string) {
@@ -619,7 +629,8 @@ export class WhatsappService {
     const isConnected = state === 'open';
 
     let qr: string | null = this.extractQr(stateResult.data);
-    if (!isConnected && !qr) {
+    if (state === 'close') {
+      this.logger.debug(`Instance ${instanceName} is closed. Attempting to connect to generate QR.`);
       const connectRes = await this.fetchEvo(
         `/instance/connect/${instanceName}`,
         'GET',
