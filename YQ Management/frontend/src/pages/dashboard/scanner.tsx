@@ -231,8 +231,25 @@ export default function AdminScanner() {
 
    const getCameras = useCallback(async () => {
     try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter((device) => device.kind === 'videoinput');
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        setError('Camera API not supported in this browser or over insecure HTTP.');
+        return;
+      }
+
+      let devices = await navigator.mediaDevices.enumerateDevices();
+      let videoDevices = devices.filter((device) => device.kind === 'videoinput');
+
+      // If labels are empty (permission not yet granted in session) or no devices listed, prompt automatically
+      if (videoDevices.length === 0 || (videoDevices.length > 0 && !videoDevices[0].label)) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          stream.getTracks().forEach(track => track.stop());
+          devices = await navigator.mediaDevices.enumerateDevices();
+          videoDevices = devices.filter((device) => device.kind === 'videoinput');
+        } catch (e) {
+          console.warn('Initial silent camera permission request failed or denied:', e);
+        }
+      }
 
       const sortedCameras = [...videoDevices].sort((a, b) => {
         const aIsFront = a.label.toLowerCase().includes('front');
@@ -244,9 +261,11 @@ export default function AdminScanner() {
 
       if (sortedCameras.length > 0) {
         const defaultCamera = useFrontCamera
-          ? sortedCameras.find(c => c.label.toLowerCase().includes('front'))
-          : sortedCameras.find(c => !c.label.toLowerCase().includes('front'));
+          ? sortedCameras.find(c => c.label.toLowerCase().includes('front')) || sortedCameras[0]
+          : sortedCameras.find(c => !c.label.toLowerCase().includes('front')) || sortedCameras[0];
         setSelectedCamera(defaultCamera?.deviceId || sortedCameras[0].deviceId);
+      } else {
+        setError('No camera devices found. Please connect a camera and check permissions.');
       }
     } catch {
       setError('Unable to access camera. Please check permissions.');
@@ -272,127 +291,140 @@ export default function AdminScanner() {
 
     try {
       const html5QrCode = new Html5Qrcode('reader');
+      const config = { ...SCANNER_CONFIG };
 
-      const config = {
-        ...SCANNER_CONFIG,
-        deviceId: { exact: selectedCamera },
+      const onScanSuccess = async (decodedText: string) => {
+        const now = Date.now();
+        if (now - lastScanTimeRef.current < DEBOUNCE_TIME) return;
+        lastScanTimeRef.current = now;
+
+        if (isProcessing) return;
+        setIsProcessing(true);
+        setScannerStatus('processing');
+
+        try {
+          await html5QrCode.pause();
+
+          if (idleTimerRef.current) {
+            clearTimeout(idleTimerRef.current);
+            idleTimerRef.current = null;
+          }
+
+          if (!decodedText || decodedText.length < 5) {
+            throw new Error('Invalid QR code format');
+          }
+
+          const result = await fetchApi('/token/validate', {
+            method: 'POST',
+            body: JSON.stringify({ tokenId: decodedText })
+          });
+
+          const validationResult: ValidationResult = {
+            valid: result.valid,
+            status: result.status,
+            reason: result.reason,
+            tokenId: decodedText,
+            customerName: result.customerName,
+            queueName: result.queueName,
+            purpose: result.purpose,
+            phone: result.phone,
+            joinedAt: result.joinedAt,
+            queueId: result.queueId,
+          };
+
+          setValidationResult(validationResult);
+          setScannerStatus(validationResult.valid ? 'approved' : 'rejected');
+
+          setTimeout(() => {
+            setScannerStatus('scanning');
+            try { html5QrCode.resume(); } catch (e) { console.error(e); }
+            resetIdleTimer();
+          }, 2000);
+
+        } catch (e: unknown) {
+          let status = 'Invalid QR Code';
+          let reason = 'Unknown error';
+
+          if (e instanceof Error) {
+            reason = e.message;
+
+            if (e.message.includes('expired')) {
+              status = 'QR Expired';
+            } else if (e.message.includes('already used')) {
+              status = 'Already Used';
+            } else if (e.message.includes('wrong queue')) {
+              status = 'Wrong Queue';
+            } else if (e.message.includes('wrong branch')) {
+              status = 'Wrong Branch/Location';
+            } else if (e.message.includes('wrong tenant')) {
+              status = 'Wrong Tenant/Organization';
+            } else if (e.message.includes('queue closed')) {
+              status = 'Queue Closed';
+            } else if (e.message.includes('not started')) {
+              status = 'Queue Not Started Yet';
+            } else if (e.message.includes('already checked')) {
+              status = 'Person Already Checked In';
+            } else if (e.message.includes('revoked') || e.message.includes('cancelled')) {
+              status = 'Token Revoked/Cancelled';
+            } else if (e.message.includes('network') || e.message.includes('server')) {
+              status = 'Server/Network Error';
+            }
+          }
+
+          setValidationResult({
+            valid: false,
+            status,
+            reason,
+            tokenId: decodedText,
+          });
+          setScannerStatus('rejected');
+
+          setTimeout(() => {
+            setScannerStatus('scanning');
+            try { html5QrCode.resume(); } catch (e) { console.error(e); }
+            resetIdleTimer();
+          }, 2000);
+
+        } finally {
+          setIsProcessing(false);
+        }
       };
 
-      await html5QrCode.start(
-        { facingMode: 'environment' },
-        config,
-        async (decodedText) => {
-          const now = Date.now();
-          if (now - lastScanTimeRef.current < DEBOUNCE_TIME) return;
-          lastScanTimeRef.current = now;
+      const onScanFailure = (_error: unknown) => {
+        // Ignore normal scan errors
+      };
 
-          if (isProcessing) return;
-          setIsProcessing(true);
-          setScannerStatus('processing');
-
-          try {
-            await html5QrCode.pause();
-
-            if (idleTimerRef.current) {
-              clearTimeout(idleTimerRef.current);
-              idleTimerRef.current = null;
-            }
-
-            if (!decodedText || decodedText.length < 5) {
-              throw new Error('Invalid QR code format');
-            }
-
-            const result = await fetchApi('/token/validate', {
-              method: 'POST',
-              body: JSON.stringify({ tokenId: decodedText })
-            });
-
-            const validationResult: ValidationResult = {
-              valid: result.valid,
-              status: result.status,
-              reason: result.reason,
-              tokenId: decodedText,
-              customerName: result.customerName,
-              queueName: result.queueName,
-              purpose: result.purpose,
-              phone: result.phone,
-              joinedAt: result.joinedAt,
-              queueId: result.queueId,
-            };
-
-            setValidationResult(validationResult);
-            setScannerStatus(validationResult.valid ? 'approved' : 'rejected');
-
-            setTimeout(() => {
-              setScannerStatus('scanning');
-              try { html5QrCode.resume(); } catch (e) { console.error(e); }
-              resetIdleTimer();
-            }, 2000);
-
-          } catch (e: unknown) {
-            let status = 'Invalid QR Code';
-            let reason = 'Unknown error';
-
-            if (e instanceof Error) {
-              reason = e.message;
-
-              if (e.message.includes('expired')) {
-                status = 'QR Expired';
-              } else if (e.message.includes('already used')) {
-                status = 'Already Used';
-              } else if (e.message.includes('wrong queue')) {
-                status = 'Wrong Queue';
-              } else if (e.message.includes('wrong branch')) {
-                status = 'Wrong Branch/Location';
-              } else if (e.message.includes('wrong tenant')) {
-                status = 'Wrong Tenant/Organization';
-              } else if (e.message.includes('queue closed')) {
-                status = 'Queue Closed';
-              } else if (e.message.includes('not started')) {
-                status = 'Queue Not Started Yet';
-              } else if (e.message.includes('already checked')) {
-                status = 'Person Already Checked In';
-              } else if (e.message.includes('revoked') || e.message.includes('cancelled')) {
-                status = 'Token Revoked/Cancelled';
-              } else if (e.message.includes('network') || e.message.includes('server')) {
-                status = 'Server/Network Error';
-              }
-            }
-
-            setValidationResult({
-              valid: false,
-              status,
-              reason,
-              tokenId: decodedText,
-            });
-            setScannerStatus('rejected');
-
-            setTimeout(() => {
-              setScannerStatus('scanning');
-              try { html5QrCode.resume(); } catch (e) { console.error(e); }
-              resetIdleTimer();
-            }, 2000);
-
-          } finally {
-            setIsProcessing(false);
-          }
-        },
-        (_error) => {
-          // Ignore normal scan errors
+      try {
+        // Pass selectedCamera deviceId directly as first arg instead of ignoring it
+        await html5QrCode.start(selectedCamera, config, onScanSuccess, onScanFailure);
+      } catch (primaryErr) {
+        console.warn('Failed starting with selectedCamera ID, falling back to facingMode:', primaryErr);
+        try {
+          await html5QrCode.start(
+            { facingMode: useFrontCamera ? 'user' : 'environment' },
+            config,
+            onScanSuccess,
+            onScanFailure
+          );
+        } catch (secondaryErr) {
+          console.warn('Failed starting with environment facingMode, trying user/default webcam:', secondaryErr);
+          // Fallback for desktop webcams that fail on 'environment' facingMode
+          await html5QrCode.start({ facingMode: 'user' }, config, onScanSuccess, onScanFailure);
         }
-      );
+      }
 
       scannerRef.current = html5QrCode;
       setScannerStatus('scanning');
       resetIdleTimer();
 
-    } catch {
-      setError('Failed to initialize scanner. Please try again.');
+    } catch (err: any) {
+      console.error('Final scanner initialization error:', err);
+      setError('Failed to initialize camera scanner. Please check permissions or select a different camera.');
       setScannerStatus('error');
     } finally {
       setIsInitializing(false);
     }
-  }, [selectedCamera, isProcessing]);
+  }, [selectedCamera, isProcessing, useFrontCamera]);
 
   const cleanupScanner = useCallback(async () => {
     if (scannerRef.current) {
@@ -717,13 +749,6 @@ export default function AdminScanner() {
                    </div>
                  </div>
                )}
-              {isInitializing && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6 z-10">
-                  <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4"></div>
-                  <p className="text-lg font-medium">Loading Scanner...</p>
-                  <p className="text-sm text-gray-400 mt-2">Initializing camera and QR detection</p>
-                </div>
-              )}
               {scannerStatus === 'error' && error && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-red-400 p-6">
                   <AlertTriangle className="w-12 h-12 mb-4" />
