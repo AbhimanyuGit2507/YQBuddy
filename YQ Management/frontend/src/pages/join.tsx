@@ -17,9 +17,12 @@ export default function JoinPage() {
   const [inviteCode, setInviteCode] = useState<string>('');
 
   useEffect(() => {
-    const code = router.query.code as string;
+    const code = (router.query.code || router.query.inviteCode) as string;
     if (code) {
-      setInviteCode(code.toUpperCase());
+      const trimmed = code.trim().toUpperCase();
+      setInviteCode(trimmed);
+      localStorage.setItem('qmova_invite_code', trimmed);
+      document.cookie = `qmova_invite_code=${trimmed}; path=/; max-age=86400; SameSite=Lax`;
     }
   }, [router.query]);
 
@@ -31,7 +34,7 @@ export default function JoinPage() {
       return;
     }
 
-    if (user.workspaceId) {
+    if (user.workspaceId && !inviteCode) {
       router.replace('/dashboard');
       return;
     }
@@ -55,6 +58,8 @@ export default function JoinPage() {
       });
       setWorkspaceName(res.workspace?.name || 'the workspace');
       setStatus('success');
+      localStorage.removeItem('qmova_invite_code');
+      document.cookie = 'qmova_invite_code=; path=/; max-age=0; SameSite=Lax';
       await refetch();
       setTimeout(() => router.push('/dashboard'), 1500);
     } catch (err: any) {
@@ -103,10 +108,10 @@ export default function JoinPage() {
           <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6">
             <p className="text-sm text-zinc-400 mb-4">You need an account to join this workspace.</p>
             <div className="space-y-3">
-              <button onClick={() => router.push(`/login?redirect=/join?code=${inviteCode}`)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors">
+              <button onClick={() => router.push(`/login?inviteCode=${inviteCode}`)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors">
                 Sign In
               </button>
-              <button onClick={() => router.push(`/register?redirect=/join?code=${inviteCode}`)} className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-medium transition-colors">
+              <button onClick={() => router.push(`/register?inviteCode=${inviteCode}`)} className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-medium transition-colors">
                 Create Account
               </button>
             </div>

@@ -38,8 +38,28 @@ import { WorkspaceModule } from './workspace/workspace.module';
     ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule.forRoot({
       pinoHttp: {
-        level: 'info',
+        level: process.env.LOG_LEVEL || 'debug',
         stream: createLogRoutingTransport(),
+        serializers: {
+          req: (req: any) => ({
+            id: req.id,
+            method: req.method,
+            url: req.url,
+            query: req.query,
+            params: req.params,
+            body: req.raw?.body || req.body,
+            remoteAddress: req.remoteAddress,
+          }),
+          res: (res: any) => ({
+            statusCode: res.statusCode,
+          }),
+        },
+        customSuccessMessage: (req: any, res: any, responseTime: number) => {
+          return `HTTP ${req.method} ${req.url} -> Status ${res.statusCode} (${responseTime}ms)`;
+        },
+        customErrorMessage: (req: any, res: any, err: Error) => {
+          return `HTTP ${req.method} ${req.url} -> ERROR: ${err.message}`;
+        },
       },
     }),
     ThrottlerModule.forRoot([

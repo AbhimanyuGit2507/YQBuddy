@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { fetchApi } from '../../lib/api';
 import { toast } from 'sonner';
-import { QrCode, Loader2, ArrowRight, Store, Activity, Pizza, Briefcase, Check, Keyboard, Copy, CheckCircle2 } from 'lucide-react';
+import { QrCode, Loader2, ArrowRight, Store, Activity, Pizza, Briefcase, Check, Keyboard, Copy, CheckCircle2, Users, Shield } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const COUNTRY_CODES = [
@@ -120,12 +120,17 @@ const BUSINESS_TEMPLATES = [
 export default function Onboarding() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedType, setSelectedType] = useState<string>('general');
   const [fullName, setFullName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [phone, setPhone] = useState('');
   const [countryCode, setCountryCode] = useState('+27');
+
+  // Invitation State
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [inviteInfo, setInviteInfo] = useState<{ workspaceName: string; role: string; valid: boolean } | null>(null);
+  const [joiningWorkspace, setJoiningWorkspace] = useState(false);
 
   // WhatsApp State
   const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
@@ -135,7 +140,7 @@ export default function Onboarding() {
   const [pairingPhoneNumber, setPairingPhoneNumber] = useState('');
   const [pairingCopied, setPairingCopied] = useState(false);
 
-  const updateStep = (newStep: 1 | 2 | 3) => {
+  const updateStep = (newStep: 1 | 2 | 3 | 4) => {
     setStep(newStep);
     if (typeof window !== 'undefined') {
       localStorage.setItem('onboarding_step', newStep.toString());
@@ -144,10 +149,24 @@ export default function Onboarding() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const code = (router.query.inviteCode || router.query.code || localStorage.getItem('qmova_invite_code')) as string;
+      if (typeof code === 'string' && code.trim()) {
+        const trimmed = code.trim().toUpperCase();
+        setInviteCode(trimmed);
+        fetchApi(`/workspace/invite-preview/${trimmed}`)
+          .then((res: any) => {
+            if (res?.valid) {
+              setInviteInfo(res);
+              if (!companyName) setCompanyName(res.workspaceName);
+            }
+          })
+          .catch(() => {});
+      }
+
       const savedStep = localStorage.getItem('onboarding_step');
       if (savedStep) {
         const parsed = parseInt(savedStep, 10);
-        if (parsed === 1 || parsed === 2 || parsed === 3) setStep(parsed as 1 | 2 | 3);
+        if (parsed === 1 || parsed === 2 || parsed === 3 || parsed === 4) setStep(parsed as 1 | 2 | 3 | 4);
       }
       const savedData = localStorage.getItem('onboarding_form_data');
       if (savedData) {
@@ -160,7 +179,13 @@ export default function Onboarding() {
         } catch (e) {}
       }
     }
-  }, []);
+  }, [router.query]);
+
+  useEffect(() => {
+    if (inviteCode && (step === 2 || step === 3)) {
+      updateStep(4);
+    }
+  }, [inviteCode, step]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -174,17 +199,46 @@ export default function Onboarding() {
       const formattedPhone = phone.trim().startsWith('+') ? phone.trim() : `${countryCode} ${phone.trim().replace(/^0/, '')}`;
       return fetchApi('/auth/personal-settings', {
         method: 'PATCH',
-        body: JSON.stringify({ fullName, phone: formattedPhone, companyName }),
+        body: JSON.stringify({ 
+          fullName, 
+          phone: formattedPhone, 
+          companyName: inviteCode ? (inviteInfo?.workspaceName || 'Team Workspace') : companyName 
+        }),
       });
     },
     onSuccess: () => {
-      updateStep(2);
+      if (inviteCode) {
+        updateStep(4);
+      } else {
+        updateStep(2);
+      }
       toast.success('Information saved');
     },
     onError: () => {
       toast.error('Failed to save information. Please try again.');
     },
   });
+
+  const handleConfirmJoinWorkspace = async () => {
+    if (!inviteCode) return;
+    setJoiningWorkspace(true);
+    try {
+      await fetchApi('/workspace/join', {
+        method: 'POST',
+        body: JSON.stringify({ code: inviteCode }),
+      });
+      localStorage.removeItem('qmova_invite_code');
+      localStorage.removeItem('onboarding_step');
+      localStorage.removeItem('onboarding_form_data');
+      document.cookie = 'qmova_invite_code=; path=/; max-age=0; SameSite=Lax';
+      toast.success(`You have successfully joined ${inviteInfo?.workspaceName || 'the workspace'}!`);
+      router.push('/dashboard');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to join workspace');
+    } finally {
+      setJoiningWorkspace(false);
+    }
+  };
 
   const setupQueuesMutation = useMutation({
     mutationFn: (template: typeof BUSINESS_TEMPLATES[number]) =>
@@ -315,9 +369,11 @@ export default function Onboarding() {
         <div className="max-w-md">
           {step === 1 ? (
             <>
-              <h1 className="text-5xl font-bold mb-6 leading-tight">Welcome to Qmova</h1>
+              <h1 className="text-5xl font-bold mb-6 leading-tight">{inviteCode ? 'Join Your Team' : 'Welcome to Qmova'}</h1>
               <p className="text-blue-200/70 text-lg leading-relaxed">
-                Let's start by getting to know you and your business.
+                {inviteCode 
+                  ? "Let's save your personal profile details before entering your workspace." 
+                  : "Let's start by getting to know you and your business."}
               </p>
             </>
           ) : step === 2 ? (
@@ -327,21 +383,37 @@ export default function Onboarding() {
                 We'll automatically set up the perfect queues and custom form questions tailored to your industry.
               </p>
             </>
-          ) : (
+          ) : step === 3 ? (
             <>
               <h1 className="text-5xl font-bold mb-6 leading-tight">Connect WhatsApp.</h1>
               <p className="text-blue-200/70 text-lg leading-relaxed">
                 Automatically notify customers about their queue position through WhatsApp.
               </p>
             </>
+          ) : (
+            <>
+              <h1 className="text-5xl font-bold mb-6 leading-tight">You're ready to jump in.</h1>
+              <p className="text-blue-200/70 text-lg leading-relaxed">
+                Your personal profile has been configured. Confirm below to complete joining your team's Qmova workspace.
+              </p>
+            </>
           )}
         </div>
 
         <div className="mt-auto flex items-center gap-2">
-          <div className={`w-4 h-1 rounded-full ${step === 1 ? 'bg-white' : 'bg-white/30'}`}></div>
-          <div className={`w-4 h-1 rounded-full ${step === 2 ? 'bg-white' : 'bg-white/30'}`}></div>
-          <div className={`w-4 h-1 rounded-full ${step === 3 ? 'bg-white' : 'bg-white/30'}`}></div>
-          <div className="w-4 h-1 rounded-full bg-white/30"></div>
+          {inviteCode ? (
+            <>
+              <div className={`w-6 h-1.5 rounded-full ${step === 1 ? 'bg-white' : 'bg-white/30'}`}></div>
+              <div className={`w-6 h-1.5 rounded-full ${step === 4 ? 'bg-white' : 'bg-white/30'}`}></div>
+            </>
+          ) : (
+            <>
+              <div className={`w-4 h-1 rounded-full ${step === 1 ? 'bg-white' : 'bg-white/30'}`}></div>
+              <div className={`w-4 h-1 rounded-full ${step === 2 ? 'bg-white' : 'bg-white/30'}`}></div>
+              <div className={`w-4 h-1 rounded-full ${step === 3 ? 'bg-white' : 'bg-white/30'}`}></div>
+              <div className="w-4 h-1 rounded-full bg-white/30"></div>
+            </>
+          )}
         </div>
       </div>
 
@@ -364,16 +436,27 @@ export default function Onboarding() {
                       placeholder="Jane Doe"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Company / Workspace Name</label>
-                    <input
-                      type="text"
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                      placeholder="Acme Corp"
-                    />
-                  </div>
+                  {inviteCode ? (
+                    <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
+                      <div className="flex items-center gap-3 mb-1">
+                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                        <p className="text-xs font-bold uppercase tracking-wider text-indigo-900">Joining Workspace</p>
+                      </div>
+                      <p className="text-lg font-extrabold text-gray-900">{inviteInfo?.workspaceName || 'Team Workspace'}</p>
+                      <p className="text-sm text-gray-600">Assigned Role: <span className="font-semibold text-indigo-700 uppercase">{inviteInfo?.role || 'STAFF'}</span></p>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Company / Workspace Name</label>
+                      <input
+                        type="text"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                        placeholder="Acme Corp"
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
                     <div className="flex rounded-xl shadow-sm bg-gray-50 border border-gray-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:bg-white transition-all overflow-hidden">
@@ -400,7 +483,7 @@ export default function Onboarding() {
                 </div>
                 <button
                   onClick={() => savePersonalInfoMutation.mutate()}
-                  disabled={savePersonalInfoMutation.isPending || !fullName || !companyName}
+                  disabled={savePersonalInfoMutation.isPending || !fullName || (!inviteCode && !companyName)}
                   className="w-full mt-8 flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
                 >
                   {savePersonalInfoMutation.isPending && <Loader2 className="w-5 h-5 animate-spin" />}
@@ -626,6 +709,47 @@ export default function Onboarding() {
                   ← Back to Queues
                 </button>
               </div>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="max-w-md mx-auto animate-in fade-in slide-in-from-right-8 duration-500 bg-white rounded-3xl p-10 shadow-xl border border-gray-100 text-center">
+              <div className="w-20 h-20 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-6 shadow-sm border border-indigo-100">
+                <Users className="w-10 h-10" />
+              </div>
+              <h2 className="text-2xl font-black text-gray-900 mb-2">Confirm Workspace Join</h2>
+              <p className="text-gray-500 mb-8 text-sm">
+                You have been invited to join <strong className="text-gray-900">{inviteInfo?.workspaceName || 'your team workspace'}</strong> with role <strong className="text-indigo-600 uppercase font-bold">{inviteInfo?.role || 'STAFF'}</strong>.
+              </p>
+              <div className="bg-gray-50 p-5 rounded-2xl mb-8 border border-gray-100 text-left space-y-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500 font-medium">Full Name:</span>
+                  <span className="text-gray-900 font-bold">{fullName}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500 font-medium">Mobile Number:</span>
+                  <span className="text-gray-900 font-bold">{phone.startsWith('+') ? phone : `${countryCode} ${phone}`}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm pt-2 border-t border-gray-200">
+                  <span className="text-gray-500 font-medium">Invite Token:</span>
+                  <span className="text-indigo-600 font-mono font-bold tracking-wider">{inviteCode}</span>
+                </div>
+              </div>
+              <button
+                onClick={handleConfirmJoinWorkspace}
+                disabled={joiningWorkspace}
+                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors shadow-lg flex items-center justify-center gap-2 text-base disabled:opacity-70"
+              >
+                {joiningWorkspace ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
+                {joiningWorkspace ? 'Entering Workspace...' : 'Enter Workspace Dashboard'}
+              </button>
+              <button
+                type="button"
+                onClick={() => updateStep(1)}
+                className="mt-4 text-sm text-gray-500 hover:text-gray-800 font-semibold transition-colors block mx-auto"
+              >
+                ← Edit Personal Details
+              </button>
             </div>
           )}
 

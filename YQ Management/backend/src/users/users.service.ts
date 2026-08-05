@@ -7,12 +7,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { RedisService } from '../redis/redis.service';
+import { EmailService } from '../email/email.service';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class UsersService {
   constructor(
     private prisma: PrismaService,
     private redisService: RedisService,
+    private emailService: EmailService,
   ) {}
 
   async findOneByEmail(email: string) {
@@ -36,32 +39,228 @@ export class UsersService {
   }
 
   async getUsersByTenant(tenantId: string) {
-    return this.prisma.user.findMany({
+    const activeUsers = await this.prisma.user.findMany({
       where: { tenantId },
       select: { id: true, email: true, role: true },
     });
+
+    const staffList: any[] = activeUsers.map(u => ({
+      id: u.id,
+      email: u.email,
+      role: u.role,
+      status: 'ACTIVE',
+      isInvite: false,
+    }));
+
+    const workspaces = await this.prisma.workspace.findMany({
+      where: { tenantId },
+      select: { id: true, name: true },
+    });
+
+    if (workspaces.length === 0) {
+      return staffList;
+    }
+
+    const workspaceIds = workspaces.map(w => w.id);
+    const invites = await this.prisma.invitation.findMany({
+      where: {
+        workspaceId: { in: workspaceIds },
+        email: { not: null },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const now = new Date();
+    const tenantAdmin = activeUsers.find(u => u.role === 'TENANT_ADMIN' || u.role === 'SUPER_ADMIN') || activeUsers[0];
+    const workspaceName = workspaces[0]?.name || 'Workspace Team';
+
+    for (const inv of invites) {
+      if (!inv.email || staffList.some(s => s.email?.toLowerCase() === inv.email?.toLowerCase())) {
+        continue;
+      }
+
+      const isExpired = (inv.expiresAt && inv.expiresAt < now) || (inv.usedCount >= inv.maxUses && inv.used);
+      if (isExpired && !inv.used) {
+        await this.prisma.invitation.update({
+          where: { id: inv.id },
+          data: { used: true },
+        });
+        if (tenantAdmin?.email) {
+          this.emailService.sendInvitationExpiredNotification(
+            tenantAdmin.email,
+            inv.email,
+            workspaceName,
+          );
+        }
+        staffList.push({
+          id: inv.id,
+          email: inv.email,
+          role: inv.role,
+          status: 'EXPIRED',
+          code: inv.code,
+          expiresAt: inv.expiresAt,
+          isInvite: true,
+        });
+      } else if (isExpired || inv.used) {
+        staffList.push({
+          id: inv.id,
+          email: inv.email,
+          role: inv.role,
+          status: 'EXPIRED',
+          code: inv.code,
+          expiresAt: inv.expiresAt,
+          isInvite: true,
+        });
+      } else {
+        staffList.push({
+          id: inv.id,
+          email: inv.email,
+          role: inv.role,
+          status: 'INVITED',
+          code: inv.code,
+          expiresAt: inv.expiresAt,
+          isInvite: true,
+        });
+      }
+    }
+
+    return staffList;
   }
 
   async createUser(
     tenantId: string,
     data: { email: string; role: any; password?: string },
   ) {
-    let hashedPassword = null;
-    if (data.password) {
-      hashedPassword = await bcrypt.hash(data.password, 10);
-    } else {
-      hashedPassword = await bcrypt.hash('Welcome123!', 10);
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+
+    const workspace = await this.prisma.workspace.findFirst({
+      where: { tenantId },
+      select: { id: true, name: true },
+    });
+
+    if (!workspace) {
+      throw new BadRequestException('No active workspace found for this organization.');
     }
 
-    return this.prisma.user.create({
+    if (!existingUser) {
+      const code = randomBytes(6).toString('hex').toUpperCase().substring(0, 8);
+      const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+
+      const existingInvite = await this.prisma.invitation.findFirst({
+        where: { workspaceId: workspace.id, email: data.email, used: false },
+      });
+
+      const invite = existingInvite
+        ? await this.prisma.invitation.update({
+            where: { id: existingInvite.id },
+            data: { code, role: data.role as Role, expiresAt, used: false, usedCount: 0 },
+          })
+        : await this.prisma.invitation.create({
+            data: {
+              workspaceId: workspace.id,
+              code,
+              email: data.email,
+              role: data.role as Role,
+              maxUses: 1,
+              expiresAt,
+            },
+          });
+
+      return {
+        status: 'USER_NOT_FOUND_INVITED',
+        inviteId: invite.id,
+        inviteCode: invite.code,
+        email: data.email,
+        role: data.role,
+        workspaceName: workspace.name,
+        inviteUrl: `https://yq-qmova.vercel.app/register?inviteCode=${invite.code}`,
+        message: 'No Qmova account found for this email. An invitation join code has been generated.',
+      };
+    }
+
+    if (existingUser.tenantId === tenantId && existingUser.workspaceId === workspace.id) {
+      throw new BadRequestException('This user is already an active member of your team workspace.');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: existingUser.id },
       data: {
         tenantId,
-        email: data.email,
+        workspaceId: workspace.id,
         role: data.role as Role,
-        password: hashedPassword,
       },
       select: { id: true, email: true, role: true },
     });
+
+    await this.prisma.invitation.updateMany({
+      where: { workspaceId: workspace.id, email: data.email, used: false },
+      data: { used: true, usedAt: new Date() },
+    });
+
+    return {
+      status: 'USER_ADDED',
+      user: { ...updatedUser, status: 'ACTIVE', isInvite: false },
+      message: 'Existing Qmova user added to your staff team.',
+    };
+  }
+
+  async sendInviteEmail(tenantId: string, data: { email: string; code: string; role: string }) {
+    const workspace = await this.prisma.workspace.findFirst({
+      where: { tenantId },
+      select: { id: true, name: true },
+    });
+    const workspaceName = workspace?.name || 'Workspace Team';
+    const inviteUrl = `https://yq-qmova.vercel.app/register?inviteCode=${data.code}`;
+    const res = await this.emailService.sendStaffInvitation(
+      data.email,
+      workspaceName,
+      data.role,
+      inviteUrl,
+      data.code,
+    );
+    if (!res.success) {
+      throw new BadRequestException(res.error || 'Failed to dispatch Brevo invitation email.');
+    }
+    return { success: true, message: 'Invitation email successfully sent via Brevo.' };
+  }
+
+  async resendInvite(tenantId: string, inviteId: string) {
+    const invite = await this.prisma.invitation.findUnique({
+      where: { id: inviteId },
+    });
+
+    if (!invite) {
+      throw new NotFoundException('Invitation record not found.');
+    }
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: invite.workspaceId },
+      select: { id: true, tenantId: true, name: true },
+    });
+
+    if (workspace?.tenantId !== tenantId) {
+      throw new NotFoundException('Unauthorized invitation renewal.');
+    }
+
+    const code = randomBytes(6).toString('hex').toUpperCase().substring(0, 8);
+    const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+
+    const updated = await this.prisma.invitation.update({
+      where: { id: inviteId },
+      data: { code, expiresAt, used: false, usedCount: 0 },
+    });
+
+    return {
+      status: 'USER_NOT_FOUND_INVITED',
+      inviteId: updated.id,
+      inviteCode: updated.code,
+      email: updated.email || '',
+      role: updated.role,
+      workspaceName: workspace?.name || 'Workspace Team',
+      inviteUrl: `https://yq-qmova.vercel.app/register?inviteCode=${updated.code}`,
+    };
   }
 
   async deleteUser(tenantId: string, id: string, currentUserId: string) {
@@ -71,16 +270,27 @@ export class UsersService {
     });
 
     if (!targetUser) {
-      throw new NotFoundException('User not found');
+      const workspaces = await this.prisma.workspace.findMany({
+        where: { tenantId },
+        select: { id: true },
+      });
+      const targetInvite = await this.prisma.invitation.findFirst({
+        where: { id, workspaceId: { in: workspaces.map(w => w.id) } },
+      });
+      if (targetInvite) {
+        await this.prisma.invitation.delete({ where: { id: targetInvite.id } });
+        return { success: true, message: 'Invitation removed.' };
+      }
+      throw new NotFoundException('User or invitation not found.');
     }
 
     if (targetUser.tenantId !== tenantId) {
-      throw new BadRequestException('User does not belong to this tenant');
+      throw new BadRequestException('User does not belong to this tenant.');
     }
 
     if (targetUser.id === currentUserId) {
       throw new BadRequestException(
-        'You cannot remove yourself from the staff',
+        'You cannot remove yourself from the staff list.',
       );
     }
 
@@ -100,7 +310,6 @@ export class UsersService {
       where: { id },
     });
 
-    // Revoke any active JWT sessions for this user for 7 days (max expiry)
     await this.redisService.client.set(
       `blocklist_user:${id}`,
       '1',

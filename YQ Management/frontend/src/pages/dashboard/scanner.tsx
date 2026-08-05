@@ -58,8 +58,12 @@ interface HistoryToken {
 }
 
 const SCANNER_CONFIG = {
-  fps: 15,
-  qrbox: { width: 300, height: 300 },
+  fps: 12,
+  qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+    const size = Math.floor(minEdge * 0.7);
+    return { width: Math.max(150, size), height: Math.max(150, size) };
+  },
   rememberLastUsedCamera: true,
 };
 
@@ -284,7 +288,7 @@ export default function AdminScanner() {
   }, [getCameras]);
 
   const initializeScanner = useCallback(async () => {
-    if (!selectedCamera || scannerRef.current) return;
+    if (scannerRef.current || manualStopRef.current) return;
 
     setIsInitializing(true);
     setError(null);
@@ -395,8 +399,11 @@ export default function AdminScanner() {
       };
 
       try {
-        // Pass selectedCamera deviceId directly as first arg instead of ignoring it
-        await html5QrCode.start(selectedCamera, config, onScanSuccess, onScanFailure);
+        if (selectedCamera) {
+          await html5QrCode.start(selectedCamera, config, onScanSuccess, onScanFailure);
+        } else {
+          throw new Error('No selected camera ID, trying facingMode fallback');
+        }
       } catch (primaryErr) {
         console.warn('Failed starting with selectedCamera ID, falling back to facingMode:', primaryErr);
         try {
@@ -408,7 +415,6 @@ export default function AdminScanner() {
           );
         } catch (secondaryErr) {
           console.warn('Failed starting with environment facingMode, trying user/default webcam:', secondaryErr);
-          // Fallback for desktop webcams that fail on 'environment' facingMode
           await html5QrCode.start({ facingMode: 'user' }, config, onScanSuccess, onScanFailure);
         }
       }
@@ -446,11 +452,6 @@ export default function AdminScanner() {
   }, []);
 
   const startScanning = useCallback(async () => {
-    if (!selectedCamera) {
-      setError('No camera available. Please connect a camera.');
-      return;
-    }
-
     manualStopRef.current = false;
     if (idleTimerRef.current) {
       clearTimeout(idleTimerRef.current);
@@ -458,8 +459,15 @@ export default function AdminScanner() {
     }
     setError(null);
     setValidationResult(null);
+    if (!selectedCamera && availableCameras.length === 0) {
+      try {
+        await requestCameraPermission();
+      } catch (e) {
+        console.warn('Camera request failed:', e);
+      }
+    }
     await initializeScanner();
-  }, [selectedCamera, initializeScanner]);
+  }, [selectedCamera, availableCameras, initializeScanner, requestCameraPermission]);
 
   const stopScanning = useCallback(async () => {
     setIsInitializing(false);
@@ -567,10 +575,13 @@ export default function AdminScanner() {
    }, [getCameras, cleanupScanner]);
 
   useEffect(() => {
-    if (selectedCamera && scannerStatus === 'idle' && !manualStopRef.current) {
-      startScanning();
+    if (scannerStatus === 'idle' && !manualStopRef.current) {
+      const timer = setTimeout(() => {
+        startScanning();
+      }, 400);
+      return () => clearTimeout(timer);
     }
-  }, [selectedCamera, scannerStatus, startScanning]);
+  }, [scannerStatus, startScanning]);
 
   useEffect(() => {
     if (availableCameras.length > 0) {

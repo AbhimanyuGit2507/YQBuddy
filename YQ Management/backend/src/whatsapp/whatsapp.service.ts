@@ -96,22 +96,31 @@ export class WhatsappService {
     method: string = 'GET',
     body?: any,
   ): Promise<FetchEvoResult> {
+    const startTime = Date.now();
+    const fullUrl = `${this.evoUrl}${path}`;
+
     if (!this.evoUrl) {
-      this.logger.warn(
-        `Evolution API URL not configured. Skipping request to ${path}`,
-      );
+      const errorMsg = 'Evolution API URL is not configured.';
+      this.logger.warn({
+        evoRequest: { method, url: fullUrl, path, body },
+        error: errorMsg,
+      }, `Evolution API Skipped: ${method} ${path} -> ${errorMsg}`);
       return {
         status: 0,
         data: null,
-        error: { message: 'Evolution API URL is not configured.', raw: '' },
+        error: { message: errorMsg, raw: '' },
       };
     }
+
+    this.logger.log({
+      evoRequest: { method, url: fullUrl, path, body: body || null },
+    }, `Evolution API Request: ${method} ${path}`);
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 35000);
 
     try {
-      const res = await fetch(`${this.evoUrl}${path}`, {
+      const res = await fetch(fullUrl, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -122,6 +131,7 @@ export class WhatsappService {
       });
 
       const text = await res.text();
+      const durationMs = Date.now() - startTime;
       let parsed: any;
       try {
         parsed = JSON.parse(text);
@@ -131,13 +141,28 @@ export class WhatsappService {
 
       if (!res.ok) {
         const evolutionError = this.buildEvolutionError(res.status, text);
+        this.logger.error({
+          evoRequest: { method, url: fullUrl, path, body },
+          evoResponse: { status: res.status, raw: text, parsed },
+          durationMs,
+        }, `Evolution API Failed [Status ${res.status}]: ${method} ${path} (${durationMs}ms) -> ${evolutionError.message}`);
         return { status: res.status, data: parsed, error: evolutionError };
       }
 
-      this.logger.debug(`Evolution API ${method} ${path} -> ${res.status}`);
+      this.logger.log({
+        evoRequest: { method, url: fullUrl, path, body },
+        evoResponse: { status: res.status, parsed },
+        durationMs,
+      }, `Evolution API Response [Status ${res.status}]: ${method} ${path} (${durationMs}ms) -> Success`);
       return { status: res.status, data: parsed };
     } catch (error) {
+      const durationMs = Date.now() - startTime;
       const evolutionError = this.classifyNetworkError(path, error);
+      this.logger.error({
+        evoRequest: { method, url: fullUrl, path, body },
+        evolutionError,
+        durationMs,
+      }, `Evolution API Network/Timeout Error: ${method} ${path} (${durationMs}ms) -> ${evolutionError.message}`);
       return {
         status: evolutionError.status ?? 502,
         data: null,

@@ -1,5 +1,5 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
-import { createBrandEmailLayout, generateOtpBoxHtml } from './email-layout';
+import { createBrandEmailLayout, generateOtpBoxHtml, generateButtonHtml } from './email-layout';
 
 @Injectable()
 export class EmailService {
@@ -172,6 +172,115 @@ export class EmailService {
         `Failed to add contact to marketing list: ${email}`,
         error,
       );
+    }
+  }
+
+  async sendStaffInvitation(
+    email: string,
+    workspaceName: string,
+    role: string,
+    inviteUrl: string,
+    code: string,
+  ) {
+    try {
+      if (!this.apiKey) {
+        this.logger.warn(`[MOCK EMAIL] Staff invitation to ${email} for workspace "${workspaceName}" (Role: ${role}). URL: ${inviteUrl}`);
+        return { success: true, mocked: true };
+      }
+
+      const title = 'You have been invited to join Qmova';
+      const content = `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">Workspace Collaboration Invitation</h2>
+      <p style="color: #4b5563; line-height: 1.6;">You have been invited to join the <strong>${workspaceName}</strong> workspace on Qmova as a <strong>${role}</strong>.</p>
+      <p style="color: #4b5563; line-height: 1.6;">Click the button below to accept your invitation, create your Qmova account, and connect directly to your workspace team:</p>
+      ${generateButtonHtml('Accept Invite & Join Team', inviteUrl)}
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-top: 24px;">
+        <p style="margin: 0; font-size: 13px; color: #64748b;">Or join manually by entering your invitation code during signup: <strong style="color: #0f172a; font-family: monospace; font-size: 14px; letter-spacing: 1px;">${code}</strong></p>
+      </div>
+      <p style="color: #4b5563; line-height: 1.6; font-size: 14px; margin-top: 24px;">This secure invitation link is valid for <strong>3 days</strong>. If you do not recognize this invitation, simply disregard this notice.</p>`;
+
+      const htmlContent = createBrandEmailLayout({
+        title,
+        preheader: `You've been invited to join ${workspaceName} as ${role}`,
+        content,
+      });
+
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'api-key': this.apiKey,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: {
+            name: `${this.senderName} Team`,
+            email: this.senderEmail,
+          },
+          to: [{ email }],
+          subject: `Invitation to join ${workspaceName} on Qmova`,
+          htmlContent,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        this.logger.error(`Brevo API error in sendStaffInvitation: ${errorText}`);
+        return { success: false, error: errorText };
+      }
+
+      this.logger.log(`Sent staff invitation email via Brevo to ${email}`);
+      return { success: true };
+    } catch (error: any) {
+      this.logger.error(`Failed to send staff invitation to ${email}`, error);
+      return { success: false, error: error?.message };
+    }
+  }
+
+  async sendInvitationExpiredNotification(
+    adminEmail: string,
+    staffEmail: string,
+    workspaceName: string,
+  ) {
+    try {
+      if (!this.apiKey) {
+        this.logger.warn(`[MOCK EMAIL] Invitation expired notice to admin ${adminEmail} for unaccepted invite ${staffEmail}`);
+        return;
+      }
+
+      const content = `<h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 700;">Staff Invitation Expired</h2>
+      <p style="color: #4b5563; line-height: 1.6;">The workspace invitation sent to <strong>${staffEmail}</strong> to join <strong>${workspaceName}</strong> has remained unaccepted for over 3 days and has expired.</p>
+      <p style="color: #4b5563; line-height: 1.6;">For organizational security, the joining code has been automatically disabled. You can easily reissue a fresh 3-day invitation anytime directly from your Staff Directory settings in the dashboard.</p>
+      ${generateButtonHtml('Manage Staff & Resend', 'https://yq-qmova.vercel.app/dashboard/settings/staff')}`;
+
+      const htmlContent = createBrandEmailLayout({
+        title: 'Staff Invitation Expired Notice',
+        preheader: `Staff invite for ${staffEmail} expired without acceptance`,
+        content,
+      });
+
+      await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'api-key': this.apiKey,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: {
+            name: `${this.senderName} Notifications`,
+            email: this.senderEmail,
+          },
+          to: [{ email: adminEmail }],
+          subject: `Notice: Invitation for ${staffEmail} has expired`,
+          htmlContent,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      this.logger.log(`Sent invitation expiration notification to admin ${adminEmail}`);
+    } catch (error) {
+      this.logger.error(`Failed to send invitation expiration notification to ${adminEmail}`, error);
     }
   }
 }

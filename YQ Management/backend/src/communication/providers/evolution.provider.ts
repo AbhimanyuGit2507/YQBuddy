@@ -15,22 +15,52 @@ export class EvolutionProvider implements WhatsAppProvider {
   }
 
   async fetch(path: string, method: string = 'GET', body?: any) {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: this.apiKey,
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const text = await res.text();
-    if (!res.ok) {
-      this.logger.error(`Evolution API Error ${res.status}: ${text}`);
-    }
+    const startTime = Date.now();
+    const fullUrl = `${this.baseUrl}${path}`;
+    this.logger.log({
+      evoRequest: { method, url: fullUrl, path, body: body || null },
+    }, `Evolution Provider Request: ${method} ${path}`);
+
     try {
-      return { status: res.status, data: JSON.parse(text) };
-    } catch {
-      return { status: res.status, data: text };
+      const res = await fetch(fullUrl, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: this.apiKey,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const text = await res.text();
+      const durationMs = Date.now() - startTime;
+      let parsed: any;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = text;
+      }
+      if (!res.ok) {
+        this.logger.error({
+          evoRequest: { method, url: fullUrl, path, body },
+          evoResponse: { status: res.status, raw: text, parsed },
+          durationMs,
+        }, `Evolution Provider Error [Status ${res.status}]: ${method} ${path} (${durationMs}ms) -> ${text}`);
+      } else {
+        this.logger.log({
+          evoRequest: { method, url: fullUrl, path, body },
+          evoResponse: { status: res.status, parsed },
+          durationMs,
+        }, `Evolution Provider Response [Status ${res.status}]: ${method} ${path} (${durationMs}ms) -> Success`);
+      }
+      return { status: res.status, data: parsed };
+    } catch (error) {
+      const durationMs = Date.now() - startTime;
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error({
+        evoRequest: { method, url: fullUrl, path, body },
+        error: errorMsg,
+        durationMs,
+      }, `Evolution Provider Network Error: ${method} ${path} (${durationMs}ms) -> ${errorMsg}`);
+      return { status: 502, data: null };
     }
   }
 
@@ -38,6 +68,7 @@ export class EvolutionProvider implements WhatsAppProvider {
     to: string,
     body: string,
   ): Promise<{ success: boolean; providerId?: string; error?: string }> {
+    const startTime = Date.now();
     try {
       if (!this.baseUrl || !this.apiKey || !this.defaultInstance) {
         this.logger.warn(`[MOCK WHATSAPP] To: ${to} | Body: ${body}`);
@@ -45,41 +76,55 @@ export class EvolutionProvider implements WhatsAppProvider {
       }
 
       const cleanNumber = to.replace(/\D/g, '');
-      const res = await fetch(
-        `${this.baseUrl}/message/sendText/${this.defaultInstance}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: this.apiKey,
-          },
-          body: JSON.stringify({
-            number: cleanNumber,
-            text: body,
-          }),
+      const path = `/message/sendText/${this.defaultInstance}`;
+      const fullUrl = `${this.baseUrl}${path}`;
+      const payload = { number: cleanNumber, text: body };
+
+      this.logger.log({
+        evoRequest: { method: 'POST', url: fullUrl, path, body: payload },
+      }, `Evolution sendText requested to ${cleanNumber} on ${this.defaultInstance}`);
+
+      const res = await fetch(fullUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: this.apiKey,
         },
-      );
+        body: JSON.stringify(payload),
+      });
+
+      const durationMs = Date.now() - startTime;
+      const responseText = await res.text();
+      let parsedData: any;
+      try { parsedData = JSON.parse(responseText); } catch { parsedData = responseText; }
 
       if (!res.ok) {
-        const errorText = await res.text();
-        this.logger.error(
-          `Evolution API error sending message: ${res.status} ${errorText}`,
-        );
+        this.logger.error({
+          evoRequest: { method: 'POST', url: fullUrl, path, body: payload },
+          evoResponse: { status: res.status, raw: responseText },
+          durationMs,
+        }, `Evolution API error sending message: Status ${res.status} (${durationMs}ms) -> ${responseText}`);
         return {
           success: false,
-          error: `Evolution API error: ${res.status} ${errorText}`,
+          error: `Evolution API error: ${res.status} ${responseText}`,
         };
       }
 
-      const data = await res.json();
-      this.logger.log(`Sent WhatsApp message to ${cleanNumber}`);
-      return { success: true, providerId: data.key?.id };
+      this.logger.log({
+        evoRequest: { method: 'POST', url: fullUrl, path, body: payload },
+        evoResponse: { status: res.status, data: parsedData },
+        durationMs,
+      }, `Sent WhatsApp message to ${cleanNumber} on ${this.defaultInstance} (${durationMs}ms)`);
+      return { success: true, providerId: parsedData.key?.id };
     } catch (error) {
-      this.logger.error(`Failed to send WhatsApp message to ${to}`, error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
+      const durationMs = Date.now() - startTime;
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error({
+        evoRequest: { to, body },
+        error: errorMsg,
+        durationMs,
+      }, `Failed to send WhatsApp message to ${to} (${durationMs}ms) -> ${errorMsg}`);
+      return { success: false, error: errorMsg };
     }
   }
 
@@ -89,6 +134,7 @@ export class EvolutionProvider implements WhatsAppProvider {
     footer: string,
     buttons: Array<{ id: string; text: string }>,
   ): Promise<{ success: boolean; providerId?: string; error?: string }> {
+    const startTime = Date.now();
     try {
       if (!this.baseUrl || !this.apiKey || !this.defaultInstance) {
         this.logger.warn(`[MOCK WHATSAPP] Buttons to: ${to} | Text: ${text}`);
@@ -96,42 +142,59 @@ export class EvolutionProvider implements WhatsAppProvider {
       }
 
       const cleanNumber = to.replace(/\D/g, '');
-      const res = await fetch(
-        `${this.baseUrl}/message/sendButtons/${this.defaultInstance}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: this.apiKey,
-          },
-          body: JSON.stringify({
-            number: cleanNumber,
-            options: { delay: 1200, presence: 'composing' },
-            buttonMessage: { text, footer, buttons },
-          }),
+      const path = `/message/sendButtons/${this.defaultInstance}`;
+      const fullUrl = `${this.baseUrl}${path}`;
+      const payload = {
+        number: cleanNumber,
+        options: { delay: 1200, presence: 'composing' },
+        buttonMessage: { text, footer, buttons },
+      };
+
+      this.logger.log({
+        evoRequest: { method: 'POST', url: fullUrl, path, body: payload },
+      }, `Evolution sendButtons requested to ${cleanNumber} on ${this.defaultInstance}`);
+
+      const res = await fetch(fullUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: this.apiKey,
         },
-      );
+        body: JSON.stringify(payload),
+      });
+
+      const durationMs = Date.now() - startTime;
+      const responseText = await res.text();
+      let parsedData: any;
+      try { parsedData = JSON.parse(responseText); } catch { parsedData = responseText; }
 
       if (!res.ok) {
-        const errorText = await res.text();
-        this.logger.error(
-          `Evolution API error sending buttons: ${res.status} ${errorText}`,
-        );
+        this.logger.error({
+          evoRequest: { method: 'POST', url: fullUrl, path, body: payload },
+          evoResponse: { status: res.status, raw: responseText },
+          durationMs,
+        }, `Evolution API error sending buttons: Status ${res.status} (${durationMs}ms) -> ${responseText}`);
         return {
           success: false,
-          error: `Evolution API error: ${res.status} ${errorText}`,
+          error: `Evolution API error: ${res.status} ${responseText}`,
         };
       }
 
-      const data = await res.json();
-      this.logger.log(`Sent WhatsApp buttons to ${cleanNumber}`);
-      return { success: true, providerId: data.key?.id };
+      this.logger.log({
+        evoRequest: { method: 'POST', url: fullUrl, path, body: payload },
+        evoResponse: { status: res.status, data: parsedData },
+        durationMs,
+      }, `Sent WhatsApp buttons to ${cleanNumber} on ${this.defaultInstance} (${durationMs}ms)`);
+      return { success: true, providerId: parsedData.key?.id };
     } catch (error) {
-      this.logger.error(`Failed to send WhatsApp buttons to ${to}`, error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
+      const durationMs = Date.now() - startTime;
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error({
+        evoRequest: { to, text, buttons },
+        error: errorMsg,
+        durationMs,
+      }, `Failed to send WhatsApp buttons to ${to} (${durationMs}ms) -> ${errorMsg}`);
+      return { success: false, error: errorMsg };
     }
   }
 

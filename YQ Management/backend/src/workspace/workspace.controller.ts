@@ -6,6 +6,7 @@ import {
   UseGuards,
   Req,
   Patch,
+  Param,
   ForbiddenException,
 } from '@nestjs/common';
 import { WorkspaceService } from './workspace.service';
@@ -43,6 +44,11 @@ export class WorkspaceController {
       return this.workspaceService.getAllWorkspaces();
     }
     throw new ForbiddenException('Forbidden');
+  }
+
+  @Get('invite-preview/:code')
+  async getInvitePreview(@Param('code') code: string) {
+    return this.workspaceService.getInvitePreview(code);
   }
 
   @UseGuards(AuthGuard('jwt'))

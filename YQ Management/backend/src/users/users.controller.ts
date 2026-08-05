@@ -35,6 +35,16 @@ export class UsersController {
     );
   }
 
+  @Post('send-invite-email')
+  sendInviteEmail(@Req() req: AuthenticatedRequest, @Body() body: { email: string; code: string; role: string }) {
+    return this.usersService.sendInviteEmail(req.user.tenantId, body);
+  }
+
+  @Post('resend-invite/:id')
+  resendInvite(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return this.usersService.resendInvite(req.user.tenantId, id);
+  }
+
   @Delete(':id')
   async deleteUser(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     const result = await this.usersService.deleteUser(

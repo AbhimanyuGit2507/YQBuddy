@@ -50,14 +50,48 @@ export class WorkspaceService {
     return this.prisma.workspace.findMany();
   }
 
+  async getInvitePreview(code: string) {
+    const invitation = await this.prisma.invitation.findFirst({
+      where: { code: code.toUpperCase(), used: false },
+    });
+
+    if (!invitation) {
+      throw new BadRequestException('Invalid or already used invitation code.');
+    }
+
+    if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+      throw new BadRequestException('This workspace invitation has expired.');
+    }
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: invitation.workspaceId },
+      select: { name: true, subdomain: true, tenantId: true },
+    });
+
+    return {
+      valid: true,
+      code: invitation.code,
+      role: invitation.role,
+      workspaceName: workspace?.name || 'Workspace Team',
+      subdomain: workspace?.subdomain || '',
+      tenantId: workspace?.tenantId,
+      email: invitation.email,
+    };
+  }
+
   async joinWorkspace(userId: string, code: string) {
     const invitation =
       await this.invitationService.validateAndUseInvitation(code);
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: invitation.workspaceId },
+    });
 
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
         workspaceId: invitation.workspaceId,
+        tenantId: workspace ? workspace.tenantId : undefined,
         role: invitation.role as Role,
       },
       include: { workspace: true },
@@ -67,6 +101,7 @@ export class WorkspaceService {
       success: true,
       workspace: user.workspace,
       role: user.role,
+      tenantId: user.tenantId,
     };
   }
 

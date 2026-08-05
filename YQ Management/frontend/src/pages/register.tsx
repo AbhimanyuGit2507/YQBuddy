@@ -18,6 +18,26 @@ export default function Register() {
   const [error, setError] = useState('');
   const [resending, setResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState('');
+  const [invitePreview, setInvitePreview] = useState<null | { workspaceName: string; role: string; code: string }>(null);
+
+  React.useEffect(() => {
+    const code = (router.query.inviteCode || router.query.code || (typeof window !== 'undefined' ? localStorage.getItem('qmova_invite_code') : null)) as string;
+    if (typeof code === 'string' && code.trim()) {
+      const trimmed = code.trim().toUpperCase();
+      localStorage.setItem('qmova_invite_code', trimmed);
+      document.cookie = `qmova_invite_code=${trimmed}; path=/; max-age=86400; SameSite=Lax`;
+      fetchApi(`/workspace/invite-preview/${trimmed}`)
+        .then((res: any) => {
+          if (res?.valid) {
+            setInvitePreview({ workspaceName: res.workspaceName, role: res.role, code: res.code });
+            if (res.email && !email) {
+              setEmail(res.email);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [router.query]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,6 +159,18 @@ export default function Register() {
             <span className="font-extrabold text-xl tracking-tight text-white">Qmova</span>
           </div>
           
+          {invitePreview && (
+            <div className="mb-6 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center gap-3 animate-in fade-in duration-300">
+              <div className="w-9 h-9 rounded-xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-black shrink-0">
+                ★
+              </div>
+              <div className="text-left">
+                <p className="text-xs text-indigo-300 uppercase tracking-wider font-bold">Team Invitation Active</p>
+                <p className="text-sm text-zinc-300">You are registering to join <strong className="text-white">{invitePreview.workspaceName}</strong> as <strong className="text-indigo-400 uppercase">{invitePreview.role}</strong>.</p>
+              </div>
+            </div>
+          )}
+
           <h1 className="text-3xl font-bold mb-2">
             {step === 'details' ? 'Create your account' : 'Verify your email'}
           </h1>
