@@ -82,7 +82,7 @@ export default function WhatsAppSettingsPage() {
       refetchWhatsAppStatus();
     },
     onError: (err: any) => {
-      toast.error(err.message || 'Failed to initialize WhatsApp connection');
+      toast.error(err.details?.message || err.message || 'Failed to initialize WhatsApp connection. Please check Evolution API.');
     },
   });
 
@@ -188,7 +188,14 @@ export default function WhatsAppSettingsPage() {
                 
                 {!qrCode && !pairingCode ? (
                   <div className="flex justify-center">
-                     <button
+                    {whatsappStatus?.state === 'connecting' ? (
+                      <div className="flex flex-col items-center p-8 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
+                        <Loader2 className="w-10 h-10 animate-spin text-green-500 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Generating QR Code...</h3>
+                        <p className="text-sm text-gray-500 mt-2 text-center max-w-xs">Please wait while we initialize the WhatsApp engine.</p>
+                      </div>
+                    ) : (
+                      <button
                         onClick={() => connectWhatsAppMutation.mutate()}
                         disabled={connectWhatsAppMutation.isPending}
                         className="px-6 py-3 bg-[#25D366] hover:bg-[#1DA851] text-white font-medium rounded-xl transition-all shadow-sm flex items-center gap-2"
@@ -196,6 +203,7 @@ export default function WhatsAppSettingsPage() {
                         {connectWhatsAppMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
                         Connect WhatsApp
                       </button>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center p-8 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">

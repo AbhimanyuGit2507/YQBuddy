@@ -320,19 +320,22 @@ export class WhatsappService {
         }
       }
 
-      if (qr) {
+      if (qr || existingState === 'connecting') {
+        if (!qr) {
+          this.logger.log(`Instance ${instanceName} is still connecting, waiting for QR...`);
+        }
         await this.setWebhook(instanceName).catch(() => {});
         return {
           instanceName,
           state: 'connecting' as InstanceState,
-          qr,
+          qr: qr || undefined,
         };
       }
 
-      // If existing instance is stuck in connecting/offline without a valid QR code,
+      // If existing instance is stuck in offline without a valid QR code,
       // generate a fresh instance ID to instantly produce a valid QR code for scanning
       this.logger.warn(
-        `Existing instance ${instanceName} yielded no QR code. Creating fresh instance for tenant ${tenant.id}.`,
+        `Existing closed instance ${instanceName} yielded no QR code. Creating fresh instance for tenant ${tenant.id}.`,
       );
       this.fetchEvo(`/instance/delete/${instanceName}`, 'DELETE').catch(
         () => {},
@@ -384,13 +387,14 @@ export class WhatsappService {
     let qr = this.extractQr(createResult.data);
     let state = this.extractState(createResult.data);
 
-    if (!qr || state === 'close') {
+    if (!qr || state === 'close' || state === 'connecting') {
       const connectRes = await this.fetchEvo(
         `/instance/connect/${instanceName}`,
         'GET',
       );
       if (!connectRes.error) {
         qr = this.extractQr(connectRes.data) || qr;
+        state = this.extractState(connectRes.data) || state;
       }
       if (!qr) {
         const stateResult = await this.fetchEvo(
@@ -629,8 +633,8 @@ export class WhatsappService {
     const isConnected = state === 'open';
 
     let qr: string | null = this.extractQr(stateResult.data);
-    if (state === 'close') {
-      this.logger.debug(`Instance ${instanceName} is closed. Attempting to connect to generate QR.`);
+    if (state === 'close' || (state === 'connecting' && !qr)) {
+      this.logger.debug(`Instance ${instanceName} is ${state}. Attempting to connect to retrieve/generate QR.`);
       const connectRes = await this.fetchEvo(
         `/instance/connect/${instanceName}`,
         'GET',
