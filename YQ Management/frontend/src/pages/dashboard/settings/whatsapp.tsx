@@ -4,7 +4,7 @@ import SettingsLayout from '../../../components/SettingsLayout';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
 import { toast } from 'sonner';
-import { MessageSquare, QrCode, Smartphone, Loader2, Send, Save, AlertCircle, CheckCircle2, Phone } from 'lucide-react';
+import { MessageSquare, QrCode, Smartphone, Loader2, Send, Save, AlertCircle, CheckCircle2, Phone, RefreshCw } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react'; // Wait, let's just use an img or whatever was there. Actually, let's use the provided qrcode or standard img. 
 import PhoneInput from '../../../components/PhoneInput';
 export default function WhatsAppSettingsPage() {
@@ -192,7 +192,19 @@ export default function WhatsAppSettingsPage() {
                       <div className="flex flex-col items-center p-8 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
                         <Loader2 className="w-10 h-10 animate-spin text-green-500 mb-4" />
                         <h3 className="text-lg font-medium text-gray-900 dark:text-white">Generating QR Code...</h3>
-                        <p className="text-sm text-gray-500 mt-2 text-center max-w-xs">Please wait while we initialize the WhatsApp engine.</p>
+                        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-2 text-center max-w-xs">
+                          Please wait while we establish a secure connection to WhatsApp.
+                        </p>
+                        <div className="mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800 w-full flex justify-center">
+                          <button
+                            onClick={() => connectWhatsAppMutation.mutate()}
+                            disabled={connectWhatsAppMutation.isPending}
+                            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-all text-sm flex items-center gap-2"
+                          >
+                            {connectWhatsAppMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                            {connectWhatsAppMutation.isPending ? 'Retrying...' : 'Stuck? Regenerate QR'}
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <button
