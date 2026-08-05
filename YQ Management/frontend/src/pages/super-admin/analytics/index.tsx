@@ -74,38 +74,31 @@ export default function SuperAdminAnalytics() {
   const trends = data?.trends || [];
   const topTenants = data?.topTenants || [];
 
-  // Simulated regional data based on YQ Qmova deployments
-  const geographyData = [
-    { region: 'South Africa (Johannesburg, Cape Town)', share: 42, tenants: Math.round((metrics.totalTenants || 15) * 0.42) || 6, color: 'bg-indigo-600 dark:bg-indigo-500', code: 'ZAF' },
-    { region: 'United States & North America', share: 24, tenants: Math.round((metrics.totalTenants || 15) * 0.24) || 4, color: 'bg-blue-600 dark:bg-blue-500', code: 'USA' },
-    { region: 'United Kingdom & Europe', share: 18, tenants: Math.round((metrics.totalTenants || 15) * 0.18) || 3, color: 'bg-emerald-600 dark:bg-emerald-500', code: 'GBR/EUR' },
-    { region: 'United Arab Emirates & Middle East', share: 10, tenants: Math.round((metrics.totalTenants || 15) * 0.10) || 2, color: 'bg-amber-600 dark:bg-amber-500', code: 'ARE' },
-    { region: 'Asia Pacific (India & Australia)', share: 6, tenants: Math.round((metrics.totalTenants || 15) * 0.06) || 1, color: 'bg-purple-600 dark:bg-purple-500', code: 'APAC' },
-  ];
+  const financials = data?.financials || { realMRR: 0, realARR: 0, arpu: 0, planTiers: [] };
+  const operational = data?.operational || { avgWaitMins: 0, peakWindow: 'N/A' };
+  const geographyData: any[] = data?.geography || [];
+  const rawTraffic: any[] = data?.trafficPages || [];
 
-  // Most visited pages & portal endpoints in Qmova
-  const trafficPages = [
-    { page: '/dashboard/queues', title: 'Live Queue Dashboard & Token Control', visits: '38,420', percentage: 42, icon: Activity, trend: '+14%' },
-    { page: '/dashboard/scanner', title: 'Staff QR Code Verification Scanner', visits: '24,110', percentage: 26, icon: QrCode, trend: '+22%' },
-    { page: '/dashboard/display-picker', title: 'Live TV Lobby Display Screen & TTS Voice', visits: '18,500', percentage: 20, icon: Tv, trend: '+8%' },
-    { page: '/dashboard/settings/whatsapp', title: 'Automated WhatsApp Token Notifications', visits: '6,300', percentage: 7, icon: Smartphone, trend: '+35%' },
-    { page: '/dashboard/history', title: 'Analytics & CSV Record Exports', visits: '4,200', percentage: 5, icon: BarChart3, trend: '+5%' },
-  ];
+  const iconsMap: Record<string, any> = {
+    '/dashboard/queues': Activity,
+    '/dashboard/scanner': QrCode,
+    '/dashboard/display-picker': Tv,
+    '/dashboard/settings/whatsapp': Smartphone,
+    '/dashboard/history': BarChart3,
+  };
+  const trafficPages = rawTraffic.map((t: any) => ({
+    ...t,
+    icon: iconsMap[t.page] || Navigation,
+  }));
 
-  // Token status distribution calculation
+  // Token status distribution calculation from real database counts
   const totalTokensVal = metrics.totalTokens || 1;
   const tokenStats = [
-    { name: 'Completed', value: metrics.completedTokens !== undefined ? metrics.completedTokens : Math.round(totalTokensVal * 0.72), color: '#10B981' },
-    { name: 'Waiting Now', value: metrics.waitingTokens !== undefined ? metrics.waitingTokens : Math.round(totalTokensVal * 0.15), color: '#6366F1' },
-    { name: 'Currently Serving', value: metrics.servedTokens !== undefined ? metrics.servedTokens : Math.round(totalTokensVal * 0.08), color: '#3B82F6' },
-    { name: 'Missed / Cancelled', value: metrics.missedTokens !== undefined ? metrics.missedTokens : Math.round(totalTokensVal * 0.05), color: '#F43F5E' },
+    { name: 'Completed', value: metrics.completedTokens || 0, color: '#10B981' },
+    { name: 'Waiting Now', value: metrics.waitingTokens || 0, color: '#6366F1' },
+    { name: 'Currently Serving', value: metrics.servedTokens || 0, color: '#3B82F6' },
+    { name: 'Missed / Cancelled', value: metrics.missedTokens || 0, color: '#F43F5E' },
   ];
-
-  // Estimated Financial calculations
-  const totalTenantsVal = metrics.totalTenants || 1;
-  const activeSubsVal = metrics.totalSubscriptions || Math.max(1, Math.round(totalTenantsVal * 0.4));
-  const estimatedMRR = activeSubsVal * 49; // $49/mo benchmark average
-  const estimatedARR = estimatedMRR * 12;
 
   return (
     <SuperAdminLayout pageTitle="Analytics" pageSubtitle="Platform intelligence, growth, and throughput telemetry">
@@ -309,15 +302,15 @@ export default function SuperAdminAnalytics() {
                       <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 inline-flex items-center gap-1.5 mb-4">
                         <Zap className="w-3.5 h-3.5 text-amber-400" /> High-Performance Routing
                       </span>
-                      <h4 className="text-xl font-black mb-2">Average Wait Time Reduction</h4>
-                      <p className="text-3xl font-black text-emerald-400 font-mono">-38.4%</p>
+                      <h4 className="text-xl font-black mb-2">Average Wait Time</h4>
+                      <p className="text-3xl font-black text-emerald-400 font-mono">{operational.avgWaitMins} mins</p>
                       <p className="text-xs text-indigo-200 mt-3 leading-relaxed">
-                        Businesses leveraging Qmova virtual QR Check-in & WhatsApp notifications reduce physical waiting room congestion by nearly 40%.
+                        Measured directly from customer check-in timestamps to counter service initiation across all live queues.
                       </p>
                     </div>
                     <div className="pt-6 border-t border-white/10 mt-6 text-xs text-indigo-300 flex items-center justify-between">
                       <span>Peak Lobby Window:</span>
-                      <span className="font-bold text-white font-mono">10:00 AM - 2:00 PM</span>
+                      <span className="font-bold text-white font-mono">{operational.peakWindow}</span>
                     </div>
                   </div>
                 </div>
@@ -329,23 +322,23 @@ export default function SuperAdminAnalytics() {
               <div className="space-y-8 animate-in fade-in duration-300">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   <div className="bg-white dark:bg-zinc-950 p-6 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm">
-                    <span className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">Estimated MRR</span>
-                    <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2 font-mono">${estimatedMRR.toLocaleString()}</p>
+                    <span className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">Real MRR</span>
+                    <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2 font-mono">${financials.realMRR.toLocaleString()}</p>
                     <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1 flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                      <TrendingUp className="w-3.5 h-3.5" /> +18.2% month-over-month
+                      <TrendingUp className="w-3.5 h-3.5" /> Calculated from active database subscriptions
                     </p>
                   </div>
 
                   <div className="bg-white dark:bg-zinc-950 p-6 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm">
-                    <span className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">Projected ARR</span>
-                    <p className="text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-2 font-mono">${estimatedARR.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Annualized based on active subscriptions</p>
+                    <span className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">Real ARR</span>
+                    <p className="text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-2 font-mono">${financials.realARR.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Annualized from actual live billing plans</p>
                   </div>
 
                   <div className="bg-white dark:bg-zinc-950 p-6 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm">
                     <span className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">ARPU (Per Business)</span>
-                    <p className="text-3xl font-black text-blue-600 dark:text-blue-400 mt-2 font-mono">$49.00</p>
-                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Standard business SaaS subscription baseline</p>
+                    <p className="text-3xl font-black text-blue-600 dark:text-blue-400 mt-2 font-mono">${financials.arpu.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Average real revenue per registered tenant</p>
                   </div>
                 </div>
 
@@ -355,11 +348,7 @@ export default function SuperAdminAnalytics() {
                     <Layers className="w-5 h-5 text-amber-500" /> Subscription Tier Adoption
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {[
-                      { tier: 'Trial Plan (Free & Test)', count: Math.max(0, (metrics.totalTenants || 2) - activeSubsVal), color: 'border-amber-500/30 bg-amber-50/50 dark:bg-amber-500/5 text-amber-600' },
-                      { tier: 'Standard Plan ($49/mo)', count: Math.round(activeSubsVal * 0.7), color: 'border-blue-500/30 bg-blue-50/50 dark:bg-blue-500/5 text-blue-600' },
-                      { tier: 'Enterprise God Plan ($149/mo)', count: Math.round(activeSubsVal * 0.3), color: 'border-purple-500/30 bg-purple-50/50 dark:bg-purple-500/5 text-purple-600' },
-                    ].map((plan, idx) => (
+                    {financials.planTiers.map((plan: any, idx: number) => (
                       <div key={idx} className={`p-5 rounded-xl border ${plan.color} transition-all`}>
                         <p className="text-xs font-bold uppercase tracking-wider mb-1">{plan.tier}</p>
                         <p className="text-3xl font-black font-mono">{plan.count}</p>
