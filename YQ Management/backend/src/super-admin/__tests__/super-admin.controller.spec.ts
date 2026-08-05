@@ -46,6 +46,10 @@ describe('SuperAdminController', () => {
       send: jest.fn(),
     };
 
+    const whatsappProvider = {
+      sendText: jest.fn().mockResolvedValue({ success: true, providerId: 'mock-wa-id' }),
+    };
+
     const communicationLogService = {
       log: jest.fn(),
       getFailedLogs: jest.fn(),
@@ -61,6 +65,7 @@ describe('SuperAdminController', () => {
       providers: [
         { provide: SuperAdminService, useValue: service },
         { provide: 'EmailProvider', useValue: emailProvider },
+        { provide: 'WhatsAppProvider', useValue: whatsappProvider },
         { provide: CommunicationLogService, useValue: communicationLogService },
         { provide: TemplateService, useValue: templateService },
       ],

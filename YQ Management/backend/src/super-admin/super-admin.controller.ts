@@ -16,6 +16,7 @@ import { Inject } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { SuperAdminService } from './super-admin.service';
 import type { EmailProvider } from '../communication/interfaces/email.provider';
+import type { WhatsAppProvider } from '../communication/interfaces/whatsapp.provider';
 import { CommunicationLogService, CommunicationChannel, CommunicationStatus } from '../communication/logging/communication-log.service';
 import { TemplateService } from '../communication/templates/template.service';
 
@@ -25,6 +26,7 @@ export class SuperAdminController {
   constructor(
     private readonly superAdminService: SuperAdminService,
     @Inject('EmailProvider') private readonly emailProvider: EmailProvider,
+    @Inject('WhatsAppProvider') private readonly whatsappProvider: WhatsAppProvider,
     private readonly communicationLogService: CommunicationLogService,
     private readonly templateService: TemplateService,
   ) {}
@@ -145,27 +147,99 @@ export class SuperAdminController {
     return { connected, configured: !!process.env.BREVO_API_KEY };
   }
 
-  @Post('communication/test-email')
-  async testEmail(@Req() req: any, @Body() body: { to: string; subject?: string }) {
+  @Get('communication/status')
+  async getSystemStatus(@Req() req: any) {
     this.checkSuperAdmin(req);
+    const emailConnected = await this.emailProvider.testConnection();
+    return {
+      email: {
+        provider: 'Brevo (SMTP / RELAY)',
+        connected: emailConnected,
+        configured: !!process.env.BREVO_API_KEY,
+        sender: process.env.BREVO_SENDER_EMAIL || 'yqbuddysa@gmail.com',
+      },
+      whatsapp: {
+        provider: 'Evolution API',
+        configured: !!process.env.EVOLUTION_API_KEY && !!process.env.EVOLUTION_API_URL,
+        url: process.env.EVOLUTION_API_URL || 'Not set',
+        instance: process.env.EVOLUTION_INSTANCE_NAME || 'yq_instance',
+      },
+      payments: {
+        provider: 'Ozow Live Gateway',
+        configured: !!process.env.OZOW_SITE_CODE && !!process.env.OZOW_PRIVATE_KEY,
+        siteCode: process.env.OZOW_SITE_CODE || 'Not set',
+        mode: process.env.OZOW_IS_TEST === 'true' || process.env.NODE_ENV !== 'production' ? 'Sandbox / Test' : 'Live Production (Bank Direct)',
+      },
+      otp: {
+        engine: 'Redis OTP Storage (5 min expiry)',
+        status: 'Active',
+      }
+    };
+  }
+
+  @Post('communication/test-email')
+  async testEmail(@Req() req: any, @Body() body: { to: string; subject?: string; type?: 'standard' | 'otp' }) {
+    this.checkSuperAdmin(req);
+    let subject = body.subject || 'Qmova Test Email';
+    let htmlContent = '<h1>Test Email</h1><p>This is a test email from Qmova.</p>';
+    let textContent = 'Test Email - This is a test email from Qmova.';
+    let logType = 'test';
+    let otpCode = '';
+
+    if (body.type === 'otp') {
+      otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const template = this.templateService.renderEmail('login_otp', { otp: otpCode });
+      subject = body.subject || `[Qmova] Test OTP Verification Code: ${otpCode}`;
+      htmlContent = template.html;
+      textContent = template.text || '';
+      logType = 'login_otp';
+    }
+
     const result = await this.emailProvider.send({
       to: body.to,
-      subject: body.subject || 'Qmova Test Email',
-      htmlContent: '<h1>Test Email</h1><p>This is a test email from Qmova.</p>',
-      textContent: 'Test Email - This is a test email from Qmova.',
+      subject,
+      htmlContent,
+      textContent,
     });
     await this.communicationLogService.log({
       channel: CommunicationChannel.EMAIL,
-      type: 'test',
+      type: logType,
       recipient: body.to,
-      subject: body.subject || 'Qmova Test Email',
-      body: 'Test Email - This is a test email from Qmova.',
+      subject,
+      body: textContent,
       status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
       provider: 'brevo',
       providerId: result.providerId,
       errorMessage: result.error,
     });
-    return { success: result.success, error: result.error };
+    return { success: result.success, error: result.error, otp: otpCode || undefined };
+  }
+
+  @Post('communication/test-whatsapp')
+  async testWhatsApp(@Req() req: any, @Body() body: { phone: string; message?: string; type?: 'standard' | 'otp' }) {
+    this.checkSuperAdmin(req);
+    let content = body.message || 'Test message from Qmova system.';
+    let logType = 'test';
+    let otpCode = '';
+
+    if (body.type === 'otp') {
+      otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      content = this.templateService.renderWhatsApp('otp', { otp: otpCode });
+      logType = 'otp';
+    }
+
+    const result = await this.whatsappProvider.sendText(body.phone, content);
+    await this.communicationLogService.log({
+      channel: CommunicationChannel.WHATSAPP,
+      type: logType,
+      recipient: body.phone,
+      body: content,
+      status: result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED,
+      provider: 'evolution',
+      providerId: result.providerId,
+      errorMessage: result.error,
+    });
+    return { success: result.success, error: result.error, otp: otpCode || undefined };
   }
 
   @Get('communication/templates/email')

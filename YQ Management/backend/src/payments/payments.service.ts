@@ -67,7 +67,7 @@ export class PaymentsService {
       errorUrl: `${this.frontendUrl}/dashboard/settings/billing?status=error`,
       successUrl: `${this.frontendUrl}/dashboard/settings/billing?status=success`,
       notifyUrl: `${this.baseUrl}/payments/webhook`,
-      isTest: 'true',
+      isTest: process.env.OZOW_IS_TEST !== undefined ? process.env.OZOW_IS_TEST : (process.env.NODE_ENV === 'production' ? 'false' : 'true'),
     };
 
     // 3. Generate SHA512 Hash
