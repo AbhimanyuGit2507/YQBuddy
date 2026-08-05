@@ -647,10 +647,18 @@ export class WhatsappService {
         ? ('connecting' as InstanceState)
         : state;
 
+    let connectedNumber: string | undefined;
+    if (isConnected && stateResult.data?.ownerJid) {
+      connectedNumber = stateResult.data.ownerJid.split('@')[0];
+    } else if (isConnected && stateResult.data?.number) {
+      connectedNumber = stateResult.data.number;
+    }
+
     return {
       instanceName,
       state: finalState,
       whatsappConnected: isConnected,
+      connectedNumber,
       qr,
     };
   }
@@ -927,8 +935,6 @@ export class WhatsappService {
       {
         number: normalizedNumber,
         text,
-        textMessage: { text },
-        options: { delay: 0, presence: 'composing', linkPreview: true },
       },
     );
 

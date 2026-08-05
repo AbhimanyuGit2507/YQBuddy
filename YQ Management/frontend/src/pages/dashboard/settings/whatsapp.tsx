@@ -4,7 +4,7 @@ import SettingsLayout from '../../../components/SettingsLayout';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchApi } from '../../../lib/api';
 import { toast } from 'sonner';
-import { MessageSquare, QrCode, Smartphone, Loader2, Send, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { MessageSquare, QrCode, Smartphone, Loader2, Send, Save, AlertCircle, CheckCircle2, Phone } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react'; // Wait, let's just use an img or whatever was there. Actually, let's use the provided qrcode or standard img. 
 import PhoneInput from '../../../components/PhoneInput';
 export default function WhatsAppSettingsPage() {
@@ -162,6 +162,12 @@ export default function WhatsAppSettingsPage() {
                   <CheckCircle2 className="w-10 h-10 text-green-600 dark:text-green-400" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">WhatsApp is Connected</h3>
+                {whatsappStatus?.connectedNumber && (
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg text-sm font-medium mb-6">
+                    <Phone className="w-4 h-4" />
+                    +{whatsappStatus.connectedNumber}
+                  </div>
+                )}
                 <p className="text-gray-500 dark:text-zinc-400 mb-8 max-w-md mx-auto">
                   Your device is successfully paired. You can now send automated queue notifications to your customers.
                 </p>
