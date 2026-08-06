@@ -14,6 +14,16 @@ export class PaymentsService {
   private readonly frontendUrl =
     process.env.FRONTEND_URL || 'http://localhost:3001';
 
+  private getOzowCheckoutUrl() {
+    const sandboxMode = process.env.OZOW_IS_TEST !== undefined
+      ? (process.env.OZOW_IS_TEST === 'true' || process.env.OZOW_IS_TEST === '1')
+      : process.env.NODE_ENV !== 'production';
+
+    return sandboxMode
+      ? 'https://sandbox.ozow.com/checkout'
+      : 'https://pay.ozow.com/';
+  }
+
   constructor(private prisma: PrismaService) {}
 
   async generatePaymentLink(
@@ -81,7 +91,8 @@ export class PaymentsService {
     return {
       ...payload,
       hashCheck,
-      paymentUrl: 'https://pay.ozow.com/',
+      paymentUrl: this.getOzowCheckoutUrl(),
+      checkoutUrl: this.getOzowCheckoutUrl(),
     };
   }
 
@@ -113,7 +124,8 @@ export class PaymentsService {
     return {
       ...payload,
       hashCheck,
-      paymentUrl: 'https://pay.ozow.com/',
+      paymentUrl: this.getOzowCheckoutUrl(),
+      checkoutUrl: this.getOzowCheckoutUrl(),
     };
   }
 

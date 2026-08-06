@@ -1,18 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Head from 'next/head';
 import SettingsLayout from '../../../components/SettingsLayout';
-import { CreditCard, CheckCircle2, AlertCircle, Loader2, Zap } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, Zap } from 'lucide-react';
 import { fetchApi } from '../../../lib/api';
 import { useRouter } from 'next/router';
 import { toast } from 'sonner';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
+interface OzowPaymentData {
+  paymentUrl?: string;
+  checkoutUrl?: string;
+  siteCode?: string;
+  countryCode?: string;
+  currencyCode?: string;
+  amount?: string;
+  transactionReference?: string;
+  bankReference?: string;
+  cancelUrl?: string;
+  errorUrl?: string;
+  successUrl?: string;
+  notifyUrl?: string;
+  isTest?: string;
+  hashCheck?: string;
+}
+
 export default function BillingSettings() {
   const router = useRouter();
-  const [paymentData, setPaymentData] = useState<any>(null);
-  const [statusMessage, setStatusMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const paymentFormRef = useRef<HTMLFormElement | null>(null);
+  const [paymentData, setPaymentData] = useState<OzowPaymentData | null>(null);
   const [billingInterval, setBillingInterval] = useState('monthly');
+  const ozowFields = useMemo(() => ['siteCode', 'countryCode', 'currencyCode', 'amount', 'transactionReference', 'bankReference', 'cancelUrl', 'errorUrl', 'successUrl', 'notifyUrl', 'isTest', 'hashCheck'], []);
 
   // Fetch Current Subscription
   const { data: currentSub, isLoading: isSubLoading } = useQuery({
@@ -40,14 +58,17 @@ export default function BillingSettings() {
     },
   });
 
-  useEffect(() => {
+  const statusMessage = useMemo(() => {
     if (router.query.status === 'success') {
-      setStatusMessage({ type: 'success', text: 'Payment completed successfully! Your subscription is now active.' });
-    } else if (router.query.status === 'cancelled') {
-      setStatusMessage({ type: 'error', text: 'Payment was cancelled.' });
-    } else if (router.query.status === 'error') {
-      setStatusMessage({ type: 'error', text: 'An error occurred during payment processing.' });
+      return { type: 'success' as const, text: 'Payment completed successfully! Your subscription is now active.' };
     }
+    if (router.query.status === 'cancelled') {
+      return { type: 'error' as const, text: 'Payment was cancelled.' };
+    }
+    if (router.query.status === 'error') {
+      return { type: 'error' as const, text: 'An error occurred during payment processing.' };
+    }
+    return null;
   }, [router.query.status]);
 
   const handleUpgrade = (planId: string) => {
@@ -56,33 +77,19 @@ export default function BillingSettings() {
 
   useEffect(() => {
     if (paymentData) {
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = paymentData.paymentUrl;
-      form.target = '_self';
-
-      const fields = ['siteCode', 'countryCode', 'currencyCode', 'amount', 'transactionReference', 'bankReference', 'cancelUrl', 'errorUrl', 'successUrl', 'notifyUrl', 'isTest', 'hashCheck'];
-      
-      fields.forEach(field => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = field.charAt(0).toUpperCase() + field.slice(1);
-        input.value = paymentData[field];
-        form.appendChild(input);
-      });
-
-      document.body.appendChild(form);
-      
-      // Auto submit, but provide a fallback if blocked
-      const submitTimer = setTimeout(() => {
+      const submitTimer = window.setTimeout(() => {
         try {
-          form.submit();
-        } catch (e) {
-          console.error("Auto-submit failed", e);
+          paymentFormRef.current?.requestSubmit();
+        } catch {
+          try {
+            paymentFormRef.current?.submit();
+          } catch (submitError) {
+            console.error('Auto-submit failed', submitError);
+          }
         }
       }, 100);
 
-      return () => clearTimeout(submitTimer);
+      return () => window.clearTimeout(submitTimer);
     }
   }, [paymentData]);
 
@@ -115,11 +122,11 @@ export default function BillingSettings() {
             <Loader2 className="w-8 h-8 animate-spin text-indigo-600 dark:text-indigo-400 mb-4" />
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Redirecting to Secure Payment...</h3>
             <p className="text-sm text-gray-600 dark:text-zinc-400 mb-6 max-w-md mx-auto">
-              You are being securely redirected to Ozow to complete your payment. If the redirect doesn't happen automatically in a few seconds, please click the button below.
+              You are being securely redirected to Ozow to complete your payment. If the redirect does not happen automatically in a few seconds, please click the button below.
             </p>
-            <form action={paymentData.paymentUrl} method="POST">
-              {['siteCode', 'countryCode', 'currencyCode', 'amount', 'transactionReference', 'bankReference', 'cancelUrl', 'errorUrl', 'successUrl', 'notifyUrl', 'isTest', 'hashCheck'].map(field => (
-                <input key={field} type="hidden" name={field.charAt(0).toUpperCase() + field.slice(1)} value={paymentData[field]} />
+            <form ref={paymentFormRef} action={paymentData.checkoutUrl || paymentData.paymentUrl} method="POST" target="_self">
+              {ozowFields.map(field => (
+                <input key={field} type="hidden" name={field} value={String(paymentData[field] ?? '')} />
               ))}
               <button type="submit" className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-md">
                 Proceed to Payment Manually
@@ -209,7 +216,16 @@ export default function BillingSettings() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {plans.map((plan: any) => {
+              {plans.map((plan: {
+                id: string;
+                name: string;
+                description?: string;
+                billingInterval?: string;
+                price: number;
+                currency?: string;
+                limits?: { maxQueues?: number; maxTokens?: number };
+                features?: { whatsappNotifications?: boolean; textToSpeech?: boolean; customBranding?: boolean };
+              }) => {
                 const price = billingInterval === 'yearly' && plan.billingInterval === 'monthly'
                   ? Math.floor(plan.price * 12 * 0.9)
                   : plan.price;
@@ -242,7 +258,7 @@ export default function BillingSettings() {
                     </button>
 
                     <div className="space-y-4 flex-1">
-                      <p className="text-xs font-semibold text-gray-900 dark:text-zinc-300 uppercase tracking-wider">What's included:</p>
+                      <p className="text-xs font-semibold text-gray-900 dark:text-zinc-300 uppercase tracking-wider">What is included:</p>
                       <div className="flex items-start gap-3">
                         <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                         <span className="text-gray-600 dark:text-zinc-400 text-sm">Up to {plan.limits?.maxQueues || 1} Queues</span>

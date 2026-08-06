@@ -249,14 +249,27 @@ export class WhatsappService implements OnModuleInit {
     // Raw QR code text (the actual string that would be encoded in the QR)
     // Evolution API often returns this in the `code` field
     if (typeof data?.code === 'string' && data.code.length > 10 && !data.code.startsWith('data:image')) return data.code;
+    if (typeof data?.qrCode === 'string' && data.qrCode.length > 10 && !data.qrCode.startsWith('data:image')) return data.qrCode;
+    if (typeof data?.qr_code === 'string' && data.qr_code.length > 10 && !data.qr_code.startsWith('data:image')) return data.qr_code;
     // Base64 image in nested qrcode object  
     if (data?.qrcode?.base64) return data.qrcode.base64;
+    if (data?.qrcode?.image) return data.qrcode.image;
+    if (data?.qrcode?.dataUrl) return data.qrcode.dataUrl;
     if (data?.base64) return data.base64;
+    if (data?.base64Image) return data.base64Image;
     if (data?.instance?.qrcode?.base64) return data.instance.qrcode.base64;
+    if (data?.instance?.qrcode?.image) return data.instance.qrcode.image;
+    if (data?.instance?.qrcode?.dataUrl) return data.instance.qrcode.dataUrl;
+    if (data?.instance?.qrCode) return data.instance.qrCode;
     // Fallback: any string qrcode field
     if (typeof data?.qrcode === 'string') return data.qrcode;
+    if (typeof data?.qr === 'string' && data.qr.length > 10) return data.qr;
+    if (typeof data?.qrCodeBase64 === 'string' && data.qrCodeBase64.length > 10) return data.qrCodeBase64;
     // Raw long strings (can be a raw QR value like "2@abc123...")
     if (typeof data === 'string' && data.length > 10) return data;
+    if (typeof data?.response?.qrcode?.base64 === 'string') return data.response.qrcode.base64;
+    if (typeof data?.response?.qrcode?.image === 'string') return data.response.qrcode.image;
+    if (typeof data?.response?.qr === 'string' && data.response.qr.length > 10) return data.response.qr;
     return null;
   }
 
@@ -329,9 +342,11 @@ export class WhatsappService implements OnModuleInit {
       where: { id: targetId },
     });
     if (!tenant) {
-      const ws = await this.prisma.workspace.findUnique({
-        where: { id: targetId },
-      });
+      const ws = this.prisma.workspace?.findUnique
+        ? await this.prisma.workspace.findUnique({
+            where: { id: targetId },
+          })
+        : null;
       if (ws) {
         tenant = await this.prisma.tenant.findUnique({
           where: { id: ws.tenantId },
@@ -339,10 +354,12 @@ export class WhatsappService implements OnModuleInit {
       }
     }
     if (!tenant) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: targetId },
-        include: { tenant: true },
-      });
+      const user = this.prisma.user?.findUnique
+        ? await this.prisma.user.findUnique({
+            where: { id: targetId },
+            include: { tenant: true },
+          })
+        : null;
       if (user?.tenant) {
         tenant = user.tenant;
       }
