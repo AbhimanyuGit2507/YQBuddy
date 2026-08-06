@@ -317,13 +317,11 @@ export class WhatsappService implements OnModuleInit {
     this.logger.debug(`Setting webhook for ${instanceName} -> ${webhookUrl.split('?')[0]}`);
 
     const result = await this.fetchEvo(`/webhook/set/${instanceName}`, 'POST', {
-      webhook: {
-        enabled: true,
-        url: webhookUrl,
-        webhook_by_events: false,
-        webhook_base64: false,
-        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE', 'MESSAGES_UPDATE'],
-      },
+      enabled: true,
+      url: webhookUrl,
+      webhook_by_events: false,
+      webhook_base64: false,
+      events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE', 'MESSAGES_UPDATE'],
     });
 
     if (result.error) {
@@ -388,7 +386,7 @@ export class WhatsappService implements OnModuleInit {
       this.logger.log(`Instance ${instanceName} not found, creating new instance for tenant ${tenant.id}.`);
       await this.logTenantEvent(tenant.id, 'INSTANCE_CREATION_STARTED', { instanceName });
       
-      const createResult = await this.fetchEvo('/instance/create', 'POST', {
+      let createResult = await this.fetchEvo('/instance/create', 'POST', {
         instanceName,
         qrcode: true,
         integration: 'WHATSAPP-BAILEYS',
@@ -398,8 +396,25 @@ export class WhatsappService implements OnModuleInit {
       });
 
       if (createResult.error) {
-        await this.logTenantEvent(tenant.id, 'INSTANCE_CREATION_FAILED', { error: createResult.error.message });
-        throw new HttpException(createResult.error.message, createResult.status === 401 ? HttpStatus.BAD_GATEWAY : HttpStatus.BAD_REQUEST);
+        if (
+          createResult.status === 403 ||
+          createResult.status === 409 ||
+          createResult.status === 400
+        ) {
+          this.logger.warn(
+            `Instance ${instanceName} already exists or is reserved, attempting connect instead.`,
+          );
+          await this.logTenantEvent(tenant.id, 'INSTANCE_CREATION_CONFLICT', {
+            error: createResult.error.message,
+          });
+          createResult = await this.fetchEvo(
+            `/instance/connect/${instanceName}`,
+            'GET',
+          );
+        } else {
+          await this.logTenantEvent(tenant.id, 'INSTANCE_CREATION_FAILED', { error: createResult.error.message });
+          throw new HttpException(createResult.error.message, createResult.status === 401 ? HttpStatus.BAD_GATEWAY : HttpStatus.BAD_REQUEST);
+        }
       }
       
       await this.logTenantEvent(tenant.id, 'INSTANCE_CREATED', { instanceName });
@@ -466,7 +481,7 @@ export class WhatsappService implements OnModuleInit {
 
     if (needsCreation) {
       await this.logTenantEvent(tenant.id, 'INSTANCE_CREATION_STARTED', { instanceName });
-      const createResult = await this.fetchEvo('/instance/create', 'POST', {
+      let createResult = await this.fetchEvo('/instance/create', 'POST', {
         instanceName,
         qrcode: false,
         integration: 'WHATSAPP-BAILEYS',
@@ -476,8 +491,25 @@ export class WhatsappService implements OnModuleInit {
       });
 
       if (createResult.error) {
-        await this.logTenantEvent(tenant.id, 'INSTANCE_CREATION_FAILED', { error: createResult.error.message });
-        throw new HttpException(createResult.error.message, createResult.status === 401 ? HttpStatus.BAD_GATEWAY : HttpStatus.BAD_REQUEST);
+        if (
+          createResult.status === 403 ||
+          createResult.status === 409 ||
+          createResult.status === 400
+        ) {
+          this.logger.warn(
+            `Instance ${instanceName} already exists or is reserved, attempting connect instead.`,
+          );
+          await this.logTenantEvent(tenant.id, 'INSTANCE_CREATION_CONFLICT', {
+            error: createResult.error.message,
+          });
+          createResult = await this.fetchEvo(
+            `/instance/connect/${instanceName}`,
+            'GET',
+          );
+        } else {
+          await this.logTenantEvent(tenant.id, 'INSTANCE_CREATION_FAILED', { error: createResult.error.message });
+          throw new HttpException(createResult.error.message, createResult.status === 401 ? HttpStatus.BAD_GATEWAY : HttpStatus.BAD_REQUEST);
+        }
       }
       await this.logTenantEvent(tenant.id, 'INSTANCE_CREATED', { instanceName });
     }

@@ -24,6 +24,11 @@ export class PaymentsService {
       : 'https://pay.ozow.com/';
   }
 
+  private addBillingPeriod(startDate: Date, billingInterval: string) {
+    const periodDays = billingInterval === 'yearly' ? 365 : 30;
+    return new Date(startDate.getTime() + periodDays * 24 * 60 * 60 * 1000);
+  }
+
   constructor(private prisma: PrismaService) {}
 
   async generatePaymentLink(
@@ -171,12 +176,10 @@ export class PaymentsService {
       });
 
       if (transaction.planId) {
-        const currentPeriodEnd = new Date();
-        if (transaction.billingInterval === 'yearly') {
-          currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
-        } else {
-          currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
-        }
+        const currentPeriodEnd = this.addBillingPeriod(
+          new Date(),
+          transaction.billingInterval || 'monthly',
+        );
 
         await this.prisma.subscription.upsert({
           where: { workspaceId: transaction.workspaceId },

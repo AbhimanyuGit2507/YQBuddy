@@ -6,7 +6,6 @@ import { fetchApi } from '../../../lib/api';
 import { useRouter } from 'next/router';
 import { toast } from 'sonner';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
 
 interface OzowPaymentData {
   paymentUrl?: string;
@@ -25,12 +24,33 @@ interface OzowPaymentData {
   hashCheck?: string;
 }
 
+const billingDateFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'UTC',
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+});
+
+function formatBillingDate(value?: string | Date | null) {
+  if (!value) return 'Unknown';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Unknown';
+  return billingDateFormatter.format(date);
+}
+
 export default function BillingSettings() {
   const router = useRouter();
   const paymentFormRef = useRef<HTMLFormElement | null>(null);
   const [paymentData, setPaymentData] = useState<OzowPaymentData | null>(null);
   const [billingInterval, setBillingInterval] = useState('monthly');
-  const ozowFields = useMemo(() => ['siteCode', 'countryCode', 'currencyCode', 'amount', 'transactionReference', 'bankReference', 'cancelUrl', 'errorUrl', 'successUrl', 'notifyUrl', 'isTest', 'hashCheck'], []);
+  const ozowFields = useMemo<Array<keyof OzowPaymentData>>(
+    () => ['siteCode', 'countryCode', 'currencyCode', 'amount', 'transactionReference', 'bankReference', 'cancelUrl', 'errorUrl', 'successUrl', 'notifyUrl', 'isTest', 'hashCheck'],
+    [],
+  );
+  const paymentStatus = useMemo(() => {
+    if (Array.isArray(router.query.status)) return router.query.status[0];
+    return router.query.status;
+  }, [router.query.status]);
 
   // Fetch Current Subscription
   const { data: currentSub, isLoading: isSubLoading } = useQuery({
@@ -59,17 +79,17 @@ export default function BillingSettings() {
   });
 
   const statusMessage = useMemo(() => {
-    if (router.query.status === 'success') {
+    if (paymentStatus === 'success') {
       return { type: 'success' as const, text: 'Payment completed successfully! Your subscription is now active.' };
     }
-    if (router.query.status === 'cancelled') {
+    if (paymentStatus === 'cancelled') {
       return { type: 'error' as const, text: 'Payment was cancelled.' };
     }
-    if (router.query.status === 'error') {
+    if (paymentStatus === 'error') {
       return { type: 'error' as const, text: 'An error occurred during payment processing.' };
     }
     return null;
-  }, [router.query.status]);
+  }, [paymentStatus]);
 
   const handleUpgrade = (planId: string) => {
     subscribeMutation.mutate({ planId, billingInterval });
@@ -156,7 +176,7 @@ export default function BillingSettings() {
                   Active Subscription
                 </span>
                 <p className="text-sm text-gray-500 dark:text-zinc-400 mt-2">
-                  Next billing date: <strong className="text-gray-900 dark:text-white">{currentSub?.nextBillingDate ? format(new Date(currentSub.nextBillingDate), 'MMM d, yyyy') : 'Unknown'}</strong>
+                  Next billing date: <strong className="text-gray-900 dark:text-white">{formatBillingDate(currentSub?.nextBillingDate)}</strong>
                 </p>
                 <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
                   Interval: <strong className="text-gray-900 dark:text-white capitalize">{currentSub?.billingInterval}</strong>
